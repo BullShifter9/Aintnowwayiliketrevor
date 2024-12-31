@@ -311,145 +311,107 @@ local function createToggleButton()
     return toggleButton, function() return enabled end
 end
 
--- Add these to the features table in setupMiscFeatures:
-local features = {
-    {name = "Walkspeed", default = 16, boosted = 100},
-    {name = "Jump Power", default = 50, boosted = 100},
-    {name = "Noclip", default = false},
-    {name = "ESP", default = false},
-    {name = "Infinite Jump", default = false},
-    -- New features:
-    {name = "Fly", default = false},
-    {name = "God Mode", default = false},
-    {name = "No Fall Damage", default = false},
-    {name = "Infinite Oxygen", default = false},
-    {name = "Click TP", default = false},
-    {name = "Auto Sprint", default = false},
-    {name = "X-Ray", default = false},
-    {name = "Night Vision", default = false},
-    {name = "Full Bright", default = false},
-    {name = "Third Person", default = false}
-}
+-- Misc Features Setup
+local function setupMiscFeatures(ContentFrame)
+    local features = {
+        {name = "Walkspeed", default = 16, boosted = 100},
+        {name = "Jump Power", default = 50, boosted = 100},
+        {name = "Noclip", default = false},
+        {name = "ESP", default = false},
+        {name = "Infinite Jump", default = false}
+    }
 
--- Add these inside the feature-specific functionality section:
+    for i, feature in ipairs(features) do
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, 0, 0, 50)
+        container.Position = UDim2.new(0, 0, 0, (i-1) * 60)
+        container.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        container.BorderSizePixel = 0
 
-elseif feature.name == "Fly" then
-    local flySpeed = 50
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoidRootPart = LocalPlayer.Character.HumanoidRootPart
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                humanoidRootPart.CFrame = humanoidRootPart.CFrame + (workspace.CurrentCamera.CFrame.LookVector * flySpeed/100)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                humanoidRootPart.CFrame = humanoidRootPart.CFrame - (workspace.CurrentCamera.CFrame.LookVector * flySpeed/100)
-            end
-        end
-    end)
+        local UICorner = Instance.new("UICorner")
+        UICorner.CornerRadius = UDim.new(0, 8)
+        UICorner.Parent = container
 
-elseif feature.name == "God Mode" then
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.MaxHealth = math.huge
-            LocalPlayer.Character.Humanoid.Health = math.huge
-        end
-    end)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.5, 0, 1, 0)
+        label.Position = UDim2.new(0, 20, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = feature.name
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextSize = 16
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = container
 
-elseif feature.name == "No Fall Damage" then
-    LocalPlayer.Character.ChildAdded:Connect(function(child)
-        if getEnabled() and child.Name == "FallDamageScript" then
-            child:Destroy()
-        end
-    end)
+        local toggleButton, getEnabled = createToggleButton()
+        toggleButton.Position = UDim2.new(1, -70, 0.5, -12)
+        toggleButton.Parent = container
 
-elseif feature.name == "Infinite Oxygen" then
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            local humanoid = LocalPlayer.Character.Humanoid
-            if humanoid:FindFirstChild("Oxygen") then
-                humanoid.Oxygen.Value = humanoid.Oxygen.MaxValue
-            end
-        end
-    end)
-
-elseif feature.name == "Click TP" then
-    UserInputService.InputBegan:Connect(function(input)
-        if getEnabled() and input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local mouse = LocalPlayer:GetMouse()
-            if mouse.Target and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
-            end
-        end
-    end)
-
-elseif feature.name == "Auto Sprint" then
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            local humanoid = LocalPlayer.Character.Humanoid
-            if humanoid.MoveDirection.Magnitude > 0 then
-                humanoid.WalkSpeed = feature.boosted
-            end
-        end
-    end)
-
-elseif feature.name == "X-Ray" then
-    local function updateTransparency()
-        if getEnabled() then
-            for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-                    part.LocalTransparencyModifier = 0.5
+        -- Feature-specific functionality
+        if feature.name == "Walkspeed" then
+            RunService.Heartbeat:Connect(function()
+                if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = feature.boosted
+                elseif LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = feature.default
                 end
-            end
-        else
-            for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.LocalTransparencyModifier = 0
+            end)
+        elseif feature.name == "Jump Power" then
+            RunService.Heartbeat:Connect(function()
+                if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.JumpPower = feature.boosted
+                elseif LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.JumpPower = feature.default
                 end
-            end
+            end)
+        elseif feature.name == "Noclip" then
+            RunService.Stepped:Connect(function()
+                if getEnabled() and LocalPlayer.Character then
+                    for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        elseif feature.name == "ESP" then
+            local espBoxes = {}
+            RunService.RenderStepped:Connect(function()
+                if getEnabled() then
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character and 
+                           player.Character:FindFirstChild("HumanoidRootPart") and 
+                           not espBoxes[player] then
+                            local box = Instance.new("BoxHandleAdornment")
+                            box.Size = Vector3.new(4, 5, 1)
+                            box.Color3 = Color3.fromRGB(255, 0, 0)
+                            box.Transparency = 0.5
+                            box.Adornee = player.Character.HumanoidRootPart
+                            box.AlwaysOnTop = true
+                            box.ZIndex = 5
+                            box.Parent = player.Character.HumanoidRootPart
+                            espBoxes[player] = box
+                        end
+                    end
+                else
+                    for player, box in pairs(espBoxes) do
+                        box:Destroy()
+                        espBoxes[player] = nil
+                    end
+                end
+            end)
+        elseif feature.name == "Infinite Jump" then
+            UserInputService.JumpRequest:Connect(function()
+                if getEnabled() and LocalPlayer.Character and 
+                   LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
         end
+
+        container.Parent = ContentFrame
     end
-    RunService.RenderStepped:Connect(updateTransparency)
-
-elseif feature.name == "Night Vision" then
-    local lighting = game:GetService("Lighting")
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() then
-            lighting.Brightness = 2
-            lighting.ClockTime = 14
-            lighting.FogEnd = 100000
-            lighting.GlobalShadows = false
-        else
-            lighting.Brightness = 1
-            lighting.ClockTime = lighting:GetMinutesAfterMidnight()/60
-            lighting.FogEnd = 100000
-            lighting.GlobalShadows = true
-        end
-    end)
-
-elseif feature.name == "Full Bright" then
-    local lighting = game:GetService("Lighting")
-    RunService.Heartbeat:Connect(function()
-        if getEnabled() then
-            lighting.Brightness = 4
-            lighting.GlobalShadows = false
-            lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        else
-            lighting.Brightness = 1
-            lighting.GlobalShadows = true
-            lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        end
-    end)
-
-elseif feature.name == "Third Person" then
-    RunService.RenderStepped:Connect(function()
-        if getEnabled() then
-            LocalPlayer.CameraMode = Enum.CameraMode.Classic
-            LocalPlayer.CameraMaxZoomDistance = 20
-        else
-            LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-            LocalPlayer.CameraMaxZoomDistance = 0.5
-        end
-    end)
+end
 
 -- Initialize everything
 local function Initialize()
@@ -458,32 +420,6 @@ local function Initialize()
     local ContentFrame = createMainGUI()
     setupMiscFeatures(ContentFrame)
 end
-
--- Add this at the start of setupMiscFeatures:
-local searchBar = Instance.new("TextBox")
-searchBar.Size = UDim2.new(1, -40, 0, 30)
-searchBar.Position = UDim2.new(0, 20, 0, 0)
-searchBar.PlaceholderText = "Search features..."
-searchBar.Text = ""
-searchBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-searchBar.TextColor3 = Color3.fromRGB(255, 255, 255)
-searchBar.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
-searchBar.Parent = ContentFrame
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 6)
-UICorner.Parent = searchBar
-
--- Add search functionality
-searchBar.Changed:Connect(function()
-    local searchText = searchBar.Text:lower()
-    for _, container in ipairs(ContentFrame:GetChildren()) do
-        if container:IsA("Frame") and container:FindFirstChild("TextLabel") then
-            local featureName = container.TextLabel.Text:lower()
-            container.Visible = featureName:find(searchText) ~= nil
-        end
-    end
-end)
 
 -- Start the script
 Initialize()
