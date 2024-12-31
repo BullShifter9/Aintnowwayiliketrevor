@@ -268,3 +268,222 @@ local function createMainGUI()
     
     return ContentFrame
 end
+
+-- Toggle Button Component
+local function createToggleButton()
+    local toggleButton = Instance.new("Frame")
+    toggleButton.Size = UDim2.new(0, 50, 0, 24)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 59, 59)
+    toggleButton.BorderSizePixel = 0
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(1, 0)
+    UICorner.Parent = toggleButton
+
+    local circle = Instance.new("Frame")
+    circle.Size = UDim2.new(0, 20, 0, 20)
+    circle.Position = UDim2.new(0, 2, 0, 2)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    circle.BorderSizePixel = 0
+
+    local UICorner_2 = Instance.new("UICorner")
+    UICorner_2.CornerRadius = UDim.new(1, 0)
+    UICorner_2.Parent = circle
+    circle.Parent = toggleButton
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.BackgroundTransparency = 1
+    button.Text = ""
+    button.Parent = toggleButton
+
+    local enabled = false
+
+    button.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        local togglePos = enabled and UDim2.new(1, -22, 0, 2) or UDim2.new(0, 2, 0, 2)
+        local toggleColor = enabled and Color3.fromRGB(67, 200, 67) or Color3.fromRGB(255, 59, 59)
+        
+        TweenService:Create(circle, TweenInfo.new(0.2), {Position = togglePos}):Play()
+        TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = toggleColor}):Play()
+    end)
+    
+    return toggleButton, function() return enabled end
+end
+
+-- Add these to the features table in setupMiscFeatures:
+local features = {
+    {name = "Walkspeed", default = 16, boosted = 100},
+    {name = "Jump Power", default = 50, boosted = 100},
+    {name = "Noclip", default = false},
+    {name = "ESP", default = false},
+    {name = "Infinite Jump", default = false},
+    -- New features:
+    {name = "Fly", default = false},
+    {name = "God Mode", default = false},
+    {name = "No Fall Damage", default = false},
+    {name = "Infinite Oxygen", default = false},
+    {name = "Click TP", default = false},
+    {name = "Auto Sprint", default = false},
+    {name = "X-Ray", default = false},
+    {name = "Night Vision", default = false},
+    {name = "Full Bright", default = false},
+    {name = "Third Person", default = false}
+}
+
+-- Add these inside the feature-specific functionality section:
+
+elseif feature.name == "Fly" then
+    local flySpeed = 50
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoidRootPart = LocalPlayer.Character.HumanoidRootPart
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                humanoidRootPart.CFrame = humanoidRootPart.CFrame + (workspace.CurrentCamera.CFrame.LookVector * flySpeed/100)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                humanoidRootPart.CFrame = humanoidRootPart.CFrame - (workspace.CurrentCamera.CFrame.LookVector * flySpeed/100)
+            end
+        end
+    end)
+
+elseif feature.name == "God Mode" then
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.MaxHealth = math.huge
+            LocalPlayer.Character.Humanoid.Health = math.huge
+        end
+    end)
+
+elseif feature.name == "No Fall Damage" then
+    LocalPlayer.Character.ChildAdded:Connect(function(child)
+        if getEnabled() and child.Name == "FallDamageScript" then
+            child:Destroy()
+        end
+    end)
+
+elseif feature.name == "Infinite Oxygen" then
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            local humanoid = LocalPlayer.Character.Humanoid
+            if humanoid:FindFirstChild("Oxygen") then
+                humanoid.Oxygen.Value = humanoid.Oxygen.MaxValue
+            end
+        end
+    end)
+
+elseif feature.name == "Click TP" then
+    UserInputService.InputBegan:Connect(function(input)
+        if getEnabled() and input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mouse = LocalPlayer:GetMouse()
+            if mouse.Target and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+            end
+        end
+    end)
+
+elseif feature.name == "Auto Sprint" then
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            local humanoid = LocalPlayer.Character.Humanoid
+            if humanoid.MoveDirection.Magnitude > 0 then
+                humanoid.WalkSpeed = feature.boosted
+            end
+        end
+    end)
+
+elseif feature.name == "X-Ray" then
+    local function updateTransparency()
+        if getEnabled() then
+            for _, part in pairs(workspace:GetDescendants()) do
+                if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
+                    part.LocalTransparencyModifier = 0.5
+                end
+            end
+        else
+            for _, part in pairs(workspace:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.LocalTransparencyModifier = 0
+                end
+            end
+        end
+    end
+    RunService.RenderStepped:Connect(updateTransparency)
+
+elseif feature.name == "Night Vision" then
+    local lighting = game:GetService("Lighting")
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() then
+            lighting.Brightness = 2
+            lighting.ClockTime = 14
+            lighting.FogEnd = 100000
+            lighting.GlobalShadows = false
+        else
+            lighting.Brightness = 1
+            lighting.ClockTime = lighting:GetMinutesAfterMidnight()/60
+            lighting.FogEnd = 100000
+            lighting.GlobalShadows = true
+        end
+    end)
+
+elseif feature.name == "Full Bright" then
+    local lighting = game:GetService("Lighting")
+    RunService.Heartbeat:Connect(function()
+        if getEnabled() then
+            lighting.Brightness = 4
+            lighting.GlobalShadows = false
+            lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        else
+            lighting.Brightness = 1
+            lighting.GlobalShadows = true
+            lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        end
+    end)
+
+elseif feature.name == "Third Person" then
+    RunService.RenderStepped:Connect(function()
+        if getEnabled() then
+            LocalPlayer.CameraMode = Enum.CameraMode.Classic
+            LocalPlayer.CameraMaxZoomDistance = 20
+        else
+            LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+            LocalPlayer.CameraMaxZoomDistance = 0.5
+        end
+    end)
+
+-- Initialize everything
+local function Initialize()
+    createLoadingTransition()
+    wait(3.5) -- Wait for transition
+    local ContentFrame = createMainGUI()
+    setupMiscFeatures(ContentFrame)
+end
+
+-- Add this at the start of setupMiscFeatures:
+local searchBar = Instance.new("TextBox")
+searchBar.Size = UDim2.new(1, -40, 0, 30)
+searchBar.Position = UDim2.new(0, 20, 0, 0)
+searchBar.PlaceholderText = "Search features..."
+searchBar.Text = ""
+searchBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+searchBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBar.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+searchBar.Parent = ContentFrame
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = searchBar
+
+-- Add search functionality
+searchBar.Changed:Connect(function()
+    local searchText = searchBar.Text:lower()
+    for _, container in ipairs(ContentFrame:GetChildren()) do
+        if container:IsA("Frame") and container:FindFirstChild("TextLabel") then
+            local featureName = container.TextLabel.Text:lower()
+            container.Visible = featureName:find(searchText) ~= nil
+        end
+    end
+end)
+
+-- Start the script
+Initialize()
