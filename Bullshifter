@@ -1,483 +1,270 @@
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+-- Create Loading Animation
+local function createLoadingTransition()
+    local loadingGui = Instance.new("ScreenGui")
+    loadingGui.Name = "LoadingTransition"
+    loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    local background = Instance.new("Frame")
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    background.BackgroundTransparency = 1
+    background.Parent = loadingGui
+    
+    -- Cool Hub Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0, 0, 0, 60)
+    title.Position = UDim2.new(0.5, 0, 0.4, 0)
+    title.AnchorPoint = Vector2.new(0.5, 0.5)
+    title.BackgroundTransparency = 1
+    title.Text = "Cool Hub"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 48
+    title.Font = Enum.Font.GothamBold
+    title.Parent = background
+    
+    -- Create Particles
+    local particles = {}
+    for i = 1, 20 do
+        local particle = Instance.new("Frame")
+        particle.Size = UDim2.new(0, 4, 0, 4)
+        particle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
+        particle.BorderSizePixel = 0
+        particle.Parent = background
+        table.insert(particles, particle)
+    end
+    
+    -- Loading Bar
+    local loadingBar = Instance.new("Frame")
+    loadingBar.Size = UDim2.new(0.3, 0, 0, 6)
+    loadingBar.Position = UDim2.new(0.35, 0, 0.6, 0)
+    loadingBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    loadingBar.BorderSizePixel = 0
+    loadingBar.Parent = background
+    
+    local fillBar = Instance.new("Frame")
+    fillBar.Size = UDim2.new(0, 0, 1, 0)
+    fillBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    fillBar.BorderSizePixel = 0
+    fillBar.Parent = loadingBar
+    
+    -- Animation Function
+    local function animate()
+        TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+        wait(0.5)
+        
+        local titleTween = TweenService:Create(title, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), 
+            {Size = UDim2.new(0, 300, 0, 60)})
+        titleTween:Play()
+        
+        -- Animate particles
+        for _, particle in ipairs(particles) do
+            spawn(function()
+                while true do
+                    local randomPosition = UDim2.new(math.random(), 0, math.random(), 0)
+                    local tweenInfo = TweenInfo.new(math.random(1, 3), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+                    TweenService:Create(particle, tweenInfo, {Position = randomPosition}):Play()
+                    wait(math.random() * 2)
+                end
+            end)
+        end
+        
+        -- Loading bar animation
+        TweenService:Create(fillBar, TweenInfo.new(2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+        wait(2.5)
+        
+        -- Glitch effect
+        for i = 1, 3 do
+            title.Position = title.Position + UDim2.new(0, math.random(-10, 10), 0, math.random(-10, 10))
+            wait(0.1)
+            title.Position = UDim2.new(0.5, 0, 0.4, 0)
+            wait(0.1)
+        end
+        
+        -- Final sweep
+        local sweep = Instance.new("Frame")
+        sweep.Size = UDim2.new(0, 5, 1, 0)
+        sweep.BorderSizePixel = 0
+        sweep.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        sweep.Parent = background
+        
+        local sweepTween = TweenService:Create(sweep, TweenInfo.new(0.5), {Size = UDim2.new(1, 0, 1, 0)})
+        sweepTween:Play()
+        
+        wait(0.5)
+        loadingGui:Destroy()
+    end
+    
+    animate()
+end
+
 -- Main GUI Creation
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local TitleBar = Instance.new("Frame")
-local ContentFrame = Instance.new("Frame")
-local MinMaxButton = Instance.new("TextButton")
-local ThemeButton = Instance.new("TextButton")
-local TransparencySlider = Instance.new("Frame")
-local SliderButton = Instance.new("TextButton")
-local StatsFrame = Instance.new("Frame")
-local LoadingSpinner = Instance.new("ImageLabel")
-
--- Performance Monitoring Elements
-local fpsCounter = Instance.new("TextLabel")
-local pingDisplay = Instance.new("TextLabel")
-local memoryUsage = Instance.new("TextLabel")
-local frameTimeGraph = Instance.new("Frame")
-local debugButton = Instance.new("TextButton")
-
--- Performance Variables
-local lastIteration = time()
-local frameCount = 0
-local frameTimes = {}
-local maxFrameTimes = 100
-local debugMode = false
-
--- GUI Setup
-ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
-
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
-MainFrame.ClipsDescendants = true
-
-TitleBar.Name = "TitleBar"
-TitleBar.Parent = MainFrame
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-
--- Title Text
-local Title = Instance.new("TextLabel")
-Title.Parent = TitleBar
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Size = UDim2.new(1, -20, 1, 0)
-Title.Text = "Universal GUI"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
--- Create Sections Container
-local SectionsContainer = Instance.new("ScrollingFrame")
-SectionsContainer.Name = "SectionsContainer"
-SectionsContainer.Parent = MainFrame
-SectionsContainer.Position = UDim2.new(0, 10, 0, 40)
-SectionsContainer.Size = UDim2.new(1, -20, 1, -50)
-SectionsContainer.BackgroundTransparency = 1
-SectionsContainer.ScrollBarThickness = 4
-SectionsContainer.ScrollingEnabled = true
-SectionsContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-SectionsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-
--- Create Section Layout
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = SectionsContainer
-UIListLayout.Padding = UDim.new(0, 10)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Utility Functions
-local function createTween(object, properties, time, style, direction)
-    return TweenService:Create(object,
-        TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
-        properties
-    )
-end
-
-local function addHoverEffect(button)
-    local glowEffect = Instance.new("ImageLabel")
-    glowEffect.Name = "GlowEffect"
-    glowEffect.BackgroundTransparency = 1
-    glowEffect.Image = "rbxassetid://131328614"
-    glowEffect.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    glowEffect.ImageTransparency = 1
-    glowEffect.Size = UDim2.new(1.2, 0, 1.2, 0)
-    glowEffect.Position = UDim2.new(-0.1, 0, -0.1, 0)
-    glowEffect.ZIndex = button.ZIndex - 1
-    glowEffect.Parent = button
-
-    button.MouseEnter:Connect(function()
-        createTween(glowEffect, {ImageTransparency = 0.7}):Play()
-    end)
-
-    button.MouseLeave:Connect(function()
-        createTween(glowEffect, {ImageTransparency = 1}):Play()
-    end)
-end
-
--- Function to create a new section
-local function createSection(name)
-    local section = Instance.new("Frame")
-    section.Name = name .. "Section"
-    section.Size = UDim2.new(1, 0, 0, 100)
-    section.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    section.BorderSizePixel = 0
+local function createMainGUI()
+    local ScreenGui = Instance.new("ScreenGui")
+    local MainFrame = Instance.new("Frame")
+    local SideBar = Instance.new("Frame")
+    local ContentArea = Instance.new("Frame")
     
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = section
+    -- Main Frame Setup
+    MainFrame.Name = "CoolHub"
+    MainFrame.Size = UDim2.new(0, 800, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
     
-    local sectionTitle = Instance.new("TextLabel")
-    sectionTitle.Name = "Title"
-    sectionTitle.Size = UDim2.new(1, 0, 0, 30)
-    sectionTitle.BackgroundTransparency = 1
-    sectionTitle.Text = name
-    sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sectionTitle.TextSize = 16
-    sectionTitle.Font = Enum.Font.SourceSansBold
-    sectionTitle.Parent = section
+    -- Add Corner to MainFrame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = MainFrame
     
-    return section
-end
-
--- Switch creation utility
-local function addSwitch(parent, text, callback)
-    local switch = Instance.new("Frame")
-    switch.Size = UDim2.new(0, 40, 0, 20)
-    switch.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    -- Sidebar Setup
+    SideBar.Size = UDim2.new(0, 200, 1, 0)
+    SideBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    SideBar.BorderSizePixel = 0
+    SideBar.Parent = MainFrame
     
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 10)
-    UICorner.Parent = switch
+    -- Create Title in Sidebar
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 60)
+    Title.BackgroundTransparency = 1
+    Title.Text = "Cool Hub"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 24
+    Title.Font = Enum.Font.GothamBold
+    Title.Parent = SideBar
     
-    local button = Instance.new("Frame")
-    button.Size = UDim2.new(0, 18, 0, 18)
-    button.Position = UDim2.new(0, 1, 0, 1)
-    button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    button.Parent = switch
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(1, 0)
-    buttonCorner.Parent = button
-    
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Position = UDim2.new(1.2, 0, 0, 0)
-    label.Size = UDim2.new(0, 100, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = switch
-    
-    local enabled = false
-    switch.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            enabled = not enabled
-            createTween(button, {Position = enabled and UDim2.new(0.55, 0, 0, 1) or UDim2.new(0, 1, 0, 1)}):Play()
-            switch.BackgroundColor3 = enabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(40, 40, 40)
-            callback(enabled)
-        end
-    end)
-    
-    return switch
-end
-
--- Create Speed Section
-local SpeedSection = createSection("Speed")
-SpeedSection.Parent = SectionsContainer
-
--- Create speed input and button
-local SpeedInput = Instance.new("TextBox")
-SpeedInput.Size = UDim2.new(0.7, 0, 0, 30)
-SpeedInput.Position = UDim2.new(0.15, 0, 0.4, 0)
-SpeedInput.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInput.PlaceholderText = "Enter speed (0-500)"
-SpeedInput.Text = ""
-SpeedInput.Parent = SpeedSection
-
-local SpeedCorner = Instance.new("UICorner")
-SpeedCorner.CornerRadius = UDim.new(0, 6)
-SpeedCorner.Parent = SpeedInput
-
-local SetSpeedButton = Instance.new("TextButton")
-SetSpeedButton.Size = UDim2.new(0.4, 0, 0, 25)
-SetSpeedButton.Position = UDim2.new(0.3, 0, 0.7, 0)
-SetSpeedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-SetSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SetSpeedButton.Text = "Set Speed"
-SetSpeedButton.Parent = SpeedSection
-
-SpeedCorner:Clone().Parent = SetSpeedButton
-
--- Server Utilities Section
-local ServerSection = createSection("Server Utilities")
-ServerSection.Parent = SectionsContainer
-
--- Quick Rejoin Button
-local RejoinButton = Instance.new("TextButton")
-RejoinButton.Size = UDim2.new(0.8, 0, 0, 30)
-RejoinButton.Position = UDim2.new(0.1, 0, 0.2, 0)
-RejoinButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-RejoinButton.Text = "Quick Rejoin"
-RejoinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-RejoinButton.Parent = ServerSection
-
-SpeedCorner:Clone().Parent = RejoinButton
-
--- Server Region Display
-local RegionDisplay = Instance.new("TextLabel")
-RegionDisplay.Size = UDim2.new(0.8, 0, 0, 20)
-RegionDisplay.Position = UDim2.new(0.1, 0, 0.4, 0)
-RegionDisplay.BackgroundTransparency = 1
-RegionDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
-RegionDisplay.Parent = ServerSection
-
--- Anti-AFK
-local antiAFK = addSwitch(ServerSection, "Anti-AFK", function(enabled)
-    if enabled then
-        local VirtualUser = game:GetService("VirtualUser")
-        local antiAFKConnection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
-            VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            wait(1)
-            VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end)
-    else
-        if antiAFKConnection then
-            antiAFKConnection:Disconnect()
-        end
-    end
-end)
-antiAFK.Position = UDim2.new(0.1, 0, 0.6, 0)
-
--- Visual Settings Section
-local VisualSection = createSection("Visual Settings")
-VisualSection.Parent = SectionsContainer
-
--- Theme system
-local themes = {
-    Default = {
-        Background = Color3.fromRGB(40, 40, 40),
-        Secondary = Color3.fromRGB(30, 30, 30),
-        Accent = Color3.fromRGB(0, 170, 255),
-        Text = Color3.fromRGB(255, 255, 255)
-    },
-    Dark = {
-        Background = Color3.fromRGB(20, 20, 20),
-        Secondary = Color3.fromRGB(15, 15, 15),
-        Accent = Color3.fromRGB(100, 100, 255),
-        Text = Color3.fromRGB(200, 200, 200)
-    },
-    Light = {
-        Background = Color3.fromRGB(200, 200, 200),
-        Secondary = Color3.fromRGB(180, 180, 180),
-        Accent = Color3.fromRGB(0, 120, 255),
-        Text = Color3.fromRGB(40, 40, 40)
+    -- Create Sidebar Buttons
+    local buttonData = {
+        {name = "Integrations", icon = "rbxassetid://3926305904", offset = Vector2.new(964, 204)},
+        {name = "Misc", icon = "rbxassetid://3926307971", offset = Vector2.new(884, 4)},
+        {name = "Settings", icon = "rbxassetid://3926307971", offset = Vector2.new(4, 164)},
+        {name = "Appearance", icon = "rbxassetid://3926307971", offset = Vector2.new(324, 124)},
+        {name = "Scripts", icon = "rbxassetid://3926305904", offset = Vector2.new(4, 124)},
+        {name = "Configs", icon = "rbxassetid://3926305904", offset = Vector2.new(644, 364)},
+        {name = "About", icon = "rbxassetid://3926305904", offset = Vector2.new(524, 444)}
     }
-}
-
-local ThemeDropdown = Instance.new("TextButton")
-ThemeDropdown.Size = UDim2.new(0.8, 0, 0, 30)
-ThemeDropdown.Position = UDim2.new(0.1, 0, 0.2, 0)
-ThemeDropdown.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-ThemeDropdown.Text = "Select Theme"
-ThemeDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
-ThemeDropdown.Parent = VisualSection
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 6)
-UICorner.Parent = ThemeDropdown
-
--- ESP Section
-local ESPSection = createSection("ESP Settings")
-ESPSection.Parent = SectionsContainer
-
--- Tracers
-local function createTracer(player)
-    local tracer = Drawing.new("Line")
-    tracer.Visible = false
-    tracer.Color = Color3.fromRGB(255, 0, 0)
-    tracer.Thickness = 1
-    tracer.Transparency = 1
     
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(
-                player.Character.HumanoidRootPart.Position
-            )
-            
-            if onScreen then
-                tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
-                tracer.To = Vector2.new(vector.X, vector.Y)
-                tracer.Visible = true
-            else
-                tracer.Visible = false
-            end
-        else
-            tracer.Visible = false
-        end
-    end)
-    
-    return tracer
-end
-
-local tracers = {}
-local TracersSwitch = addSwitch(ESPSection, "Player Tracers", function(enabled)
-    if enabled then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= Players.LocalPlayer then
-                tracers[player] = createTracer(player)
-            end
-        end
+    local function createSidebarButton(data, yPos)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, -20, 0, 40)
+        button.Position = UDim2.new(0, 10, 0, yPos)
+        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        button.BackgroundTransparency = 1
+        button.Text = data.name
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 16
+        button.Font = Enum.Font.Gotham
+        button.TextXAlignment = Enum.TextXAlignment.Left
+        button.Parent = SideBar
         
-        Players.PlayerAdded:Connect(function(player)
-            tracers[player] = createTracer(player)
+        local icon = Instance.new("ImageLabel")
+        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.Position = UDim2.new(0, 15, 0.5, -10)
+        icon.BackgroundTransparency = 1
+        icon.Image = data.icon
+        icon.ImageRectOffset = data.offset
+        icon.ImageRectSize = Vector2.new(36, 36)
+        icon.Parent = button
+        
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 50)
+        padding.Parent = button
+        
+        local hover = Instance.new("Frame")
+        hover.Size = UDim2.new(1, 0, 1, 0)
+        hover.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hover.BackgroundTransparency = 1
+        hover.Parent = button
+        
+        button.MouseEnter:Connect(function()
+            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
         end)
         
-        Players.PlayerRemoving:Connect(function(player)
-            if tracers[player] then
-                tracers[player]:Remove()
-                tracers[player] = nil
-            end
+        button.MouseLeave:Connect(function()
+            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
         end)
-    else
-        for _, tracer in pairs(tracers) do
-            tracer:Remove()
-        end
-        tracers = {}
-    end
-end)
-TracersSwitch.Position = UDim2.new(0.1, 0, 0.2, 0)
-
--- ESP Box Toggle
-local function createESPBox(player)
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.fromRGB(255, 0, 0)
-    box.Thickness = 1
-    box.Transparency = 1
-    box.Filled = false
-    
-    return box
-end
-
-local espBoxes = {}
-local ESPBoxSwitch = addSwitch(ESPSection, "ESP Boxes", function(enabled)
-    if enabled then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= Players.LocalPlayer then
-                espBoxes[player] = createESPBox(player)
-            end
-        end
-    else
-        for _, box in pairs(espBoxes) do
-            box:Remove()
-        end
-        espBoxes = {}
-    end
-end)
-ESPBoxSwitch.Position = UDim2.new(0.1, 0, 0.4, 0)
-
--- Button Functions
-SetSpeedButton.MouseButton1Click:Connect(function()
-    local speed = tonumber(SpeedInput.Text)
-    if speed and speed >= 0 and speed <= 500 then
-        local player = Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
-        local humanoid = character:WaitForChild("Humanoid")
-        createTween(humanoid, {WalkSpeed = speed}, 0.3):Play()
-    end
-end)
-
-RejoinButton.MouseButton1Click:Connect(function()
-    local ts = game:GetService("TeleportService")
-    ts:Teleport(game.PlaceId, Players.LocalPlayer)
-end)
-
--- Apply theme function
-local function applyTheme(themeName)
-    local theme = themes[themeName]
-    createTween(MainFrame, {BackgroundColor3 = theme.Background}):Play()
-    createTween(TitleBar, {BackgroundColor3 = theme.Secondary}):Play()
-    createTween(ThemeDropdown, {BackgroundColor3 = theme.Secondary}):Play()
-    -- Add more theme applications as needed
-end
-
--- Theme dropdown functionality
-local currentTheme = 1
-local themeList = {}
-for name, _ in pairs(themes) do
-    table.insert(themeList, name)
-end
-
-ThemeDropdown.MouseButton1Click:Connect(function()
-    currentTheme = (currentTheme % #themeList) + 1
-    ThemeDropdown.Text = themeList[currentTheme]
-    applyTheme(themeList[currentTheme])
-end)
-
--- Performance Monitoring
-local function updateStats()
-    if debugMode then
-        local currentTime = time()
-        frameCount = frameCount + 1
         
-        if currentTime - lastIteration >= 1 then
-            local fps = math.floor(frameCount / (currentTime - lastIteration))
-            fpsCounter.Text = "FPS: " .. fps
-            
-            local ping = math.floor(Players.LocalPlayer:GetNetworkPing() * 1000)
-            pingDisplay.Text = "Ping: " .. ping .. "ms"
-            
-            local memory = math.floor(game:GetService("Stats"):GetTotalMemoryUsageMb())
-            memoryUsage.Text = "Memory: " .. memory .. "MB"
-            
-            frameCount = 0
-            lastIteration = currentTime
-        end
+        return button
     end
+    
+    -- Create all sidebar buttons
+    for i, data in ipairs(buttonData) do
+        createSidebarButton(data, 70 + (i-1) * 50)
+    end
+    
+    -- Content Area
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, -200, 0, 60)
+    TopBar.Position = UDim2.new(0, 200, 0, 0)
+    TopBar.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    TopBar.BorderSizePixel = 0
+    TopBar.Parent = MainFrame
+    
+    -- Create Top Bar Buttons
+    local function createTopBarButton(text, positionX)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 120, 0, 35)
+        button.Position = UDim2.new(0, positionX, 0.5, -17)
+        button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        button.Text = text
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 14
+        button.Font = Enum.Font.Gotham
+        button.Parent = TopBar
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = button
+        
+        local hover = Instance.new("Frame")
+        hover.Size = UDim2.new(1, 0, 1, 0)
+        hover.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hover.BackgroundTransparency = 1
+        hover.Parent = button
+        
+        local corner2 = Instance.new("UICorner")
+        corner2.CornerRadius = UDim.new(0, 6)
+        corner2.Parent = hover
+        
+        button.MouseEnter:Connect(function()
+            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
+        end)
+        
+        button.MouseLeave:Connect(function()
+            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        end)
+        
+        return button
+    end
+    
+    createTopBarButton("Load", 20)
+    createTopBarButton("Save", 150)
+    createTopBarButton("Reset", 280)
+    
+    -- Content Frame
+    local ContentFrame = Instance.new("ScrollingFrame")
+    ContentFrame.Size = UDim2.new(1, -200, 1, -60)
+    ContentFrame.Position = UDim2.new(0, 200, 0, 60)
+    ContentFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    ContentFrame.BorderSizePixel = 0
+    ContentFrame.ScrollBarThickness = 4
+    ContentFrame.Parent = MainFrame
+    
+    -- Add padding to content
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 20)
+    padding.PaddingRight = UDim.new(0, 20)
+    padding.PaddingTop = UDim.new(0, 20)
+    padding.Parent = ContentFrame
+    
+    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    MainFrame.Parent = ScreenGui
+    
+    return ContentFrame
 end
-
-RunService.RenderStepped:Connect(updateStats)
-
--- Add hover effects
-addHoverEffect(SetSpeedButton)
-addHoverEffect(RejoinButton)
-addHoverEffect(ThemeDropdown)
-
--- Make GUI draggable
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-    end
-end)
-
-TitleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                     startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- Update region info
-spawn(function()
-    while wait(1) do
-        local ping = math.floor(Players.LocalPlayer:GetNetworkPing() * 1000)
-        local region = "Unknown"
-        if ping < 100 then
-            region = "Local Region"
-        elseif ping < 200 then
-            region = "Nearby Region"
-        else
-            region = "Distant Region"
-        end
-        RegionDisplay.Text = "Server Region: " .. region .. " (" .. ping .. "ms)"
-    end
-end)
