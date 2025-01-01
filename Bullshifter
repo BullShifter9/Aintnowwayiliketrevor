@@ -1,252 +1,255 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- Variables
+local isSilentAimEnabled = false
+local isESPEnabled = false
+local isMinimized = false
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local Camera = workspace.CurrentCamera
 
-local SETTINGS = {
-   ENHANCED = {
-       GOOD_PING = {VELOCITY_SCALE = 1/15, OFFSET_MULT = 1.2, SMOOTHING = 0.8},
-       MED_PING = {VELOCITY_SCALE = 1/12, OFFSET_MULT = 1.5, SMOOTHING = 0.6},
-       BAD_PING = {VELOCITY_SCALE = 1/10, OFFSET_MULT = 2.0, SMOOTHING = 0.4}
-   },
-   STATIC = {
-       GOOD_PING = {PREDICTION_SCALE = 0.8, LAG_COMP = 1.1},
-       MED_PING = {PREDICTION_SCALE = 1.0, LAG_COMP = 1.3},
-       BAD_PING = {PREDICTION_SCALE = 1.2, LAG_COMP = 1.5}
-   },
-   FOV = 180,
-   SMOOTH = 0.5
-}
-
-local silentAimEnabled = false
-local silentAimMode = "Enhanced" 
-local minimized = false
-
-local function getPredictionSettings(ping)
-   if ping < 50 then return "GOOD_PING"
-   elseif ping < 150 then return "MED_PING"
-   else return "BAD_PING" end
+-- ESP/Chams functions
+local function createChams(player)
+    if not player.Character then return end
+    
+    for _, part in pairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            local highlight = Instance.new("Highlight")
+            highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red for murderer
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillTransparency = 0.5
+            highlight.OutlineTransparency = 0
+            highlight.Parent = part
+        end
+    end
 end
 
-local function getClosestPlayer()
-   local closest, shortestDistance = nil, SETTINGS.FOV
-   
-   for _, player in ipairs(Players:GetPlayers()) do
-       if player ~= LocalPlayer and player.Character and 
-          player:FindFirstChild("Role") and player.Role.Value == "Murderer" then
-           local head = player.Character:FindFirstChild("Head")
-           if head then
-               local screenPoint = Camera:WorldToScreenPoint(head.Position)
-               local vector = Vector2.new(Mouse.X - screenPoint.X, Mouse.Y - screenPoint.Y)
-               local distance = vector.Magnitude
-               
-               if distance < shortestDistance then
-                   closest = player
-                   shortestDistance = distance
-               end
-           end
-       end
-   end
-   return closest
+local function removeChams(player)
+    if not player.Character then return end
+    
+    for _, part in pairs(player.Character:GetDescendants()) do
+        if part:IsA("Highlight") then
+            part:Destroy()
+        end
+    end
 end
 
-local function calculatePrediction(player, mode)
-   local char = player.Character
-   if not char then return Vector3.new() end
-   
-   local hrp = char:FindFirstChild("UpperTorso")
-   local hum = char:FindFirstChild("Humanoid")
-   if not hrp or not hum then return Vector3.new() end
-   
-   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-   local settings = SETTINGS[mode][getPredictionSettings(ping)]
-   
-   if mode == "Enhanced" then
-       local velocity = hrp.AssemblyLinearVelocity
-       local moveDir = hum.MoveDirection
-       return hrp.Position + (velocity * settings.VELOCITY_SCALE) + (moveDir * settings.OFFSET_MULT)
-   else
-       return hrp.Position + (hrp.CFrame.LookVector * settings.PREDICTION_SCALE * settings.LAG_COMP)
-   end
+-- Prediction and targeting
+local function getPredictedPosition(player)
+    if not player or not player.Character then return nil end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return nil end
+    
+    local velocity = rootPart.AssemblyLinearVelocity
+    local position = rootPart.Position
+    local moveDirection = humanoid.MoveDirection
+    
+    -- Calculate prediction
+    local prediction = position +
+        (velocity * 0.15) +
+        (moveDirection * humanoid.WalkSpeed * 0.12) +
+        Vector3.new(0, velocity.Y * 0.1, 0)
+    
+    -- Network lag compensation
+    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+    prediction = prediction + (velocity * (ping/1000 * 0.1))
+    
+    return prediction
 end
 
-local function applySilentAim(bullet)
-   local target = getClosestPlayer()
-   if not target then return end
-   
-   local predictedPos = calculatePrediction(target, silentAimMode)
-   local direction = (predictedPos - bullet.Position).Unit
-   bullet.Velocity = direction * bullet.Velocity.Magnitude
+local function getMurderer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local knife = player.Character:FindFirstChild("Knife") or 
+                         (player.Backpack and player.Backpack:FindFirstChild("Knife"))
+            if knife then 
+                if isESPEnabled then
+                    createChams(player)
+                end
+                return player 
+            end
+        end
+    end
+    return nil
 end
 
-local function checkSheriffStatus()
-   if not LocalPlayer.Character or not LocalPlayer:FindFirstChild("Role") or 
-      LocalPlayer.Role.Value ~= "Sheriff" then
-       fu.notification("You are not the Sheriff")
-       return false
-   end
-   
-   if not LocalPlayer.Character:FindFirstChild("Gun") then
-       fu.notification("You don't have a gun")
-       return false
-   end
-   return true
+-- Remote event handling
+local function fireGun(targetPosition)
+    local args = {
+        [1] = targetPosition
+    }
+    
+    local gunRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Gun") -- Adjust name based on game
+    if gunRemote then
+        gunRemote:FireServer(unpack(args))
+    end
 end
 
 -- GUI Creation
-local GUI = Instance.new("ScreenGui")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MM2Helper"
+if syn then syn.protect_gui(ScreenGui) end
+ScreenGui.Parent = game:GetService("CoreGui")
+
 local MainFrame = Instance.new("Frame")
-local UICorner = Instance.new("UICorner")
-
-MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Size = UDim2.new(0, 200, 0, 150)
 MainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 0
-UICorner.Parent = MainFrame
+MainFrame.Parent = ScreenGui
 
--- Make GUI Draggable
-local isDragging = false
-local dragStart, startPos
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 8)
+Corner.Parent = MainFrame
 
-MainFrame.InputBegan:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.Touch or 
-      input.UserInputType == Enum.UserInputType.MouseButton1 then
-       isDragging = true
-       dragStart = input.Position
-       startPos = MainFrame.Position
-   end
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = TitleBar
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.7, 0, 1, 0)
+Title.Position = UDim2.new(0.05, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "MM2 Helper"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleBar
+
+-- Minimize Button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -30, 0, 0)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 20
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.Parent = TitleBar
+
+-- Buttons
+local function createButton(text, position)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.9, 0, 0, 30)
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 14
+    button.Font = Enum.Font.GothamBold
+    button.Parent = MainFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 6)
+    buttonCorner.Parent = button
+    
+    return button
+end
+
+local SilentAimButton = createButton("Silent Aim: OFF", UDim2.new(0.05, 0, 0.3, 0))
+local ESPButton = createButton("Murderer ESP: OFF", UDim2.new(0.05, 0, 0.55, 0))
+
+-- Button Events
+SilentAimButton.MouseButton1Click:Connect(function()
+    isSilentAimEnabled = not isSilentAimEnabled
+    SilentAimButton.Text = "Silent Aim: " .. (isSilentAimEnabled and "ON" or "OFF")
+    SilentAimButton.BackgroundColor3 = isSilentAimEnabled and 
+        Color3.fromRGB(0, 170, 127) or 
+        Color3.fromRGB(45, 45, 45)
 end)
 
-MainFrame.InputEnded:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.Touch or 
-      input.UserInputType == Enum.UserInputType.MouseButton1 then
-       isDragging = false
-   end
+ESPButton.MouseButton1Click:Connect(function()
+    isESPEnabled = not isESPEnabled
+    ESPButton.Text = "Murderer ESP: " .. (isESPEnabled and "ON" or "OFF")
+    ESPButton.BackgroundColor3 = isESPEnabled and 
+        Color3.fromRGB(0, 170, 127) or 
+        Color3.fromRGB(45, 45, 45)
+        
+    -- Update ESP
+    local murderer = getMurderer()
+    if murderer then
+        if isESPEnabled then
+            createChams(murderer)
+        else
+            removeChams(murderer)
+        end
+    end
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+        Size = isMinimized and UDim2.new(0, 200, 0, 30) or UDim2.new(0, 200, 0, 150)
+    }):Play()
+end)
+
+-- Dragging functionality
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-   if isDragging and (input.UserInputType == Enum.UserInputType.Touch or 
-      input.UserInputType == Enum.UserInputType.MouseMovement) then
-       local delta = input.Position - dragStart
-       MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                    startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-   end
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                    input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 end)
 
--- Create Buttons
-local function createButton(text, position)
-   local button = Instance.new("TextButton")
-   button.Size = UDim2.new(0, 200, 0, 40)
-   button.Position = position
-   button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-   button.TextColor3 = Color3.fromRGB(255, 255, 255)
-   button.Text = text
-   button.Font = Enum.Font.GothamBold
-   button.TextSize = 14
-   button.Parent = MainFrame
-   
-   local corner = Instance.new("UICorner")
-   corner.CornerRadius = UDim.new(0, 6)
-   corner.Parent = button
-   
-   return button
-end
-
-local toggleButton = createButton("Silent Aim: OFF", UDim2.new(0.1, 0, 0.1, 0))
-local modeButton = createButton("Mode: Enhanced", UDim2.new(0.1, 0, 0.3, 0))
-local shootButton = createButton("Shoot Murderer", UDim2.new(0.1, 0, 0.5, 0))
-
--- Minimize Button
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 30, 0, 30)
-minimizeButton.Position = UDim2.new(1, -35, 0, 5)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-minimizeButton.Text = "-"
-minimizeButton.TextSize = 20
-minimizeButton.Font = Enum.Font.GothamBold
-minimizeButton.Parent = MainFrame
-
-local minimizeCorner = Instance.new("UICorner")
-minimizeCorner.CornerRadius = UDim.new(0, 6)
-minimizeCorner.Parent = minimizeButton
-
--- Button Functionality
-toggleButton.MouseButton1Click:Connect(function()
-   silentAimEnabled = not silentAimEnabled
-   toggleButton.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF")
-   toggleButton.BackgroundColor3 = silentAimEnabled and 
-       Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
 end)
 
-modeButton.MouseButton1Click:Connect(function()
-   silentAimMode = silentAimMode == "Enhanced" and "Static" or "Enhanced"
-   modeButton.Text = "Mode: " .. silentAimMode
+-- Silent Aim Implementation
+UserInputService.InputBegan:Connect(function(input)
+    if not isSilentAimEnabled then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or
+       input.UserInputType == Enum.UserInputType.Touch then
+        local murderer = getMurderer()
+        if murderer then
+            local targetPos = getPredictedPosition(murderer)
+            if targetPos then
+                fireGun(targetPos)
+            end
+        end
+    end
 end)
 
-shootButton.MouseButton1Click:Connect(function()
-   if not silentAimEnabled or not checkSheriffStatus() then return end
-   
-   local murderer = getClosestPlayer()
-   if murderer then
-       local predictedPos = calculatePrediction(murderer, silentAimMode)
-       local gun = LocalPlayer.Character:FindFirstChild("Gun")
-       if gun and gun:FindFirstChild("Fire") then
-           gun.Fire:FireServer(predictedPos)
-       end
-   else
-       fu.notification("No murderer found")
-   end
+-- ESP Update Loop
+RunService.Heartbeat:Connect(function()
+    if isESPEnabled then
+        local murderer = getMurderer()
+        if murderer then
+            createChams(murderer)
+        end
+    end
 end)
-
-minimizeButton.MouseButton1Click:Connect(function()
-   minimized = not minimized
-   minimizeButton.Text = minimized and "+" or "-"
-   
-   local targetSize = minimized and UDim2.new(0, 250, 0, 40) or UDim2.new(0, 250, 0, 300)
-   TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = targetSize}):Play()
-   
-   toggleButton.Visible = not minimized
-   modeButton.Visible = not minimized
-   shootButton.Visible = not minimized
-end)
-
--- Add hover effects
-local function addHoverEffect(button)
-   button.MouseEnter:Connect(function()
-       TweenService:Create(button, TweenInfo.new(0.3), 
-           {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
-   end)
-   
-   button.MouseLeave:Connect(function()
-       TweenService:Create(button, TweenInfo.new(0.3),
-           {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-   end)
-end
-
-addHoverEffect(toggleButton)
-addHoverEffect(modeButton)
-addHoverEffect(shootButton)
-addHoverEffect(minimizeButton)
-
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Silent Aim"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.Parent = MainFrame
-
--- Connect silent aim to bullet creation
-workspace.ChildAdded:Connect(function(child)
-   if silentAimEnabled and child:IsA("Part") and child.Name == "Bullet" then
-       applySilentAim(child)
-   end
-end)
-
-GUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
-MainFrame.Parent = GUI
