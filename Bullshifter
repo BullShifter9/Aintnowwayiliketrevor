@@ -250,3 +250,149 @@ Shadow.Image = "rbxassetid://5028857084"
 Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
 Shadow.ImageTransparency = 0.8
 Shadow.Parent = LoadingFrame
+-- Main GUI Creation
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 150)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+-- Add main frame effects
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(50, 50, 50)
+MainStroke.Thickness = 1
+MainStroke.Parent = MainFrame
+
+-- Title Bar with gradient
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleGradient = Instance.new("UIGradient")
+TitleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
+})
+TitleGradient.Parent = TitleBar
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+-- Title text with glow
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -60, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "MM2 Helper"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleBar
+
+-- Title glow effect
+local TitleGlow = Instance.new("ImageLabel")
+TitleGlow.Size = UDim2.new(1, 20, 1, 20)
+TitleGlow.Position = UDim2.new(0, -10, 0, -10)
+TitleGlow.BackgroundTransparency = 1
+TitleGlow.Image = "rbxassetid://5028857084"
+TitleGlow.ImageColor3 = Color3.fromRGB(255, 255, 255)
+TitleGlow.ImageTransparency = 0.9
+TitleGlow.Parent = Title
+
+-- Buttons container
+local ButtonsContainer = Instance.new("Frame")
+local ButtonsLayout = Instance.new("UIListLayout")
+ButtonsLayout.Padding = UDim.new(0, 10)
+ButtonsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ButtonsLayout.Parent = ButtonsContainer
+
+ButtonsContainer.Size = UDim2.new(0.9, 0, 0.7, 0)
+ButtonsContainer.Position = UDim2.new(0.05, 0, 0.25, 0)
+ButtonsContainer.BackgroundTransparency = 1
+ButtonsContainer.Parent = MainFrame
+
+-- Function to create animated buttons
+local function createButton(text, color)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, 0, 0, 35)
+    Button.BackgroundColor3 = color
+    Button.Text = text
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 14
+    Button.Font = Enum.Font.GothamBold
+    Button.AutoButtonColor = false
+    Button.Parent = ButtonsContainer
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 6)
+    ButtonCorner.Parent = Button
+    
+    local ButtonStroke = Instance.new("UIStroke")
+    ButtonStroke.Color = Color3.fromRGB(70, 70, 70)
+    ButtonStroke.Thickness = 1
+    ButtonStroke.Parent = Button
+    
+    -- Hover and click animations
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.3), {
+            BackgroundColor3 = color:Lerp(Color3.fromRGB(255, 255, 255), 0.1)
+        }):Play()
+    end)
+    
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.3), {
+            BackgroundColor3 = color
+        }):Play()
+    end)
+    
+    Button.MouseButton1Down:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(0.95, 0, 0, 35)
+        }):Play()
+    end)
+    
+    Button.MouseButton1Up:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(1, 0, 0, 35)
+        }):Play()
+    end)
+    
+    return Button
+end
+
+-- Create main buttons
+local SilentAimButton = createButton("Silent Aim: OFF", Color3.fromRGB(45, 45, 45))
+local SettingsButton = createButton("Settings", Color3.fromRGB(40, 40, 40))
+
+-- Minimize button with animation
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -35, 0, 2)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "−"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 20
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.Parent = TitleBar
+
+-- Status indicator
+local StatusIndicator = Instance.new("Frame")
+StatusIndicator.Size = UDim2.new(0, 8, 0, 8)
+StatusIndicator.Position = UDim2.new(0, 220, 0, 13)
+StatusIndicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+StatusIndicator.Parent = TitleBar
+
+local StatusCorner = Instance.new("UICorner")
+StatusCorner.CornerRadius = UDim.new(1, 0)
+StatusCorner.Parent = StatusIndicator
