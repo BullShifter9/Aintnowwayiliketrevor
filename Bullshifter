@@ -1,425 +1,252 @@
-local TweenService = game:GetService("TweenService")
+-- Services
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
--- Create Loading Animation
-local function createLoadingTransition()
-    local loadingGui = Instance.new("ScreenGui")
-    loadingGui.Name = "LoadingTransition"
-    loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    
-    local background = Instance.new("Frame")
-    background.Size = UDim2.new(1, 0, 1, 0)
-    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    background.BackgroundTransparency = 1
-    background.Parent = loadingGui
-    
-    -- Cool Hub Title
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(0, 0, 0, 60)
-    title.Position = UDim2.new(0.5, 0, 0.4, 0)
-    title.AnchorPoint = Vector2.new(0.5, 0.5)
-    title.BackgroundTransparency = 1
-    title.Text = "Cool Hub"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 48
-    title.Font = Enum.Font.GothamBold
-    title.Parent = background
-    
-    -- Create Particles
-    local particles = {}
-    for i = 1, 20 do
-        local particle = Instance.new("Frame")
-        particle.Size = UDim2.new(0, 4, 0, 4)
-        particle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
-        particle.BorderSizePixel = 0
-        particle.Parent = background
-        table.insert(particles, particle)
-    end
-    
-    -- Loading Bar
-    local loadingBar = Instance.new("Frame")
-    loadingBar.Size = UDim2.new(0.3, 0, 0, 6)
-    loadingBar.Position = UDim2.new(0.35, 0, 0.6, 0)
-    loadingBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    loadingBar.BorderSizePixel = 0
-    loadingBar.Parent = background
-    
-    local fillBar = Instance.new("Frame")
-    fillBar.Size = UDim2.new(0, 0, 1, 0)
-    fillBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    fillBar.BorderSizePixel = 0
-    fillBar.Parent = loadingBar
-    
-    -- Animation Function
-    local function animate()
-        TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-        wait(0.5)
-        
-        local titleTween = TweenService:Create(title, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), 
-            {Size = UDim2.new(0, 300, 0, 60)})
-        titleTween:Play()
-        
-        -- Animate particles
-        for _, particle in ipairs(particles) do
-            spawn(function()
-                while true do
-                    local randomPosition = UDim2.new(math.random(), 0, math.random(), 0)
-                    local tweenInfo = TweenInfo.new(math.random(1, 3), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-                    TweenService:Create(particle, tweenInfo, {Position = randomPosition}):Play()
-                    wait(math.random() * 2)
-                end
-            end)
-        end
-        
-        -- Loading bar animation
-        TweenService:Create(fillBar, TweenInfo.new(2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-        wait(2.5)
-        
-        -- Glitch effect
-        for i = 1, 3 do
-            title.Position = title.Position + UDim2.new(0, math.random(-10, 10), 0, math.random(-10, 10))
-            wait(0.1)
-            title.Position = UDim2.new(0.5, 0, 0.4, 0)
-            wait(0.1)
-        end
-        
-        -- Final sweep
-        local sweep = Instance.new("Frame")
-        sweep.Size = UDim2.new(0, 5, 1, 0)
-        sweep.BorderSizePixel = 0
-        sweep.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        sweep.Parent = background
-        
-        local sweepTween = TweenService:Create(sweep, TweenInfo.new(0.5), {Size = UDim2.new(1, 0, 1, 0)})
-        sweepTween:Play()
-        
-        wait(0.5)
-        loadingGui:Destroy()
-    end
-    
-    animate()
+-- Constants for prediction
+local PREDICTION_SETTINGS = {
+    BASE_MULTIPLIER = 0.15,
+    VERTICAL_MULTIPLIER = 0.35,
+    MAX_DISTANCE = 100,
+    MIN_VELOCITY = 0.1,
+    GRAVITY_COMPENSATION = 0.7,
+    PING_MULTIPLIER = 1.2,
+    ACCELERATION_WEIGHT = 0.8,
+    DIRECTION_WEIGHT = 1.2,
+    JUMP_PREDICTION = 0.4,
+    VELOCITY_DAMPING = 0.85
+}
+
+-- Advanced prediction functions
+local function calculateVelocityFactor(velocity)
+    local speed = velocity.Magnitude
+    local normalizedSpeed = math.clamp(speed / 30, 0, 1)
+    return math.pow(normalizedSpeed, 0.7) * PREDICTION_SETTINGS.VELOCITY_DAMPING
 end
 
--- Main GUI Creation
-local function createMainGUI()
-    local ScreenGui = Instance.new("ScreenGui")
-    local MainFrame = Instance.new("Frame")
-    local SideBar = Instance.new("Frame")
-    local ContentArea = Instance.new("Frame")
-    
-    -- Main Frame Setup
-    MainFrame.Name = "CoolHub"
-    MainFrame.Size = UDim2.new(0, 800, 0, 500)
-    MainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.ClipsDescendants = true
-    
-    -- Add Corner to MainFrame
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = MainFrame
-    
-    -- Sidebar Setup
-    SideBar.Size = UDim2.new(0, 200, 1, 0)
-    SideBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    SideBar.BorderSizePixel = 0
-    SideBar.Parent = MainFrame
-    
-    -- Create Title in Sidebar
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, 0, 0, 60)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Cool Hub"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 24
-    Title.Font = Enum.Font.GothamBold
-    Title.Parent = SideBar
-    
-    -- Create Sidebar Buttons
-    local buttonData = {
-        {name = "Integrations", icon = "rbxassetid://3926305904", offset = Vector2.new(964, 204)},
-        {name = "Misc", icon = "rbxassetid://3926307971", offset = Vector2.new(884, 4)},
-        {name = "Settings", icon = "rbxassetid://3926307971", offset = Vector2.new(4, 164)},
-        {name = "Appearance", icon = "rbxassetid://3926307971", offset = Vector2.new(324, 124)},
-        {name = "Scripts", icon = "rbxassetid://3926305904", offset = Vector2.new(4, 124)},
-        {name = "Configs", icon = "rbxassetid://3926305904", offset = Vector2.new(644, 364)},
-        {name = "About", icon = "rbxassetid://3926305904", offset = Vector2.new(524, 444)}
-    }
-    
-    local function createSidebarButton(data, yPos)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -20, 0, 40)
-        button.Position = UDim2.new(0, 10, 0, yPos)
-        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        button.BackgroundTransparency = 1
-        button.Text = data.name
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.TextSize = 16
-        button.Font = Enum.Font.Gotham
-        button.TextXAlignment = Enum.TextXAlignment.Left
-        button.Parent = SideBar
-        
-        local icon = Instance.new("ImageLabel")
-        icon.Size = UDim2.new(0, 20, 0, 20)
-        icon.Position = UDim2.new(0, 15, 0.5, -10)
-        icon.BackgroundTransparency = 1
-        icon.Image = data.icon
-        icon.ImageRectOffset = data.offset
-        icon.ImageRectSize = Vector2.new(36, 36)
-        icon.Parent = button
-        
-        local padding = Instance.new("UIPadding")
-        padding.PaddingLeft = UDim.new(0, 50)
-        padding.Parent = button
-        
-        local hover = Instance.new("Frame")
-        hover.Size = UDim2.new(1, 0, 1, 0)
-        hover.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        hover.BackgroundTransparency = 1
-        hover.Parent = button
-        
-        button.MouseEnter:Connect(function()
-            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
-        end)
-        
-        button.MouseLeave:Connect(function()
-            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        end)
-        
-        return button
-    end
-    
-    -- Create all sidebar buttons
-    for i, data in ipairs(buttonData) do
-        createSidebarButton(data, 70 + (i-1) * 50)
-    end
-    
-    -- Content Area
-    local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, -200, 0, 60)
-    TopBar.Position = UDim2.new(0, 200, 0, 0)
-    TopBar.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    TopBar.BorderSizePixel = 0
-    TopBar.Parent = MainFrame
-    
-    -- Create Top Bar Buttons
-    local function createTopBarButton(text, positionX)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0, 120, 0, 35)
-        button.Position = UDim2.new(0, positionX, 0.5, -17)
-        button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        button.Text = text
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.TextSize = 14
-        button.Font = Enum.Font.Gotham
-        button.Parent = TopBar
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = button
-        
-        local hover = Instance.new("Frame")
-        hover.Size = UDim2.new(1, 0, 1, 0)
-        hover.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        hover.BackgroundTransparency = 1
-        hover.Parent = button
-        
-        local corner2 = Instance.new("UICorner")
-        corner2.CornerRadius = UDim.new(0, 6)
-        corner2.Parent = hover
-        
-        button.MouseEnter:Connect(function()
-            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
-        end)
-        
-        button.MouseLeave:Connect(function()
-            TweenService:Create(hover, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        end)
-        
-        return button
-    end
-    
-    createTopBarButton("Load", 20)
-    createTopBarButton("Save", 150)
-    createTopBarButton("Reset", 280)
-    
-    -- Content Frame
-    local ContentFrame = Instance.new("ScrollingFrame")
-    ContentFrame.Size = UDim2.new(1, -200, 1, -60)
-    ContentFrame.Position = UDim2.new(0, 200, 0, 60)
-    ContentFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    ContentFrame.BorderSizePixel = 0
-    ContentFrame.ScrollBarThickness = 4
-    ContentFrame.Parent = MainFrame
-    
-    -- Add padding to content
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 20)
-    padding.PaddingRight = UDim.new(0, 20)
-    padding.PaddingTop = UDim.new(0, 20)
-    padding.Parent = ContentFrame
-    
-    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    MainFrame.Parent = ScreenGui
-    
-    return ContentFrame
+local function calculateDirectionWeight(moveDirection, lookVector)
+    local alignment = moveDirection:Dot(lookVector)
+    return 1 + (alignment * PREDICTION_SETTINGS.DIRECTION_WEIGHT)
 end
 
--- Toggle Button Component
-local function createToggleButton()
-    local toggleButton = Instance.new("Frame")
-    toggleButton.Size = UDim2.new(0, 50, 0, 24)
-    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 59, 59)
-    toggleButton.BorderSizePixel = 0
+local function calculatePingCompensation(ping)
+    local normalizedPing = math.clamp(ping / 200, 0, 1)
+    return 1 + (normalizedPing * PREDICTION_SETTINGS.PING_MULTIPLIER)
+end
 
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(1, 0)
-    UICorner.Parent = toggleButton
+local function calculateGravityCompensation(velocity)
+    local verticalSpeed = velocity.Y
+    if verticalSpeed > 0 then
+        return verticalSpeed * PREDICTION_SETTINGS.JUMP_PREDICTION
+    else
+        return verticalSpeed * PREDICTION_SETTINGS.GRAVITY_COMPENSATION
+    end
+end
 
-    local circle = Instance.new("Frame")
-    circle.Size = UDim2.new(0, 20, 0, 20)
-    circle.Position = UDim2.new(0, 2, 0, 2)
-    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    circle.BorderSizePixel = 0
+local function getPredictedPosition(player, shootOffset)
+    if not player or not player.Character then
+        return nil, "No target found"
+    end
+    
+    local character = player.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local hrp = character:FindFirstChild("UpperTorso")
+    
+    if not humanoid or not hrp then
+        return nil, "Invalid character parts"
+    end
+    
+    -- Get base values
+    local currentPosition = hrp.Position
+    local velocity = hrp.AssemblyLinearVelocity
+    local moveDirection = humanoid.MoveDirection
+    local lookVector = hrp.CFrame.LookVector
+    local ping = Players.LocalPlayer:GetNetworkPing() * 1000
+    
+    -- Calculate advanced prediction factors
+    local velocityFactor = calculateVelocityFactor(velocity)
+    local directionWeight = calculateDirectionWeight(moveDirection, lookVector)
+    local pingCompensation = calculatePingCompensation(ping)
+    local gravityOffset = calculateGravityCompensation(velocity)
+    
+    -- Calculate acceleration
+    local acceleration = Vector3.new(
+        math.sign(velocity.X) * velocityFactor,
+        gravityOffset,
+        math.sign(velocity.Z) * velocityFactor
+    )
+    
+    -- Calculate final prediction
+    local baseOffset = velocity * shootOffset * PREDICTION_SETTINGS.BASE_MULTIPLIER
+    local directionOffset = moveDirection * shootOffset * directionWeight
+    local accelerationOffset = acceleration * shootOffset * PREDICTION_SETTINGS.ACCELERATION_WEIGHT
+    local verticalOffset = Vector3.new(0, gravityOffset * PREDICTION_SETTINGS.VERTICAL_MULTIPLIER, 0)
+    
+    local predictedPosition = currentPosition +
+        baseOffset +
+        directionOffset +
+        accelerationOffset +
+        verticalOffset
+    
+    -- Apply ping compensation
+    predictedPosition = predictedPosition + (velocity * pingCompensation * 0.1)
+    
+    -- Clamp prediction distance
+    local predictionDistance = (predictedPosition - currentPosition).Magnitude
+    if predictionDistance > PREDICTION_SETTINGS.MAX_DISTANCE then
+        local direction = (predictedPosition - currentPosition).Unit
+        predictedPosition = currentPosition + direction * PREDICTION_SETTINGS.MAX_DISTANCE
+    end
+    
+    -- Verify line of sight
+    local ray = Ray.new(currentPosition, predictedPosition - currentPosition)
+    local hit, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, {character})
+    
+    if hit then
+        predictedPosition = hitPosition
+    end
+    
+    return predictedPosition
+end
 
-    local UICorner_2 = Instance.new("UICorner")
-    UICorner_2.CornerRadius = UDim.new(1, 0)
-    UICorner_2.Parent = circle
-    circle.Parent = toggleButton
+local lastPredictions = {}
+local function smoothPrediction(player, rawPrediction)
+    if not lastPredictions[player] then
+        lastPredictions[player] = rawPrediction
+        return rawPrediction
+    end
+    
+    local smoothFactor = 0.7
+    local smoothedPrediction = lastPredictions[player]:Lerp(rawPrediction, smoothFactor)
+    lastPredictions[player] = smoothedPrediction
+    
+    return smoothedPrediction
+end
+-- Create ScreenGui with better protection
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = game:GetService("HttpService"):GenerateGUID(false)
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 1, 0)
-    button.BackgroundTransparency = 1
-    button.Text = ""
-    button.Parent = toggleButton
+-- Try to use Synapse X protection if available
+if syn then
+    syn.protect_gui(ScreenGui)
+end
 
-    local enabled = false
+ScreenGui.Parent = game:GetService("CoreGui")
 
-    button.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        local togglePos = enabled and UDim2.new(1, -22, 0, 2) or UDim2.new(0, 2, 0, 2)
-        local toggleColor = enabled and Color3.fromRGB(67, 200, 67) or Color3.fromRGB(255, 59, 59)
-        
-        TweenService:Create(circle, TweenInfo.new(0.2), {Position = togglePos}):Play()
-        TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = toggleColor}):Play()
+-- Create fancier loading frame with blur effect
+local LoadingFrame = Instance.new("Frame")
+LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
+LoadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+LoadingFrame.BackgroundTransparency = 0.3
+LoadingFrame.Parent = ScreenGui
+
+-- Add blur effect
+local BlurEffect = Instance.new("BlurEffect")
+BlurEffect.Size = 0
+BlurEffect.Parent = game:GetService("Lighting")
+
+-- Create gradient
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 40, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
+})
+UIGradient.Parent = LoadingFrame
+
+-- Enhanced loading circle creation
+local function createLoadingCircle(size, speed, offset, color)
+    local circleContainer = Instance.new("Frame")
+    circleContainer.Size = UDim2.new(0, size, 0, size)
+    circleContainer.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+    circleContainer.BackgroundTransparency = 1
+    circleContainer.Parent = LoadingFrame
+    
+    local circle = Instance.new("ImageLabel")
+    circle.Size = UDim2.new(1, 0, 1, 0)
+    circle.BackgroundTransparency = 1
+    circle.Image = "rbxassetid://4965945816"
+    circle.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    circle.ImageTransparency = 0.2
+    circle.Parent = circleContainer
+    
+    -- Add glow effect
+    local glow = Instance.new("ImageLabel")
+    glow.Size = UDim2.new(1.2, 0, 1.2, 0)
+    glow.Position = UDim2.new(-0.1, 0, -0.1, 0)
+    glow.BackgroundTransparency = 1
+    glow.Image = "rbxassetid://4965945816"
+    glow.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    glow.ImageTransparency = 0.7
+    glow.Parent = circle
+    
+    -- Animate both rotation and pulse
+    local rotation = offset or 0
+    spawn(function()
+        while LoadingFrame.Visible do
+            rotation = rotation + speed
+            circleContainer.Rotation = rotation
+            
+            -- Pulse animation
+            local pulseSize = math.sin(tick() * 2) * 0.1 + 1
+            circle.Size = UDim2.new(pulseSize, 0, pulseSize, 0)
+            glow.Size = UDim2.new(pulseSize * 1.2, 0, pulseSize * 1.2, 0)
+            
+            task.wait()
+        end
     end)
     
-    return toggleButton, function() return enabled end
+    return circleContainer
 end
 
--- Misc Features Setup
-local function setupMiscFeatures(ContentFrame)
-    local features = {
-        {name = "Walkspeed", default = 16, boosted = 100},
-        {name = "Jump Power", default = 50, boosted = 100},
-        {name = "Noclip", default = false},
-        {name = "ESP", default = false},
-        {name = "Infinite Jump", default = false}
-    }
+-- Create enhanced loading circles with different colors
+local circle1 = createLoadingCircle(100, 2, 0, Color3.fromRGB(255, 100, 100))
+local circle2 = createLoadingCircle(80, -3, 45, Color3.fromRGB(100, 255, 100))
+local circle3 = createLoadingCircle(60, 4, 90, Color3.fromRGB(100, 100, 255))
 
-    for i, feature in ipairs(features) do
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 50)
-        container.Position = UDim2.new(0, 0, 0, (i-1) * 60)
-        container.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        container.BorderSizePixel = 0
+-- Create animated loading text
+local LoadingText = Instance.new("TextLabel")
+LoadingText.Size = UDim2.new(0, 200, 0, 50)
+LoadingText.Position = UDim2.new(0.5, -100, 0.6, -25)
+LoadingText.BackgroundTransparency = 1
+LoadingText.Text = "Loading MM2 Helper..."
+LoadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoadingText.TextSize = 20
+LoadingText.Font = Enum.Font.GothamBold
+LoadingText.Parent = LoadingFrame
 
-        local UICorner = Instance.new("UICorner")
-        UICorner.CornerRadius = UDim.new(0, 8)
-        UICorner.Parent = container
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.5, 0, 1, 0)
-        label.Position = UDim2.new(0, 20, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = feature.name
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextSize = 16
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
-
-        local toggleButton, getEnabled = createToggleButton()
-        toggleButton.Position = UDim2.new(1, -70, 0.5, -12)
-        toggleButton.Parent = container
-
-        -- Feature-specific functionality
-        if feature.name == "Walkspeed" then
-            RunService.Heartbeat:Connect(function()
-                if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = feature.boosted
-                elseif LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = feature.default
-                end
-            end)
-        elseif feature.name == "Jump Power" then
-            RunService.Heartbeat:Connect(function()
-                if getEnabled() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.JumpPower = feature.boosted
-                elseif LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.JumpPower = feature.default
-                end
-            end)
-        elseif feature.name == "Noclip" then
-            RunService.Stepped:Connect(function()
-                if getEnabled() and LocalPlayer.Character then
-                    for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end)
-        elseif feature.name == "ESP" then
-            local espBoxes = {}
-            RunService.RenderStepped:Connect(function()
-                if getEnabled() then
-                    for _, player in pairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer and player.Character and 
-                           player.Character:FindFirstChild("HumanoidRootPart") and 
-                           not espBoxes[player] then
-                            local box = Instance.new("BoxHandleAdornment")
-                            box.Size = Vector3.new(4, 5, 1)
-                            box.Color3 = Color3.fromRGB(255, 0, 0)
-                            box.Transparency = 0.5
-                            box.Adornee = player.Character.HumanoidRootPart
-                            box.AlwaysOnTop = true
-                            box.ZIndex = 5
-                            box.Parent = player.Character.HumanoidRootPart
-                            espBoxes[player] = box
-                        end
-                    end
-                else
-                    for player, box in pairs(espBoxes) do
-                        box:Destroy()
-                        espBoxes[player] = nil
-                    end
-                end
-            end)
-        elseif feature.name == "Infinite Jump" then
-            UserInputService.JumpRequest:Connect(function()
-                if getEnabled() and LocalPlayer.Character and 
-                   LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end)
-        end
-
-        container.Parent = ContentFrame
+-- Animated dots for loading text
+spawn(function()
+    local dots = ""
+    while LoadingFrame.Visible do
+        dots = dots .. "."
+        if #dots > 3 then dots = "" end
+        LoadingText.Text = "Loading MM2 Helper" .. dots
+        wait(0.5)
     end
-end
+end)
 
--- Initialize everything
-local function Initialize()
-    createLoadingTransition()
-    wait(3.5) -- Wait for transition
-    local ContentFrame = createMainGUI()
-    setupMiscFeatures(ContentFrame)
-end
+-- Add version text
+local VersionText = Instance.new("TextLabel")
+VersionText.Size = UDim2.new(0, 200, 0, 20)
+VersionText.Position = UDim2.new(0.5, -100, 0.6, 10)
+VersionText.BackgroundTransparency = 1
+VersionText.Text = "v2.0.0"
+VersionText.TextColor3 = Color3.fromRGB(200, 200, 200)
+VersionText.TextSize = 14
+VersionText.Font = Enum.Font.GothamMedium
+VersionText.Parent = LoadingFrame
 
--- Start the script
-Initialize()
+-- Create shadow effect
+local Shadow = Instance.new("ImageLabel")
+Shadow.Size = UDim2.new(1.1, 0, 1.1, 0)
+Shadow.Position = UDim2.new(-0.05, 0, -0.05, 0)
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://5028857084"
+Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.ImageTransparency = 0.8
+Shadow.Parent = LoadingFrame
