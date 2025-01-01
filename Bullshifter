@@ -4,7 +4,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Variables
 local isSilentAimEnabled = false
 local isESPEnabled = false
 local isSheriffESPEnabled = false 
@@ -12,7 +11,6 @@ local isMinimized = false
 local LocalPlayer = Players.LocalPlayer
 local chamCache = {}
 
--- ESP/Chams Functions
 local function createChams(player, color)
    if not player.Character or chamCache[player] then return end
    
@@ -33,7 +31,6 @@ local function removeChams(player)
    end
 end
 
--- Gun drop highlight
 local function highlightGunDrop(gunModel)
    local highlight = Instance.new("Highlight")
    highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -48,7 +45,6 @@ local function highlightGunDrop(gunModel)
    })
 end
 
--- Prediction and targeting
 local function getPredictedPosition(player)
    if not player or not player.Character then return nil end
    
@@ -71,7 +67,6 @@ local function getPredictedPosition(player)
    return prediction
 end
 
--- Role detection
 local function getMurderer()
    for _, player in pairs(Players:GetPlayers()) do
        if player.Character then
@@ -94,11 +89,29 @@ local function getSheriff()
    return nil
 end
 
--- Gun remote handling
+local function isGunEquipped()
+   local backpack = LocalPlayer.Backpack
+   local character = LocalPlayer.Character
+   return (character and character:FindFirstChild("Gun")) or 
+          (backpack and backpack:FindFirstChild("Gun"))
+end
+
 local function fireGun(targetPosition)
    local args = {[1] = targetPosition}
    local gunRemote = ReplicatedStorage:FindFirstChild("Gun")
    if gunRemote then gunRemote:FireServer(unpack(args)) end
+end
+
+local function handleShoot()
+   if not isSilentAimEnabled or not isGunEquipped() then return end
+   
+   local murderer = getMurderer()
+   if murderer then
+       local targetPos = getPredictedPosition(murderer)
+       if targetPos then
+           fireGun(targetPos)
+       end
+   end
 end
 
 -- GUI Creation
@@ -118,7 +131,6 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 8)
 Corner.Parent = MainFrame
 
--- Title Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 30)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -144,13 +156,12 @@ local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
 MinimizeButton.Position = UDim2.new(1, -30, 0, 0)
 MinimizeButton.BackgroundTransparency = 1
-MinimizeButton.Text = "-"
+MinimizeButton.Text = "✅"
 MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeButton.TextSize = 20
 MinimizeButton.Font = Enum.Font.GothamBold
 MinimizeButton.Parent = TitleBar
 
--- Toggle Switch Creation
 local function createToggleSwitch(text, position)
    local container = Instance.new("Frame")
    container.Size = UDim2.new(0.9, 0, 0, 30)
@@ -197,12 +208,10 @@ local function createToggleSwitch(text, position)
    return button, switch, knob
 end
 
--- Create toggle switches
 local silentAimSwitch, silentAimBg, silentAimKnob = createToggleSwitch("Silent Aim", UDim2.new(0.05, 0, 0.3, 0))
 local murderESPSwitch, murderESPBg, murderESPKnob = createToggleSwitch("Murderer ESP", UDim2.new(0.05, 0, 0.5, 0))
 local sheriffESPSwitch, sheriffESPBg, sheriffESPKnob = createToggleSwitch("Sheriff ESP", UDim2.new(0.05, 0, 0.7, 0))
 
--- Toggle animation
 local function animateToggle(switch, knob, enabled)
    TweenService:Create(switch, TweenInfo.new(0.2), {
        BackgroundColor3 = enabled and Color3.fromRGB(0, 170, 127) or Color3.fromRGB(45, 45, 45)
@@ -213,7 +222,6 @@ local function animateToggle(switch, knob, enabled)
    }):Play()
 end
 
--- Connect toggle buttons
 silentAimSwitch.MouseButton1Click:Connect(function()
    isSilentAimEnabled = not isSilentAimEnabled
    animateToggle(silentAimBg, silentAimKnob, isSilentAimEnabled)
@@ -235,13 +243,13 @@ sheriffESPSwitch.MouseButton1Click:Connect(function()
    animateToggle(sheriffESPBg, sheriffESPKnob, isSheriffESPEnabled)
 end)
 
--- Dragging functionality
 local dragging = false
 local dragStart = nil
 local startPos = nil
 
 TitleBar.InputBegan:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or
+      input.UserInputType == Enum.UserInputType.Touch then
        dragging = true
        dragStart = input.Position
        startPos = MainFrame.Position
@@ -249,7 +257,8 @@ TitleBar.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-   if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+   if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                   input.UserInputType == Enum.UserInputType.Touch) then
        local delta = input.Position - dragStart
        MainFrame.Position = UDim2.new(
            startPos.X.Scale,
@@ -261,7 +270,8 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or
+      input.UserInputType == Enum.UserInputType.Touch then
        dragging = false
    end
 end)
@@ -273,22 +283,18 @@ MinimizeButton.MouseButton1Click:Connect(function()
    }):Play()
 end)
 
--- Silent Aim
+-- Handle PC mouse clicks
 UserInputService.InputBegan:Connect(function(input)
-   if not isSilentAimEnabled then return end
-   
    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-       local murderer = getMurderer()
-       if murderer then
-           local targetPos = getPredictedPosition(murderer)
-           if targetPos then
-               fireGun(targetPos)
-           end
-       end
+       handleShoot()
    end
 end)
 
--- ESP Update Loop
+-- Handle mobile touches
+UserInputService.TouchTapInWorld:Connect(function()
+   handleShoot()
+end)
+
 local lastUpdate = 0
 RunService.Heartbeat:Connect(function()
    local now = tick()
@@ -309,7 +315,6 @@ RunService.Heartbeat:Connect(function()
    end
 end)
 
--- Gun drop detection
 workspace.ChildAdded:Connect(function(child)
    if child.Name == "GunDrop" then
        highlightGunDrop(child)
