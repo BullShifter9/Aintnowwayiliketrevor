@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 -- Constants for prediction
 local PREDICTION_SETTINGS = {
@@ -19,125 +20,20 @@ local PREDICTION_SETTINGS = {
     VELOCITY_DAMPING = 0.85
 }
 
--- Advanced prediction functions
-local function calculateVelocityFactor(velocity)
-    local speed = velocity.Magnitude
-    local normalizedSpeed = math.clamp(speed / 30, 0, 1)
-    return math.pow(normalizedSpeed, 0.7) * PREDICTION_SETTINGS.VELOCITY_DAMPING
-end
-
-local function calculateDirectionWeight(moveDirection, lookVector)
-    local alignment = moveDirection:Dot(lookVector)
-    return 1 + (alignment * PREDICTION_SETTINGS.DIRECTION_WEIGHT)
-end
-
-local function calculatePingCompensation(ping)
-    local normalizedPing = math.clamp(ping / 200, 0, 1)
-    return 1 + (normalizedPing * PREDICTION_SETTINGS.PING_MULTIPLIER)
-end
-
-local function calculateGravityCompensation(velocity)
-    local verticalSpeed = velocity.Y
-    if verticalSpeed > 0 then
-        return verticalSpeed * PREDICTION_SETTINGS.JUMP_PREDICTION
-    else
-        return verticalSpeed * PREDICTION_SETTINGS.GRAVITY_COMPENSATION
-    end
-end
-
-local function getPredictedPosition(player, shootOffset)
-    if not player or not player.Character then
-        return nil, "No target found"
-    end
-    
-    local character = player.Character
-    local humanoid = character:FindFirstChild("Humanoid")
-    local hrp = character:FindFirstChild("UpperTorso")
-    
-    if not humanoid or not hrp then
-        return nil, "Invalid character parts"
-    end
-    
-    -- Get base values
-    local currentPosition = hrp.Position
-    local velocity = hrp.AssemblyLinearVelocity
-    local moveDirection = humanoid.MoveDirection
-    local lookVector = hrp.CFrame.LookVector
-    local ping = Players.LocalPlayer:GetNetworkPing() * 1000
-    
-    -- Calculate advanced prediction factors
-    local velocityFactor = calculateVelocityFactor(velocity)
-    local directionWeight = calculateDirectionWeight(moveDirection, lookVector)
-    local pingCompensation = calculatePingCompensation(ping)
-    local gravityOffset = calculateGravityCompensation(velocity)
-    
-    -- Calculate acceleration
-    local acceleration = Vector3.new(
-        math.sign(velocity.X) * velocityFactor,
-        gravityOffset,
-        math.sign(velocity.Z) * velocityFactor
-    )
-    
-    -- Calculate final prediction
-    local baseOffset = velocity * shootOffset * PREDICTION_SETTINGS.BASE_MULTIPLIER
-    local directionOffset = moveDirection * shootOffset * directionWeight
-    local accelerationOffset = acceleration * shootOffset * PREDICTION_SETTINGS.ACCELERATION_WEIGHT
-    local verticalOffset = Vector3.new(0, gravityOffset * PREDICTION_SETTINGS.VERTICAL_MULTIPLIER, 0)
-    
-    local predictedPosition = currentPosition +
-        baseOffset +
-        directionOffset +
-        accelerationOffset +
-        verticalOffset
-    
-    -- Apply ping compensation
-    predictedPosition = predictedPosition + (velocity * pingCompensation * 0.1)
-    
-    -- Clamp prediction distance
-    local predictionDistance = (predictedPosition - currentPosition).Magnitude
-    if predictionDistance > PREDICTION_SETTINGS.MAX_DISTANCE then
-        local direction = (predictedPosition - currentPosition).Unit
-        predictedPosition = currentPosition + direction * PREDICTION_SETTINGS.MAX_DISTANCE
-    end
-    
-    -- Verify line of sight
-    local ray = Ray.new(currentPosition, predictedPosition - currentPosition)
-    local hit, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, {character})
-    
-    if hit then
-        predictedPosition = hitPosition
-    end
-    
-    return predictedPosition
-end
-
-local lastPredictions = {}
-local function smoothPrediction(player, rawPrediction)
-    if not lastPredictions[player] then
-        lastPredictions[player] = rawPrediction
-        return rawPrediction
-    end
-    
-    local smoothFactor = 0.7
-    local smoothedPrediction = lastPredictions[player]:Lerp(rawPrediction, smoothFactor)
-    lastPredictions[player] = smoothedPrediction
-    
-    return smoothedPrediction
-end
--- Create ScreenGui with better protection
+-- Create ScreenGui with protection
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = game:GetService("HttpService"):GenerateGUID(false)
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
--- Try to use Synapse X protection if available
+-- Protection
 if syn then
     syn.protect_gui(ScreenGui)
 end
 
 ScreenGui.Parent = game:GetService("CoreGui")
 
--- Create fancier loading frame with blur effect
+-- Create loading frame with blur effect
 local LoadingFrame = Instance.new("Frame")
 LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
 LoadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -147,7 +43,7 @@ LoadingFrame.Parent = ScreenGui
 -- Add blur effect
 local BlurEffect = Instance.new("BlurEffect")
 BlurEffect.Size = 0
-BlurEffect.Parent = game:GetService("Lighting")
+BlurEffect.Parent = Lighting
 
 -- Create gradient
 local UIGradient = Instance.new("UIGradient")
@@ -203,7 +99,7 @@ local function createLoadingCircle(size, speed, offset, color)
     return circleContainer
 end
 
--- Create enhanced loading circles with different colors
+-- Create loading circles with different colors
 local circle1 = createLoadingCircle(100, 2, 0, Color3.fromRGB(255, 100, 100))
 local circle2 = createLoadingCircle(80, -3, 45, Color3.fromRGB(100, 255, 100))
 local circle3 = createLoadingCircle(60, 4, 90, Color3.fromRGB(100, 100, 255))
@@ -218,181 +114,3 @@ LoadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
 LoadingText.TextSize = 20
 LoadingText.Font = Enum.Font.GothamBold
 LoadingText.Parent = LoadingFrame
-
--- Animated dots for loading text
-spawn(function()
-    local dots = ""
-    while LoadingFrame.Visible do
-        dots = dots .. "."
-        if #dots > 3 then dots = "" end
-        LoadingText.Text = "Loading MM2 Script BETA" .. dots
-        wait(0.5)
-    end
-end)
-
--- Add version text
-local VersionText = Instance.new("TextLabel")
-VersionText.Size = UDim2.new(0, 200, 0, 20)
-VersionText.Position = UDim2.new(0.5, -100, 0.6, 10)
-VersionText.BackgroundTransparency = 1
-VersionText.Text = "v1.0"
-VersionText.TextColor3 = Color3.fromRGB(200, 200, 200)
-VersionText.TextSize = 14
-VersionText.Font = Enum.Font.GothamMedium
-VersionText.Parent = LoadingFrame
-
--- Create shadow effect
-local Shadow = Instance.new("ImageLabel")
-Shadow.Size = UDim2.new(1.1, 0, 1.1, 0)
-Shadow.Position = UDim2.new(-0.05, 0, -0.05, 0)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://5028857084"
-Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.ImageTransparency = 0.8
-Shadow.Parent = LoadingFrame
--- Main GUI Creation
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 150)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
-
--- Add main frame effects
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(50, 50, 50)
-MainStroke.Thickness = 1
-MainStroke.Parent = MainFrame
-
--- Title Bar with gradient
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 35)
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-
-local TitleGradient = Instance.new("UIGradient")
-TitleGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
-})
-TitleGradient.Parent = TitleBar
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = TitleBar
-
--- Title text with glow
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "MM2 Helper"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TitleBar
-
--- Title glow effect
-local TitleGlow = Instance.new("ImageLabel")
-TitleGlow.Size = UDim2.new(1, 20, 1, 20)
-TitleGlow.Position = UDim2.new(0, -10, 0, -10)
-TitleGlow.BackgroundTransparency = 1
-TitleGlow.Image = "rbxassetid://5028857084"
-TitleGlow.ImageColor3 = Color3.fromRGB(255, 255, 255)
-TitleGlow.ImageTransparency = 0.9
-TitleGlow.Parent = Title
-
--- Buttons container
-local ButtonsContainer = Instance.new("Frame")
-local ButtonsLayout = Instance.new("UIListLayout")
-ButtonsLayout.Padding = UDim.new(0, 10)
-ButtonsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ButtonsLayout.Parent = ButtonsContainer
-
-ButtonsContainer.Size = UDim2.new(0.9, 0, 0.7, 0)
-ButtonsContainer.Position = UDim2.new(0.05, 0, 0.25, 0)
-ButtonsContainer.BackgroundTransparency = 1
-ButtonsContainer.Parent = MainFrame
-
--- Function to create animated buttons
-local function createButton(text, color)
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 35)
-    Button.BackgroundColor3 = color
-    Button.Text = text
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 14
-    Button.Font = Enum.Font.GothamBold
-    Button.AutoButtonColor = false
-    Button.Parent = ButtonsContainer
-    
-    local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 6)
-    ButtonCorner.Parent = Button
-    
-    local ButtonStroke = Instance.new("UIStroke")
-    ButtonStroke.Color = Color3.fromRGB(70, 70, 70)
-    ButtonStroke.Thickness = 1
-    ButtonStroke.Parent = Button
-    
-    -- Hover and click animations
-    Button.MouseEnter:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.3), {
-            BackgroundColor3 = color:Lerp(Color3.fromRGB(255, 255, 255), 0.1)
-        }):Play()
-    end)
-    
-    Button.MouseLeave:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.3), {
-            BackgroundColor3 = color
-        }):Play()
-    end)
-    
-    Button.MouseButton1Down:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.1), {
-            Size = UDim2.new(0.95, 0, 0, 35)
-        }):Play()
-    end)
-    
-    Button.MouseButton1Up:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.1), {
-            Size = UDim2.new(1, 0, 0, 35)
-        }):Play()
-    end)
-    
-    return Button
-end
-
--- Create main buttons
-local SilentAimButton = createButton("Silent Aim: OFF", Color3.fromRGB(45, 45, 45))
-local SettingsButton = createButton("Settings", Color3.fromRGB(40, 40, 40))
-
--- Minimize button with animation
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
-MinimizeButton.Position = UDim2.new(1, -35, 0, 2)
-MinimizeButton.BackgroundTransparency = 1
-MinimizeButton.Text = "−"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeButton.TextSize = 20
-MinimizeButton.Font = Enum.Font.GothamBold
-MinimizeButton.Parent = TitleBar
-
--- Status indicator
-local StatusIndicator = Instance.new("Frame")
-StatusIndicator.Size = UDim2.new(0, 8, 0, 8)
-StatusIndicator.Position = UDim2.new(0, 220, 0, 13)
-StatusIndicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-StatusIndicator.Parent = TitleBar
-
-local StatusCorner = Instance.new("UICorner")
-StatusCorner.CornerRadius = UDim.new(1, 0)
-StatusCorner.Parent = StatusIndicator
