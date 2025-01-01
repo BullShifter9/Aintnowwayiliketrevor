@@ -4,67 +4,165 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- State variables
 local isSilentAimEnabled = false
 local isESPEnabled = false
-local isSheriffESPEnabled = false 
+local isSheriffESPEnabled = false
+local isGunDropESPEnabled = false
 local isMinimized = false
-local coinAuraEnabled = false
 local LocalPlayer = Players.LocalPlayer
 local chamCache = {}
-local activeTab = "Home"
 
--- Welcomer GUI
-local WelcomerGui = Instance.new("ScreenGui")
-local WelcomeFrame = Instance.new("Frame")
-WelcomerGui.Name = "MM2Welcomer"
-if syn then syn.protect_gui(WelcomerGui) end
-WelcomerGui.Parent = game:GetService("CoreGui")
+-- Welcome GUI
+local function createWelcomeGui()
+    local welcomeGui = Instance.new("ScreenGui")
+    welcomeGui.Name = "WelcomeGui"
+    if syn then syn.protect_gui(welcomeGui) end
+    welcomeGui.Parent = game:GetService("CoreGui")
+    
+    local welcomeFrame = Instance.new("Frame")
+    welcomeFrame.Size = UDim2.new(0, 300, 0, 150)
+    welcomeFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    welcomeFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    welcomeFrame.BorderSizePixel = 0
+    welcomeFrame.BackgroundTransparency = 1
+    welcomeFrame.Parent = welcomeGui
+    
+    local welcomeText = Instance.new("TextLabel")
+    welcomeText.Size = UDim2.new(1, 0, 1, 0)
+    welcomeText.BackgroundTransparency = 1
+    welcomeText.Text = "Welcome to MM2 Helper"
+    welcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    welcomeText.TextSize = 24
+    welcomeText.Font = Enum.Font.GothamBold
+    welcomeText.TextTransparency = 1
+    welcomeText.Parent = welcomeFrame
+    
+    TweenService:Create(welcomeFrame, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(welcomeText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+    
+    task.wait(2)
+    
+    TweenService:Create(welcomeFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(welcomeText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    
+    task.wait(0.5)
+    welcomeGui:Destroy()
+end
 
-WelcomeFrame.Size = UDim2.new(0, 300, 0, 150)
-WelcomeFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
-WelcomeFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-WelcomeFrame.BorderSizePixel = 0
-WelcomeFrame.Parent = WelcomerGui
+local function createChams(player, color)
+    if not player.Character or chamCache[player] then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = color or Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = player.Character
+    
+    chamCache[player] = highlight
+end
 
-local WelcomeText = Instance.new("TextLabel")
-WelcomeText.Size = UDim2.new(1, 0, 0.6, 0)
-WelcomeText.Position = UDim2.new(0, 0, 0.1, 0)
-WelcomeText.BackgroundTransparency = 1
-WelcomeText.Text = "Welcome to MM2 Helper"
-WelcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
-WelcomeText.TextSize = 24
-WelcomeText.Font = Enum.Font.GothamBold
-WelcomeText.Parent = WelcomeFrame
+local function removeChams(player)
+    if chamCache[player] then
+        chamCache[player]:Destroy()
+        chamCache[player] = nil
+    end
+end
 
-local ContinueButton = Instance.new("TextButton")
-ContinueButton.Size = UDim2.new(0.5, 0, 0.2, 0)
-ContinueButton.Position = UDim2.new(0.25, 0, 0.7, 0)
-ContinueButton.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
-ContinueButton.Text = "Continue"
-ContinueButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ContinueButton.TextSize = 18
-ContinueButton.Font = Enum.Font.GothamBold
-ContinueButton.Parent = WelcomeFrame
+local function highlightGunDrop(gunModel)
+    if not isGunDropESPEnabled then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.3
+    highlight.Parent = gunModel
+    
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Gun Dropped",
+        Text = "Gun has been dropped!",
+        Duration = 5
+    })
+end
 
-local WelcomeCorner = Instance.new("UICorner")
-WelcomeCorner.CornerRadius = UDim.new(0, 8)
-WelcomeCorner.Parent = WelcomeFrame
+local function getPredictedPosition(player)
+    if not player or not player.Character then return nil end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return nil end
+    
+    local velocity = rootPart.AssemblyLinearVelocity
+    local position = rootPart.Position
+    local moveDirection = humanoid.MoveDirection
+    
+    local prediction = position +
+        (velocity * 0.15) +
+        (moveDirection * humanoid.WalkSpeed * 0.12) +
+        Vector3.new(0, velocity.Y * 0.1, 0)
+    
+    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+    prediction = prediction + (velocity * (ping/1000 * 0.1))
+    
+    return prediction
+end
 
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(0, 6)
-ButtonCorner.Parent = ContinueButton
+local function getMurderer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local knife = player.Character:FindFirstChild("Knife") or 
+                         (player.Backpack and player.Backpack:FindFirstChild("Knife"))
+            if knife then return player end
+        end
+    end
+    return nil
+end
 
--- Main GUI
+local function getSheriff()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local gun = player.Character:FindFirstChild("Gun") or 
+                       (player.Backpack and player.Backpack:FindFirstChild("Gun"))
+            if gun then return player end
+        end
+    end
+    return nil
+end
+
+local function isGunEquipped()
+    local backpack = LocalPlayer.Backpack
+    local character = LocalPlayer.Character
+    return (character and character:FindFirstChild("Gun")) or 
+           (backpack and backpack:FindFirstChild("Gun"))
+end
+
+local function fireGun(targetPosition)
+    local args = {[1] = targetPosition}
+    local gunRemote = ReplicatedStorage:FindFirstChild("Gun")
+    if gunRemote then gunRemote:FireServer(unpack(args)) end
+end
+
+local function handleShoot()
+    if not isSilentAimEnabled or not isGunEquipped() then return end
+    
+    local murderer = getMurderer()
+    if murderer then
+        local targetPos = getPredictedPosition(murderer)
+        if targetPos then
+            fireGun(targetPos)
+        end
+    end
+end
+
+-- Main GUI Creation
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MM2Helper"
 if syn then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.Enabled = false
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 200, 0, 200)
+MainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
@@ -104,62 +202,47 @@ MinimizeButton.TextSize = 20
 MinimizeButton.Font = Enum.Font.GothamBold
 MinimizeButton.Parent = TitleBar
 
--- Tabs Container
-local TabsContainer = Instance.new("Frame")
-TabsContainer.Size = UDim2.new(0.3, 0, 0.85, 0)
-TabsContainer.Position = UDim2.new(0, 0, 0.15, 0)
-TabsContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-TabsContainer.BorderSizePixel = 0
-TabsContainer.Parent = MainFrame
-
--- Content Frames
-local HomeContent = Instance.new("Frame")
-HomeContent.Size = UDim2.new(0.7, 0, 0.85, 0)
-HomeContent.Position = UDim2.new(0.3, 0, 0.15, 0)
-HomeContent.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-HomeContent.BorderSizePixel = 0
-HomeContent.Visible = true
-HomeContent.Parent = MainFrame
-
-local MiscContent = Instance.new("Frame")
-MiscContent.Size = UDim2.new(0.7, 0, 0.85, 0)
-MiscContent.Position = UDim2.new(0.3, 0, 0.15, 0)
-MiscContent.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MiscContent.BorderSizePixel = 0
-MiscContent.Visible = false
-MiscContent.Parent = MainFrame
-
 -- Create Tabs
 local function createTab(name, position)
     local tab = Instance.new("TextButton")
-    tab.Size = UDim2.new(1, 0, 0.1, 0)
+    tab.Size = UDim2.new(0, 100, 0, 30)
     tab.Position = position
-    tab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    tab.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     tab.Text = name
     tab.TextColor3 = Color3.fromRGB(255, 255, 255)
     tab.TextSize = 14
     tab.Font = Enum.Font.GothamBold
-    tab.Parent = TabsContainer
+    tab.Parent = MainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = tab
+    
     return tab
 end
 
-local HomeTab = createTab("Home", UDim2.new(0, 0, 0, 0))
-local MiscTab = createTab("Misc", UDim2.new(0, 0, 0.12, 0))
+local homeTab = createTab("Home", UDim2.new(0, 10, 0, 40))
+local miscTab = createTab("Misc", UDim2.new(0, 10, 0, 80))
 
--- Tab switching logic
-local function switchTab(tabName)
-    activeTab = tabName
-    HomeContent.Visible = (tabName == "Home")
-    MiscContent.Visible = (tabName == "Misc")
-end
+-- Create Home Page
+local homeFrame = Instance.new("Frame")
+homeFrame.Size = UDim2.new(1, -20, 1, -120)
+homeFrame.Position = UDim2.new(0, 10, 0, 110)
+homeFrame.BackgroundTransparency = 1
+homeFrame.Parent = MainFrame
 
-HomeTab.MouseButton1Click:Connect(function() switchTab("Home") end)
-MiscTab.MouseButton1Click:Connect(function() switchTab("Misc") end)
+-- Create Misc Page
+local miscFrame = Instance.new("Frame")
+miscFrame.Size = UDim2.new(1, -20, 1, -120)
+miscFrame.Position = UDim2.new(0, 10, 0, 110)
+miscFrame.BackgroundTransparency = 1
+miscFrame.Visible = false
+miscFrame.Parent = MainFrame
 
--- Home Content
-local function createInfoLabel(text, position)
+-- Add Player Info Labels
+local function addInfoLabel(text, position)
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.9, 0, 0.1, 0)
+    label.Size = UDim2.new(1, 0, 0, 20)
     label.Position = position
     label.BackgroundTransparency = 1
     label.Text = text
@@ -167,36 +250,16 @@ local function createInfoLabel(text, position)
     label.TextSize = 14
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = HomeContent
+    label.Parent = homeFrame
     return label
 end
 
-local Username = createInfoLabel("Username: " .. LocalPlayer.Name, UDim2.new(0.05, 0, 0, 0))
-local UserId = createInfoLabel("UserID: " .. LocalPlayer.UserId, UDim2.new(0.05, 0, 0.15, 0))
-local PingLabel = createInfoLabel("Ping: 0ms", UDim2.new(0.05, 0, 0.3, 0))
-local FPSLabel = createInfoLabel("FPS: 0", UDim2.new(0.05, 0, 0.45, 0))
+local usernameLbl = addInfoLabel("Username: " .. LocalPlayer.Name, UDim2.new(0, 0, 0, 0))
+local idLbl = addInfoLabel("UserID: " .. LocalPlayer.UserId, UDim2.new(0, 0, 0, 25))
+local pingLbl = addInfoLabel("Ping: --ms", UDim2.new(0, 0, 0, 50))
+local fpsLbl = addInfoLabel("FPS: --", UDim2.new(0, 0, 0, 75))
 
--- Functions
-local function createChams(player, color)
-    if not player.Character or chamCache[player] then return end
-    
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = color or Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    highlight.Parent = player.Character
-    
-    chamCache[player] = highlight
-end
-
-local function removeChams(player)
-    if chamCache[player] then
-        chamCache[player]:Destroy()
-        chamCache[player] = nil
-    end
-end
-
+-- Toggle Switch Creation
 local function createToggleSwitch(text, position, parent)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(0.9, 0, 0, 30)
@@ -243,11 +306,11 @@ local function createToggleSwitch(text, position, parent)
     return button, switch, knob
 end
 
--- Create toggles in Misc tab
-local silentAimSwitch, silentAimBg, silentAimKnob = createToggleSwitch("Silent Aim", UDim2.new(0.05, 0, 0, 0), MiscContent)
-local murderESPSwitch, murderESPBg, murderESPKnob = createToggleSwitch("Murderer ESP", UDim2.new(0.05, 0, 0.15, 0), MiscContent)
-local sheriffESPSwitch, sheriffESPBg, sheriffESPKnob = createToggleSwitch("Sheriff ESP", UDim2.new(0.05, 0, 0.3, 0), MiscContent)
-local coinAuraSwitch, coinAuraBg, coinAuraKnob = createToggleSwitch("Coin Aura", UDim2.new(0.05, 0, 0.45, 0), MiscContent)
+-- Create Toggles
+local silentAimSwitch, silentAimBg, silentAimKnob = createToggleSwitch("Silent Aim", UDim2.new(0.05, 0, 0, 0), miscFrame)
+local murderESPSwitch, murderESPBg, murderESPKnob = createToggleSwitch("Murderer ESP", UDim2.new(0.05, 0, 0.15, 0), miscFrame)
+local sheriffESPSwitch, sheriffESPBg, sheriffESPKnob = createToggleSwitch("Sheriff ESP", UDim2.new(0.05, 0, 0.3, 0), miscFrame)
+local gunDropESPSwitch, gunDropESPBg, gunDropESPKnob = createToggleSwitch("Gun Drop ESP", UDim2.new(0.05, 0, 0.45, 0), miscFrame)
 
 local function animateToggle(switch, knob, enabled)
     TweenService:Create(switch, TweenInfo.new(0.2), {
@@ -259,7 +322,18 @@ local function animateToggle(switch, knob, enabled)
     }):Play()
 end
 
--- Toggle handlers
+-- Tab Switching
+homeTab.MouseButton1Click:Connect(function()
+    homeFrame.Visible = true
+    miscFrame.Visible = false
+end)
+
+miscTab.MouseButton1Click:Connect(function()
+    homeFrame.Visible = false
+    miscFrame.Visible = true
+end)
+
+-- Toggle Functions
 silentAimSwitch.MouseButton1Click:Connect(function()
     isSilentAimEnabled = not isSilentAimEnabled
     animateToggle(silentAimBg, silentAimKnob, isSilentAimEnabled)
@@ -268,6 +342,7 @@ end)
 murderESPSwitch.MouseButton1Click:Connect(function()
     isESPEnabled = not isESPEnabled
     animateToggle(murderESPBg, murderESPKnob, isESPEnabled)
+    
     if not isESPEnabled then
         for player, _ in pairs(chamCache) do
             removeChams(player)
@@ -280,9 +355,9 @@ sheriffESPSwitch.MouseButton1Click:Connect(function()
     animateToggle(sheriffESPBg, sheriffESPKnob, isSheriffESPEnabled)
 end)
 
-coinAuraSwitch.MouseButton1Click:Connect(function()
-    coinAuraEnabled = not coinAuraEnabled
-    animateToggle(coinAuraBg, coinAuraKnob, coinAuraEnabled)
+gunDropESPSwitch.MouseButton1Click:Connect(function()
+    isGunDropESPEnabled = not isGunDropESPEnabled
+    animateToggle(gunDropESPBg, gunDropESPKnob, isGunDropESPEnabled)
 end)
 
 -- Dragging functionality
@@ -300,175 +375,95 @@ TitleBar.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-   if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
-                   input.UserInputType == Enum.UserInputType.Touch) then
-       local delta = input.Position - dragStart
-       MainFrame.Position = UDim2.new(
-           startPos.X.Scale,
-           startPos.X.Offset + delta.X,
-           startPos.Y.Scale,
-           startPos.Y.Offset + delta.Y
-       )
-   end
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                    input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 or
-      input.UserInputType == Enum.UserInputType.Touch then
-       dragging = false
-   end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
 end)
 
+-- Minimize functionality
 MinimizeButton.MouseButton1Click:Connect(function()
-   isMinimized = not isMinimized
-   TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-       Size = isMinimized and UDim2.new(0, 400, 0, 30) or UDim2.new(0, 400, 0, 300)
-   }):Play()
+    isMinimized = not isMinimized
+    local newSize = isMinimized and UDim2.new(0, 200, 0, 30) or UDim2.new(0, 200, 0, 200)
+    
+    TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+        Size = newSize
+    }):Play()
+    
+    for _, child in pairs(MainFrame:GetChildren()) do
+        if child ~= TitleBar then
+            child.Visible = not isMinimized
+        end
+    end
 end)
 
--- Game functions
-local function getMurderer()
-   for _, player in pairs(Players:GetPlayers()) do
-       if player.Character then
-           local knife = player.Character:FindFirstChild("Knife") or 
-                        (player.Backpack and player.Backpack:FindFirstChild("Knife"))
-           if knife then return player end
-       end
-   end
-   return nil
-end
+-- FPS and Ping Update
+local lastTick = tick()
+local frameCount = 0
 
-local function getSheriff()
-   for _, player in pairs(Players:GetPlayers()) do
-       if player.Character then
-           local gun = player.Character:FindFirstChild("Gun") or 
-                      (player.Backpack and player.Backpack:FindFirstChild("Gun"))
-           if gun then return player end
-       end
-   end
-   return nil
-end
-
-local function getPredictedPosition(player)
-   if not player or not player.Character then return nil end
-   
-   local humanoid = player.Character:FindFirstChild("Humanoid")
-   local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
-   if not humanoid or not rootPart then return nil end
-   
-   local velocity = rootPart.AssemblyLinearVelocity
-   local position = rootPart.Position
-   local moveDirection = humanoid.MoveDirection
-   
-   local prediction = position +
-       (velocity * 0.15) +
-       (moveDirection * humanoid.WalkSpeed * 0.12) +
-       Vector3.new(0, velocity.Y * 0.1, 0)
-   
-   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-   prediction = prediction + (velocity * (ping/1000 * 0.1))
-   
-   return prediction
-end
-
-local function isGunEquipped()
-   local backpack = LocalPlayer.Backpack
-   local character = LocalPlayer.Character
-   return (character and character:FindFirstChild("Gun")) or 
-          (backpack and backpack:FindFirstChild("Gun"))
-end
-
-local function fireGun(targetPosition)
-   local args = {[1] = targetPosition}
-   local gunRemote = ReplicatedStorage:FindFirstChild("Gun")
-   if gunRemote then gunRemote:FireServer(unpack(args)) end
-end
-
-local function handleShoot()
-   if not isSilentAimEnabled or not isGunEquipped() then return end
-   
-   local murderer = getMurderer()
-   if murderer then
-       local targetPos = getPredictedPosition(murderer)
-       if targetPos then
-           fireGun(targetPos)
-       end
-   end
-end
-
-local function highlightGunDrop(gunModel)
-   local highlight = Instance.new("Highlight")
-   highlight.FillColor = Color3.fromRGB(0, 255, 0)
-   highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-   highlight.FillTransparency = 0.3
-   highlight.Parent = gunModel
-   
-   game.StarterGui:SetCore("SendNotification", {
-       Title = "Gun Dropped",
-       Text = "Gun has been dropped!",
-       Duration = 5
-   })
-end
-
--- Update stats
-local function updateStats()
-   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-   PingLabel.Text = "Ping: " .. math.floor(ping) .. "ms"
-   
-   local fps = math.floor(1/RunService.RenderStepped:Wait())
-   FPSLabel.Text = "FPS: " .. fps
-end
-
--- Event connections
-UserInputService.InputBegan:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 then
-       handleShoot()
-   end
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastTick >= 1 then
+        fpsLbl.Text = "FPS: " .. math.floor(frameCount)
+        pingLbl.Text = "Ping: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms"
+        frameCount = 0
+        lastTick = now
+    end
 end)
 
-UserInputService.TouchTapInWorld:Connect(handleShoot)
-
+-- ESP Update
+local lastUpdate = 0
 RunService.Heartbeat:Connect(function()
-   local now = tick()
-   if now - lastUpdate < 0.1 then return end
-   lastUpdate = now
-   
-   if isESPEnabled or isSheriffESPEnabled then
-       local murderer = getMurderer()
-       local sheriff = getSheriff()
-       
-       if isESPEnabled and murderer then
-           createChams(murderer, Color3.fromRGB(255, 0, 0))
-       end
-       
-       if isSheriffESPEnabled and sheriff then
-           createChams(sheriff, Color3.fromRGB(0, 0, 255))
-       end
-   end
-   
-   if coinAuraEnabled then
-       for _, coin in ipairs(workspace:GetChildren()) do
-           if coin.Name == "Coin_Server" and coin:FindFirstChild("Coin") then
-               local distance = (LocalPlayer.Character.HumanoidRootPart.Position - coin.Position).Magnitude
-               if distance <= 20 then
-                   firetouchinterest(LocalPlayer.Character.HumanoidRootPart, coin, 0)
-                   firetouchinterest(LocalPlayer.Character.HumanoidRootPart, coin, 1)
-               end
-           end
-       end
-   end
-   
-   updateStats()
+    local now = tick()
+    if now - lastUpdate < 0.1 then return end
+    lastUpdate = now
+    
+    if isESPEnabled or isSheriffESPEnabled then
+        local murderer = getMurderer()
+        local sheriff = getSheriff()
+        
+        if isESPEnabled and murderer then
+            createChams(murderer, Color3.fromRGB(255, 0, 0))
+        end
+        
+        if isSheriffESPEnabled and sheriff then
+            createChams(sheriff, Color3.fromRGB(0, 0, 255))
+        end
+    end
 end)
 
+-- Gun Drop Detection
 workspace.ChildAdded:Connect(function(child)
-   if child.Name == "GunDrop" then
-       highlightGunDrop(child)
-   end
+    if child.Name == "GunDrop" then
+        highlightGunDrop(child)
+    end
 end)
 
--- Welcome button handler
-ContinueButton.MouseButton1Click:Connect(function()
-   WelcomerGui:Destroy()
-   ScreenGui.Enabled = true
+-- Input Detection
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        handleShoot()
+    end
 end)
+
+UserInputService.TouchTapInWorld:Connect(function()
+    handleShoot()
+end)
+
+-- Show Welcome GUI before main GUI
+createWelcomeGui()
+task.wait(3)
