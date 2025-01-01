@@ -225,7 +225,7 @@ spawn(function()
     while LoadingFrame.Visible do
         dots = dots .. "."
         if #dots > 3 then dots = "" end
-        LoadingText.Text = "Loading MM2 Helper" .. dots
+        LoadingText.Text = "Loading MM2 Script" .. dots
         wait(0.5)
     end
 end)
