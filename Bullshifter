@@ -1,116 +1,203 @@
--- Services
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-
--- Constants for prediction
+-- Constants
 local PREDICTION_SETTINGS = {
-    BASE_MULTIPLIER = 0.15,
-    VERTICAL_MULTIPLIER = 0.35,
-    MAX_DISTANCE = 100,
-    MIN_VELOCITY = 0.1,
-    GRAVITY_COMPENSATION = 0.7,
-    PING_MULTIPLIER = 1.2,
-    ACCELERATION_WEIGHT = 0.8,
-    DIRECTION_WEIGHT = 1.2,
-    JUMP_PREDICTION = 0.4,
-    VELOCITY_DAMPING = 0.85
+   ENHANCED = {
+       GOOD_PING = {VELOCITY_SCALE = 1/15, OFFSET_MULT = 1.2, SMOOTHING = 0.8},
+       MED_PING = {VELOCITY_SCALE = 1/12, OFFSET_MULT = 1.5, SMOOTHING = 0.6},
+       BAD_PING = {VELOCITY_SCALE = 1/10, OFFSET_MULT = 2.0, SMOOTHING = 0.4}
+   },
+   STATIC = {
+       GOOD_PING = {PREDICTION_SCALE = 0.8, LAG_COMP = 1.1},
+       MED_PING = {PREDICTION_SCALE = 1.0, LAG_COMP = 1.3},
+       BAD_PING = {PREDICTION_SCALE = 1.2, LAG_COMP = 1.5}
+   },
+   MAX_VERTICAL_OFFSET = 2,
+   MIN_SHOOT_OFFSET = 0.1,
+   MAX_SHOOT_OFFSET = 100,
+   PING_SCALE = 0.01
 }
 
--- Create ScreenGui with protection
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = game:GetService("HttpService"):GenerateGUID(false)
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-
--- Protection
-if syn then
-    syn.protect_gui(ScreenGui)
+-- Helper Functions
+local function handleError(message)
+   warn("[PredictionSystem] " .. message)
+   return Vector3.new(), message
 end
 
-ScreenGui.Parent = game:GetService("CoreGui")
-
--- Create loading frame with blur effect
-local LoadingFrame = Instance.new("Frame")
-LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
-LoadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-LoadingFrame.BackgroundTransparency = 0.3
-LoadingFrame.Parent = ScreenGui
-
--- Add blur effect
-local BlurEffect = Instance.new("BlurEffect")
-BlurEffect.Size = 0
-BlurEffect.Parent = Lighting
-
--- Create gradient
-local UIGradient = Instance.new("UIGradient")
-UIGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 40, 40)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
-})
-UIGradient.Parent = LoadingFrame
-
--- Enhanced loading circle creation
-local function createLoadingCircle(size, speed, offset, color)
-    local circleContainer = Instance.new("Frame")
-    circleContainer.Size = UDim2.new(0, size, 0, size)
-    circleContainer.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-    circleContainer.BackgroundTransparency = 1
-    circleContainer.Parent = LoadingFrame
-    
-    local circle = Instance.new("ImageLabel")
-    circle.Size = UDim2.new(1, 0, 1, 0)
-    circle.BackgroundTransparency = 1
-    circle.Image = "rbxassetid://4965945816"
-    circle.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
-    circle.ImageTransparency = 0.2
-    circle.Parent = circleContainer
-    
-    -- Add glow effect
-    local glow = Instance.new("ImageLabel")
-    glow.Size = UDim2.new(1.2, 0, 1.2, 0)
-    glow.Position = UDim2.new(-0.1, 0, -0.1, 0)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://4965945816"
-    glow.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
-    glow.ImageTransparency = 0.7
-    glow.Parent = circle
-    
-    -- Animate both rotation and pulse
-    local rotation = offset or 0
-    spawn(function()
-        while LoadingFrame.Visible do
-            rotation = rotation + speed
-            circleContainer.Rotation = rotation
-            
-            -- Pulse animation
-            local pulseSize = math.sin(tick() * 2) * 0.1 + 1
-            circle.Size = UDim2.new(pulseSize, 0, pulseSize, 0)
-            glow.Size = UDim2.new(pulseSize * 1.2, 0, pulseSize * 1.2, 0)
-            
-            task.wait()
-        end
-    end)
-    
-    return circleContainer
+local function getCharacterModel(player)
+   if typeof(player) == "Instance" then
+       return player:IsA("Player") and player.Character or player:IsA("Model") and player
+   end
+   return nil
 end
 
--- Create loading circles with different colors
-local circle1 = createLoadingCircle(100, 2, 0, Color3.fromRGB(255, 100, 100))
-local circle2 = createLoadingCircle(80, -3, 45, Color3.fromRGB(100, 255, 100))
-local circle3 = createLoadingCircle(60, 4, 90, Color3.fromRGB(100, 100, 255))
+local function getPredictionSettings(ping)
+   return ping < 50 and "GOOD_PING" or ping < 150 and "MED_PING" or "BAD_PING"
+end
 
--- Create animated loading text
-local LoadingText = Instance.new("TextLabel")
-LoadingText.Size = UDim2.new(0, 200, 0, 50)
-LoadingText.Position = UDim2.new(0.5, -100, 0.6, -25)
-LoadingText.BackgroundTransparency = 1
-LoadingText.Text = "Loading MM2 Helper..."
-LoadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-LoadingText.TextSize = 20
-LoadingText.Font = Enum.Font.GothamBold
-LoadingText.Parent = LoadingFrame
+local function enhancedPrediction(player, settings)
+   local character = player.Character
+   if not character then return Vector3.new() end
+   
+   local hrp = character:FindFirstChild("UpperTorso")
+   local hum = character:FindFirstChild("Humanoid")
+   if not hrp or not hum then return Vector3.new() end
+   
+   local velocity = hrp.AssemblyLinearVelocity
+   local moveDir = hum.MoveDirection
+   
+   return hrp.Position + (velocity * settings.VELOCITY_SCALE) + (moveDir * settings.OFFSET_MULT)
+end
+
+local function staticPrediction(player, settings) 
+   local character = player.Character
+   if not character then return Vector3.new() end
+   
+   local hrp = character:FindFirstChild("UpperTorso")
+   if not hrp then return Vector3.new() end
+   
+   return hrp.Position + (hrp.CFrame.LookVector * settings.PREDICTION_SCALE * settings.LAG_COMP)
+end
+
+local function calculatePredictedPosition(player, mode)
+   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+   local pingType = getPredictionSettings(ping)
+   
+   if mode == "Enhanced" then
+       return enhancedPrediction(player, PREDICTION_SETTINGS.ENHANCED[pingType])
+   else
+       return staticPrediction(player, PREDICTION_SETTINGS.STATIC[pingType])
+   end
+end
+
+-- GUI Creation
+local gui = Instance.new("ScreenGui")
+local mainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+
+mainFrame.Size = UDim2.new(0, 250, 0, 300)
+mainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+UICorner.Parent = mainFrame
+
+-- Draggable Logic
+local isDragging = false
+local dragStart, startPos
+
+local function updateDrag(input)
+   if isDragging then
+       local delta = input.Position - dragStart
+       mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+   end
+end
+
+mainFrame.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+       isDragging = true
+       dragStart = input.Position
+       startPos = mainFrame.Position
+   end
+end)
+
+mainFrame.InputEnded:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+       isDragging = false
+   end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+       updateDrag(input)
+   end
+end)
+
+-- Button Creation
+local function createButton(text, position)
+   local button = Instance.new("TextButton")
+   button.Size = UDim2.new(0, 200, 0, 40)
+   button.Position = position
+   button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+   button.TextColor3 = Color3.fromRGB(255, 255, 255)
+   button.Text = text
+   button.Font = Enum.Font.GothamBold
+   button.TextSize = 14
+   button.Parent = mainFrame
+   
+   local corner = Instance.new("UICorner")
+   corner.CornerRadius = UDim.new(0, 6)
+   corner.Parent = button
+   
+   return button
+end
+
+-- Add hover effects
+local function addHoverEffect(button)
+   button.MouseEnter:Connect(function()
+       game:GetService("TweenService"):Create(button, TweenInfo.new(0.3), {
+           BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+       }):Play()
+   end)
+   
+   button.MouseLeave:Connect(function()
+       game:GetService("TweenService"):Create(button, TweenInfo.new(0.3), {
+           BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+       }):Play()
+   end)
+end
+
+-- Create buttons
+local silentAimEnabled = false
+local silentAimMode = "Enhanced"
+
+local toggleButton = createButton("Silent Aim: OFF", UDim2.new(0.1, 0, 0.1, 0))
+local modeButton = createButton("Mode: Enhanced", UDim2.new(0.1, 0, 0.3, 0))
+local shootButton = createButton("Shoot Murderer", UDim2.new(0.1, 0, 0.5, 0))
+
+-- Button functionality
+toggleButton.MouseButton1Click:Connect(function()
+   silentAimEnabled = not silentAimEnabled
+   toggleButton.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF")
+   toggleButton.BackgroundColor3 = silentAimEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+modeButton.MouseButton1Click:Connect(function()
+   silentAimMode = silentAimMode == "Enhanced" and "Static" or "Enhanced"
+   modeButton.Text = "Mode: " .. silentAimMode
+end)
+
+shootButton.MouseButton1Click:Connect(function()
+   if not silentAimEnabled then return end
+   
+   local murderer
+   for _, player in ipairs(game.Players:GetPlayers()) do
+       if player:FindFirstChild("Role") and player.Role.Value == "Murderer" then
+           murderer = player
+           break
+       end
+   end
+   
+   if murderer then
+       local predictedPos = calculatePredictedPosition(murderer, silentAimMode)
+       -- Implement your shooting logic here using predictedPos
+   else
+       fu.notification("No murderer found")
+   end
+end)
+
+-- Add effects
+addHoverEffect(toggleButton)
+addHoverEffect(modeButton)
+addHoverEffect(shootButton)
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Silent Aim"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = mainFrame
+
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+mainFrame.Parent = gui
