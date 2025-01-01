@@ -225,7 +225,7 @@ spawn(function()
     while LoadingFrame.Visible do
         dots = dots .. "."
         if #dots > 3 then dots = "" end
-        LoadingText.Text = "Loading MM2 Script" .. dots
+        LoadingText.Text = "Loading MM2 Script BETA" .. dots
         wait(0.5)
     end
 end)
@@ -235,7 +235,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 200, 0, 20)
 VersionText.Position = UDim2.new(0.5, -100, 0.6, 10)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v2.0.0"
+VersionText.Text = "v1.0"
 VersionText.TextColor3 = Color3.fromRGB(200, 200, 200)
 VersionText.TextSize = 14
 VersionText.Font = Enum.Font.GothamMedium
