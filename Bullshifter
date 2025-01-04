@@ -13,7 +13,7 @@ local function checkForUrls(...)
        local str = tostring(arg):lower()
        for _, pattern in pairs(urlPatterns) do
            if str:find(pattern) then
-               Player:Kick("Anti-Spy: URL Detected")
+               Player:Kick("Anti-Spy: Please Dont Use RemoteSpy Or Any Other Shit.")
                return true
            end
        end
@@ -58,7 +58,7 @@ WelcomeFrame.Parent = WelcomeGui
 
 WelcomeText.Size = UDim2.new(1, 0, 1, 0)
 WelcomeText.BackgroundTransparency = 1
-WelcomeText.Text = "Ultimate Fling! Made By Azzakirms"
+WelcomeText.Text = "Ultimate Fling!🗣️🗣️"
 WelcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
 WelcomeText.TextSize = 24
 WelcomeText.Font = Enum.Font.GothamBold
