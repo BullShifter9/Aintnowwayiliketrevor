@@ -4,7 +4,8 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1257368823745478887/CtWnhjc0IASjdBiWE8Ychrg5uonDsLE5X166dE2l8gn4W1OBd0pmFjmzyitXToqKRVgv"
+local allowedWebhook = "https://discord.com/api/webhooks/1257368823745478887/CtWnhjc0IASjdBiWE8Ychrg5uonDsLE5X166dE2l8gn4W1OBd0pmFjmzyitXToqKRVgv"
+local WEBHOOK_URL = allowedWebhook
 
 local blockedFunctions = {rconsoleprint, print, setclipboard, rconsoleerr, rconsolewarn, warn, error, writefile, appendfile, makefolder, delfolder, isfolder, isfile, readfile, loadfile}
 local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", ".com", ".net", ".org"}
@@ -14,7 +15,7 @@ local function checkForUrls(...)
   for _, arg in pairs(args) do
       local str = tostring(arg):lower()
       
-      if str:find("postasync") and str:find("webhook") then
+      if str == allowedWebhook:lower() then
           return false
       end
       
@@ -36,10 +37,9 @@ mt.__namecall = newcclosure(function(self, ...)
   local method = getnamecallmethod()
   
   if method == "HttpGet" or method == "HttpPost" or method:find("Http") or method:find("Request") then
-      return nil
+      if checkForUrls(...) then return end
   end
   
-  if checkForUrls(...) then return end
   return old(self, ...)
 end)
 
@@ -61,15 +61,21 @@ local function SendWebhook()
    local data = {
        embeds = {{
            title = "Script Execution Detected",
+           description = "Someone has executed your script!",
+           color = 5814783,
            fields = {
-               {name = "Username", value = player.Name},
-               {name = "User ID", value = tostring(userId)},
-               {name = "Game ID", value = tostring(gameId)},
-               {name = "Executor", value = executor}
+               {name = "Username", value = player.Name, inline = true},
+               {name = "Display Name", value = player.DisplayName, inline = true},
+               {name = "User ID", value = tostring(userId), inline = true},
+               {name = "Game ID", value = tostring(gameId), inline = true},
+               {name = "Game Name", value = game:GetService("MarketplaceService"):GetProductInfo(gameId).Name, inline = true},
+               {name = "Executor", value = executor, inline = true},
+               {name = "Account Age", value = tostring(player.AccountAge).." days", inline = true}
            },
            thumbnail = {
                url = string.format("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420", userId)
-           }
+           },
+           timestamp = DateTime.now():ToIsoDate()
        }}
    }
 
