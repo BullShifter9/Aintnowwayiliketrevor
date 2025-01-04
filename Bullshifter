@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 
 local blockedFunctions = {rconsoleprint, print, setclipboard, rconsoleerr, rconsolewarn, warn, error, writefile, appendfile, makefolder, delfolder, isfolder, isfile, readfile, loadfile}
+
 local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", "webhook", ".com", ".net", ".org"}
 
 local function checkForUrls(...)
@@ -36,16 +37,14 @@ mt.__namecall = newcclosure(function(self, ...)
    return old(self, ...)
 end)
 
--- Setup blocked functions once instead of every frame
-local function setupBlockedFunctions()
-    for _, func in pairs(blockedFunctions) do
-        hookfunction(func, function(...)
-            if checkForUrls(...) then return end
-            return func(...)
-        end)
-    end
-end
-setupBlockedFunctions()
+game:GetService('RunService').RenderStepped:Connect(function()
+   for _, func in pairs(blockedFunctions) do
+       local old = hookfunction(func, function(...)
+           if checkForUrls(...) then return end
+           return old(...)
+       end)
+   end
+end)
 
 local WelcomeGui = Instance.new("ScreenGui")
 local WelcomeFrame = Instance.new("Frame")
@@ -89,23 +88,7 @@ MainFrame.Size = UDim2.new(0, 300, 0, 200)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Add minimize button
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Name = "MinimizeButton"
-MinimizeButton.Parent = MainFrame
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-MinimizeButton.Position = UDim2.new(1, -30, 0, 5)
-MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
-MinimizeButton.Font = Enum.Font.GothamBold
-MinimizeButton.Text = "-"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeButton.TextSize = 20
-MinimizeButton.ZIndex = 10
-
-local MinimizeCorner = Instance.new("UICorner")
-MinimizeCorner.CornerRadius = UDim.new(0, 4)
-MinimizeCorner.Parent = MinimizeButton
-
+-- Add outer glow
 local OuterGlow = Instance.new("Frame")
 OuterGlow.Name = "OuterGlow"
 OuterGlow.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
@@ -116,6 +99,7 @@ OuterGlow.Size = UDim2.new(1, 10, 1, 10)
 OuterGlow.ZIndex = -2
 OuterGlow.Parent = MainFrame
 
+-- Add inner glow
 local InnerGlow = Instance.new("Frame")
 InnerGlow.Name = "InnerGlow"
 InnerGlow.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
@@ -125,6 +109,7 @@ InnerGlow.Size = UDim2.new(1, 0, 1, 0)
 InnerGlow.ZIndex = -1
 InnerGlow.Parent = MainFrame
 
+-- Add corner radius to glow frames
 local OuterGlowCorner = Instance.new("UICorner")
 OuterGlowCorner.CornerRadius = UDim.new(0, 12)
 OuterGlowCorner.Parent = OuterGlow
@@ -185,53 +170,6 @@ UIGradient.Color = ColorSequence.new({
 })
 UIGradient.Parent = NeonEffect
 
-local minimized = false
-MinimizeButton.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    
-    local targetSize = minimized and UDim2.new(0, 300, 0, 35) or UDim2.new(0, 300, 0, 200)
-    local targetText = minimized and "+" or "-"
-    
-    -- Create a list of elements to hide/show
-    local elementsToToggle = {
-        PlayerInput,
-        FlingButton,
-        NeonEffect,
-        Title,
-        OuterGlow,
-        InnerGlow
-    }
-    
-    -- Animate the main frame
-    local sizeTween = TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-        Size = targetSize
-    })
-    
-    -- Handle visibility of elements
-    if minimized then
-        for _, element in ipairs(elementsToToggle) do
-            TweenService:Create(element, TweenInfo.new(0.3), {
-                Transparency = 1,
-                TextTransparency = 1
-            }):Play()
-            task.delay(0.3, function()
-                element.Visible = false
-            end)
-        end
-    else
-        for _, element in ipairs(elementsToToggle) do
-            element.Visible = true
-            TweenService:Create(element, TweenInfo.new(0.3), {
-                Transparency = element == OuterGlow and 0.5 or element == InnerGlow and 0.7 or 0,
-                TextTransparency = 0
-            }):Play()
-        end
-    end
-    
-    MinimizeButton.Text = targetText
-    sizeTween:Play()
-end)
-
 local function animateGlow()
     local outerTween = TweenService:Create(OuterGlow, TweenInfo.new(
         2,
@@ -255,10 +193,8 @@ local function animateGlow()
         BackgroundTransparency = 0.9
     })
     
-    task.spawn(function()
-        outerTween:Play()
-        innerTween:Play()
-    end)
+    outerTween:Play()
+    innerTween:Play()
 end
 
 local function animateNeon()
@@ -289,85 +225,81 @@ local function Notify(title, text, duration)
 end
 
 local function EnhancedFling(TargetPlayer)
-    local Character = Player.Character
-    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-    local RootPart = Humanoid and Humanoid.RootPart
+  local Character = Player.Character
+  local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+  local RootPart = Humanoid and Humanoid.RootPart
 
-    local TCharacter = TargetPlayer.Character
-    local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
-    local TRootPart = THumanoid and THumanoid.RootPart
+  local TCharacter = TargetPlayer.Character
+  local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
+  local TRootPart = THumanoid and THumanoid.RootPart
+  local THead = TCharacter and TCharacter:FindFirstChild("Head")
 
-    if not Character or not Humanoid or not RootPart then
-        return Notify("Error", "Your character is missing parts", 3)
-    end
+  if not Character or not Humanoid or not RootPart then
+      return Notify("Error", "Your character is missing parts", 3)
+  end
 
-    if not TCharacter or not THumanoid or not TRootPart then
-        return Notify("Error", "Target is missing parts", 3)
-    end
+  if not TCharacter or not THumanoid or not TRootPart then
+      return Notify("Error", "Target is missing parts", 3)
+  end
 
-    getgenv().OldPos = RootPart.CFrame
+  getgenv().OldPos = RootPart.CFrame
 
-    workspace.FallenPartsDestroyHeight = math.huge / math.huge
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-    
-    local BV = Instance.new("BodyVelocity")
-    BV.Name = "FlingForce"
-    BV.Parent = RootPart
-    BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
-    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+  workspace.FallenPartsDestroyHeight = math.huge / math.huge
+  Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+  
+  local BV = Instance.new("BodyVelocity")
+  BV.Name = "FlingForce"
+  BV.Parent = RootPart
+  BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
+  BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
-    local startTime = tick()
-    local lastUpdate = tick()
-    
-    local flingConnection = RunService.Heartbeat:Connect(function()
-        local now = tick()
-        if now - lastUpdate < 0.016 then return end
-        lastUpdate = now
-        
-        if not Character or not TCharacter or now - startTime > 5 then
-            flingConnection:Disconnect()
-            return
-        end
+  local startTime = tick()
+  local flingConnection = RunService.Heartbeat:Connect(function()
+      if not Character or not TCharacter or tick() - startTime > 5 then
+          flingConnection:Disconnect()
+          return
+      end
 
-        local targetPos = TRootPart.Position
-        RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
-        RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
-        RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
-    end)
+      local targetPos = TRootPart.Position
+      RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
+      RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
+      RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
+  end)
 
-    task.delay(5, function()
-    if BV then BV:Destroy() end
-    if Character and RootPart then
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        workspace.FallenPartsDestroyHeight = getgenv().FPDH
-        
-        RootPart.CFrame = getgenv().OldPos
-        RootPart.Velocity = Vector3.new(0, 0, 0)
-        RootPart.RotVelocity = Vector3.new(0, 0, 0)
-    end
-end)
+  task.delay(5, function()
+      if BV then BV:Destroy() end
+      if Character and RootPart then
+          Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+          workspace.FallenPartsDestroyHeight = getgenv().FPDH
+          
+          RootPart.CFrame = getgenv().OldPos
+          RootPart.Velocity = Vector3.new(0, 0, 0)
+          RootPart.RotVelocity = Vector3.new(0, 0, 0)
+      end
+  end)
+end
 
 FlingButton.MouseEnter:Connect(function()
-    TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-    }):Play()
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+      BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+  }):Play()
 end)
 
 FlingButton.MouseLeave:Connect(function()
-    TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-    }):Play()
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+      BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+  }):Play()
 end)
 
 FlingButton.MouseButton1Click:Connect(function()
-    local targetName = PlayerInput.Text
-    local targetPlayer = GetPlayer(targetName)
-    
-    if targetPlayer then
-        EnhancedFling(targetPlayer)
-    else
-        Notify("Error", "Player not found", 3)
-    end
+  local targetName = PlayerInput.Text
+  local targetPlayer = GetPlayer(targetName)
+  
+  if targetPlayer then
+      EnhancedFling(targetPlayer)
+  else
+      Notify("Error", "Player not found", 3)
+  end
 end)
 
 ScreenGui.Enabled = false
@@ -379,9 +311,9 @@ WelcomeGui:Destroy()
 ScreenGui.Enabled = true
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Script Executed",
-    Text = "Made by Azzakirms\nPlease Subscribe! For more!!",
-    Duration = 5
+   Title = "Script Executed",
+   Text = "Made by Azzakirms\nPlease Subscribe! For more!!",
+   Duration = 5
 })
 
 animateGlow()
