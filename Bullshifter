@@ -1,17 +1,17 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
 -- GUI Creation
 local ChatbotGUI = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local TopBar = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ToggleButton = Instance.new("TextButton")
-local StatusLabel = Instance.new("TextLabel")
-
 ChatbotGUI.Name = "ChatbotGUI"
-ChatbotGUI.Parent = game:GetService("CoreGui")
+if game:GetService("RunService"):IsStudio() then
+    ChatbotGUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
+else
+    ChatbotGUI.Parent = game:GetService("CoreGui")
+end
 
+local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 200, 0, 120)
 MainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
@@ -19,6 +19,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Parent = ChatbotGUI
 
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0, 30)
@@ -282,4 +283,25 @@ Players.PlayerAdded:Connect(function(player)
    player.Chatted:Connect(function(message)
        onPlayerChatted(player, message)
    end)
+end)
+if not LocalPlayer then
+    LocalPlayer = Players.LocalPlayer
+    while not LocalPlayer do
+        LocalPlayer = Players.LocalPlayer
+        wait()
+    end
+end
+
+-- Modified chat function
+local function onPlayerChatted(player, message)
+    if enabled and player == LocalPlayer then
+        wait(math.random(1, 2))
+        local response = responses[math.random(1, #responses)]
+        game:GetService("Chat"):Chat(player.Character, response)
+    end
+end
+
+-- Connect chat event for LocalPlayer
+LocalPlayer.Chatted:Connect(function(message)
+    onPlayerChatted(LocalPlayer, message)
 end)
