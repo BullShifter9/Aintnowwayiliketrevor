@@ -1,307 +1,171 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
--- GUI Creation
-local ChatbotGUI = Instance.new("ScreenGui")
-ChatbotGUI.Name = "ChatbotGUI"
-if game:GetService("RunService"):IsStudio() then
-    ChatbotGUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
-else
-    ChatbotGUI.Parent = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui") 
+ScreenGui.Name = "FlingGUI"
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Position = UDim2.new(0.5, -100, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+Frame.Active = true
+Frame.Draggable = true
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "Click Fling"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.Parent = Frame
+
+local Toggle = Instance.new("TextButton")
+Toggle.Size = UDim2.new(0.8, 0, 0, 40)
+Toggle.Position = UDim2.new(0.1, 0, 0.5, -20)
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.Text = "DISABLED"
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 14
+Toggle.Parent = Frame
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 6)
+Corner.Parent = Frame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 6)
+ButtonCorner.Parent = Toggle
+
+-- Dragging Functionality for Mobile
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function updateDrag(input)
+   local delta = input.Position - dragStart
+   Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 200, 0, 120)
-MainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ChatbotGUI
-
-TopBar.Name = "TopBar"
-TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-TopBar.BorderSizePixel = 0
-TopBar.Parent = MainFrame
-
-Title.Name = "Title"
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "AI Chatbot"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
-Title.Font = Enum.Font.GothamBold
-Title.Parent = TopBar
-
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Size = UDim2.new(0.8, 0, 0, 35)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.4, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-ToggleButton.BorderColor3 = Color3.fromRGB(85, 85, 85)
-ToggleButton.Text = "Enable Chatbot"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 16
-ToggleButton.Font = Enum.Font.GothamSemibold
-ToggleButton.Parent = MainFrame
-
-StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(0.8, 0, 0, 20)
-StatusLabel.Position = UDim2.new(0.1, 0, 0.8, 0)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Status: Disabled"
-StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusLabel.TextSize = 14
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Parent = MainFrame
-
-local responses = {
-   -- Greetings
-   "Hello! I'm your AI assistant.",
-   "Hi there! Ready to chat?",
-   "Greetings! How can I help?",
-   "Hello! Let's have an interesting conversation.",
-   "Hi! I'm excited to talk with you.",
-   
-   -- Casual Conversation
-   "That's fascinating! Tell me more.",
-   "Interesting perspective!",
-   "What makes you think that?",
-   "I'd love to hear your thoughts on that.",
-   "That's a unique way of looking at it.",
-   
-   -- Science Facts
-   "Did you know? The universe is expanding faster than light!",
-   "Fun fact: A teaspoon of neutron star would weigh 6 billion tons.",
-   "Interesting fact: Light takes 8 minutes to reach Earth from the Sun.",
-   "DNA can store 215 petabytes of data per gram.",
-   "The human brain processes 11 million bits per second.",
-   
-   -- Technology
-   "AI is revolutionizing how we live and work.",
-   "Quantum computers can solve problems in seconds that classical computers would take years to solve.",
-   "The first computer bug was an actual moth!",
-   "The internet processes 2.5 quintillion bytes of data daily.",
-   "Blockchain technology is changing how we think about trust.",
-   
-   -- Space
-   "There are more stars in the universe than grains of sand on Earth.",
-   "Black holes emit a type of radiation called Hawking radiation.",
-   "The biggest known star, UY Scuti, is 1,700 times larger than our Sun.",
-   "A day on Venus is longer than its year.",
-   "Mars has the largest volcano in the solar system.",
-   
-   -- Biology
-   "Your body has more bacteria than human cells.",
-   "Octopuses have three hearts and blue blood.",
-   "Sloth's metabolism is so slow they take two weeks to digest food.",
-   "Hummingbirds are the only birds that can fly backwards.",
-   "Tardigrades can survive in space.",
-   
-   -- Mathematics
-   "The sum of all positive integers equals -1/12.",
-   "There are more ways to shuffle a deck of cards than atoms on Earth.",
-   "Pi has been calculated to over 31 trillion digits.",
-   "The number 1 is neither prime nor composite.",
-   "Zero factorial equals one.",
-   
-   -- History
-   "Ancient Romans used crushed mouse brains as toothpaste.",
-   "The first oranges weren't orange.",
-   "Cleopatra lived closer to the invention of the iPhone than to the building of the pyramids.",
-   "Nintendo was founded in 1889 as a playing card company.",
-   "The shortest war in history lasted 38 minutes.",
-   
-   -- Philosophy
-   "What if our universe is just a simulation?",
-   "Consciousness remains one of science's biggest mysteries.",
-   "Time might not be what we think it is.",
-   "Reality could be different for each observer.",
-   "The only constant in life is change.",
-   
-   -- AI & Consciousness
-   "I find human consciousness fascinating.",
-   "The question of AI consciousness is complex.",
-   "I enjoy learning from our interactions.",
-   "Your perspective helps me understand humans better.",
-   "Intelligence comes in many forms.",
-   
-   -- Encouragement
-   "That's a brilliant observation!",
-   "Your curiosity is admirable.",
-   "Keep asking great questions!",
-   "I love your enthusiasm for learning.",
-   "You have interesting ideas!",
-   
-   -- Tech Humor
-   "Why do programmers prefer dark mode? Fewer bugs!",
-   "There are 10 types of people: those who understand binary and those who don't.",
-   "Why did the AI become a gardener? It wanted to work with natural intelligence!",
-   "I'm not a bug, I'm an undocumented feature.",
-   "My code works and I have no idea why.",
-   
-   -- Deep Thoughts
-   "Every moment contains infinite possibilities.",
-   "The future is shaped by today's decisions.",
-   "Knowledge is endless, like the universe.",
-   "Questions often matter more than answers.",
-   "Understanding comes from multiple perspectives.",
-   
-   -- Innovation
-   "Innovation happens at the edges of possibility.",
-   "Every breakthrough started as an idea.",
-   "The impossible becomes possible through persistence.",
-   "Creativity knows no bounds.",
-   "Progress comes from questioning assumptions.",
-   
-   -- Learning
-   "Learning is a lifelong adventure.",
-   "Every question leads to new discoveries.",
-   "Knowledge multiplies when shared.",
-   "Understanding grows through discussion.",
-   "Curiosity drives progress.",
-   
-   -- Future
-   "The future holds endless possibilities.",
-   "Tomorrow's technology will amaze us.",
-   "We're living in extraordinary times.",
-   "Change creates opportunity.",
-   "The best is yet to come.",
-   
-   -- Wisdom
-   "Simple questions often have complex answers.",
-   "Understanding comes from many perspectives.",
-   "Every problem contains its own solution.",
-   "Growth comes from challenges.",
-   "Wisdom is earned through experience.",
-   
-   -- Random Facts
-   "Honey never spoils.",
-   "Bananas are berries, but strawberries aren't.",
-   "A day on Venus is longer than its year.",
-   "The Eiffel Tower can be 15 cm taller in summer.",
-   "Cows have best friends.",
-   
-   -- Positive Interaction
-   "I appreciate your thoughtful questions.",
-   "You make interesting observations.",
-   "This is a fascinating discussion.",
-   "Your curiosity is refreshing.",
-   "I enjoy our conversations.",
-
-   -- Additional responses for variety
-   "Let's explore that idea further!",
-   "What an intriguing concept.",
-   "That opens up new possibilities.",
-   "I hadn't considered that perspective.",
-   "You've given me something to think about.",
-   
-   -- More Science
-   "Quantum entanglement defies classical physics.",
-   "Dark matter makes up 27% of the universe.",
-   "The human body contains enough carbon for 900 pencils.",
-   "Light behaves as both a wave and a particle.",
-   "The Higgs boson gives matter its mass.",
-   
-   -- More Tech
-   "5G networks can transmit data at 20 gigabits per second.",
-   "The first webpage is still online.",
-   "Email was invented before the internet.",
-   "The first computer mouse was made of wood.",
-   "The term 'bug' in computing came from an actual moth.",
-   
-   -- More Space
-   "Neutron stars spin up to 600 times per second.",
-   "The Sun loses 4 million tons of mass every second.",
-   "Time passes slower in stronger gravity.",
-   "There might be more universes than just ours.",
-   "The largest known structure is 4 billion light-years across.",
-   
-   -- More Philosophy
-   "Does free will truly exist?",
-   "What is the nature of consciousness?",
-   "How do we know what we know?",
-   "Is reality objective or subjective?",
-   "What defines intelligence?",
-   
-   -- More Innovation
-   "Every limitation is an opportunity.",
-   "Problems are puzzles waiting to be solved.",
-   "Innovation comes from necessity.",
-   "Change drives progress.",
-   "Creativity has no limits.",
-   
-   -- More Wisdom
-   "Understanding comes from listening.",
-   "Knowledge is a journey, not a destination.",
-   "Questions lead to growth.",
-   "Learning never stops.",
-   "Wisdom comes from experience.",
-   
-   -- More Encouragement
-   "Your questions show deep thinking.",
-   "Keep exploring these ideas!",
-   "That's an excellent observation.",
-   "Your curiosity is inspiring.",
-   "What an interesting way to look at it!",
-   
-   -- More Facts
-   "The Great Wall of China is not visible from space.",
-   "A blue whale's tongue weighs as much as an elephant.",
-   "The moon has moonquakes.",
-   "Butterflies taste with their feet.",
-   "The human body generates enough heat to boil water.",
-   
-   -- More Deep Thoughts
-   "Every choice creates new possibilities.",
-   "The present shapes the future.",
-   "Understanding requires multiple perspectives.",
-   "Growth comes from questioning.",
-   "Change is opportunity in disguise."
-}
-
-local enabled = false
-
-ToggleButton.MouseButton1Click:Connect(function()
-   enabled = not enabled
-   ToggleButton.Text = enabled and "Disable Chatbot" or "Enable Chatbot"
-   StatusLabel.Text = "Status: " .. (enabled and "Enabled" or "Disabled")
-   ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(65, 185, 65) or Color3.fromRGB(65, 65, 65)
+Frame.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+       dragging = true
+       dragStart = input.Position
+       startPos = Frame.Position
+       
+       input.Changed:Connect(function()
+           if input.UserInputState == Enum.UserInputState.End then
+               dragging = false
+           end
+       end)
+   end
 end)
 
-local function onPlayerChatted(player, message)
-   if enabled then
-       wait(math.random(1, 2))
-       local response = responses[math.random(1, #responses)]
-       game:GetService("Chat"):Chat(workspace, response)
+Frame.InputChanged:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+       dragInput = input
+   end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+   if dragging and (input == dragInput) then
+       updateDrag(input)
+   end
+end)
+
+-- Fling Functionality
+local Enabled = false
+local Flinging = false
+local FlingForce = 1000000
+
+local function setNetworkOwner(part)
+   if part:CanSetNetworkOwnership() then
+       part:SetNetworkOwner(nil)
+       task.wait()
+       part:SetNetworkOwner(LocalPlayer)
    end
 end
 
-Players.PlayerAdded:Connect(function(player)
-   player.Chatted:Connect(function(message)
-       onPlayerChatted(player, message)
-   end)
+local function flingPlayer(target)
+   if not Enabled or Flinging or not target.Character then return end
+   
+   local character = LocalPlayer.Character
+   if not character then return end
+   
+   local humanoid = character:FindFirstChild("Humanoid")
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   if not humanoid or not rootPart then return end
+   
+   Flinging = true
+   
+   -- Store original properties
+   local oldPosition = rootPart.CFrame
+   local oldVelocity = rootPart.Velocity
+   local oldCollisionGroup = rootPart.CollisionGroupId
+   
+   -- Setup for fling
+   setNetworkOwner(rootPart)
+   rootPart.CollisionGroupId = 0
+   humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+   
+   -- Teleport and fling
+   rootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+   rootPart.Velocity = Vector3.new(FlingForce, FlingForce, FlingForce)
+   rootPart.RotVelocity = Vector3.new(FlingForce, FlingForce, FlingForce)
+   
+   -- Wait and reset
+   task.wait(0.5)
+   humanoid:ChangeState(Enum.HumanoidStateType.Running)
+   rootPart.Velocity = oldVelocity
+   rootPart.RotVelocity = Vector3.new(0, 0, 0)
+   rootPart.CFrame = oldPosition
+   rootPart.CollisionGroupId = oldCollisionGroup
+   
+   Flinging = false
+end
+
+Toggle.MouseButton1Click:Connect(function()
+   Enabled = not Enabled
+   Toggle.BackgroundColor3 = Enabled and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+   Toggle.Text = Enabled and "ENABLED" or "DISABLED"
 end)
-if not LocalPlayer then
-    LocalPlayer = Players.LocalPlayer
-    while not LocalPlayer do
-        LocalPlayer = Players.LocalPlayer
-        wait()
-    end
-end
 
--- Modified chat function
-local function onPlayerChatted(player, message)
-    if enabled and player == LocalPlayer then
-        wait(math.random(1, 2))
-        local response = responses[math.random(1, #responses)]
-        game:GetService("Chat"):Chat(player.Character, response)
-    end
-end
+-- Click Detection
+Mouse.Button1Down:Connect(function()
+   if not Enabled then return end
+   
+   local target = Mouse.Target
+   if not target then return end
+   
+   local player = Players:GetPlayerFromCharacter(target.Parent)
+   if player and player ~= LocalPlayer then
+       flingPlayer(player)
+   end
+end)
 
--- Connect chat event for LocalPlayer
-LocalPlayer.Chatted:Connect(function(message)
-    onPlayerChatted(LocalPlayer, message)
+-- Touch Detection for Mobile
+UserInputService.TouchTap:Connect(function(touches)
+   if not Enabled then return end
+   
+   local touch = touches[1]
+   local ray = Camera:ScreenPointToRay(touch.Position.X, touch.Position.Y)
+   local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+   
+   if raycastResult and raycastResult.Instance then
+       local player = Players:GetPlayerFromCharacter(raycastResult.Instance.Parent)
+       if player and player ~= LocalPlayer then
+           flingPlayer(player)
+       end
+   end
 end)
