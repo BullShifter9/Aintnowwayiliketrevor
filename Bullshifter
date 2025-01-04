@@ -1,13 +1,13 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Mouse = LocalPlayer:GetMouse() 
 local Camera = workspace.CurrentCamera
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui") 
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlingGUI"
 ScreenGui.Parent = game:GetService("CoreGui")
 
@@ -39,6 +39,7 @@ Toggle.Font = Enum.Font.GothamBold
 Toggle.TextSize = 14
 Toggle.Parent = Frame
 
+-- GUI Styling
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 6)
 Corner.Parent = Frame
@@ -47,7 +48,7 @@ local ButtonCorner = Instance.new("UICorner")
 ButtonCorner.CornerRadius = UDim.new(0, 6)
 ButtonCorner.Parent = Toggle
 
--- Dragging Functionality for Mobile
+-- Mobile Dragging
 local dragging = false
 local dragInput
 local dragStart
@@ -63,7 +64,6 @@ Frame.InputBegan:Connect(function(input)
        dragging = true
        dragStart = input.Position
        startPos = Frame.Position
-       
        input.Changed:Connect(function()
            if input.UserInputState == Enum.UserInputState.End then
                dragging = false
@@ -84,88 +84,92 @@ UserInputService.InputChanged:Connect(function(input)
    end
 end)
 
--- Fling Functionality
+-- Fling System
 local Enabled = false
-local Flinging = false
+local CurrentlyFlinging = false
+local LastFlingTime = 0
 local FlingForce = 1000000
 
-local function setNetworkOwner(part)
-   if part:CanSetNetworkOwnership() then
-       part:SetNetworkOwner(nil)
-       task.wait()
-       part:SetNetworkOwner(LocalPlayer)
-   end
-end
+-- Optimization variables
+local LastUpdateTime = 0
+local UpdateInterval = 0.1 -- Adjust for performance
 
-local function flingPlayer(target)
-   if not Enabled or Flinging or not target.Character then return end
+local function startFling(target)
+   if not Enabled or CurrentlyFlinging or not target.Character then return end
    
    local character = LocalPlayer.Character
    if not character then return end
    
    local humanoid = character:FindFirstChild("Humanoid")
    local rootPart = character:FindFirstChild("HumanoidRootPart")
-   if not humanoid or not rootPart then return end
+   local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
    
-   Flinging = true
+   if not humanoid or not rootPart or not targetRoot then return end
    
-   -- Store original properties
-   local oldPosition = rootPart.CFrame
-   local oldVelocity = rootPart.Velocity
-   local oldCollisionGroup = rootPart.CollisionGroupId
+   CurrentlyFlinging = true
+   LastFlingTime = tick()
    
-   -- Setup for fling
-   setNetworkOwner(rootPart)
-   rootPart.CollisionGroupId = 0
-   humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-   
-   -- Teleport and fling
-   rootPart.CFrame = target.Character.HumanoidRootPart.CFrame
-   rootPart.Velocity = Vector3.new(FlingForce, FlingForce, FlingForce)
-   rootPart.RotVelocity = Vector3.new(FlingForce, FlingForce, FlingForce)
-   
-   -- Wait and reset
-   task.wait(0.5)
-   humanoid:ChangeState(Enum.HumanoidStateType.Running)
-   rootPart.Velocity = oldVelocity
-   rootPart.RotVelocity = Vector3.new(0, 0, 0)
-   rootPart.CFrame = oldPosition
-   rootPart.CollisionGroupId = oldCollisionGroup
-   
-   Flinging = false
+   -- Create connection for continuous fling
+   local flingConnection
+   flingConnection = RunService.Heartbeat:Connect(function()
+       local currentTime = tick()
+       
+       -- Performance optimization
+       if currentTime - LastUpdateTime < UpdateInterval then return end
+       LastUpdateTime = currentTime
+       
+       if not Enabled or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+           flingConnection:Disconnect()
+           CurrentlyFlinging = false
+           return
+       end
+       
+       -- Set extreme velocity
+       rootPart.AssemblyLinearVelocity = Vector3.new(FlingForce, FlingForce, FlingForce)
+       rootPart.AssemblyAngularVelocity = Vector3.new(FlingForce, FlingForce, FlingForce)
+       rootPart.CFrame = targetRoot.CFrame
+       
+       -- Stop if target is too far (likely flung off)
+       if (targetRoot.Position - rootPart.Position).Magnitude > 150 then
+           flingConnection:Disconnect()
+           CurrentlyFlinging = false
+       end
+   end)
 end
 
 Toggle.MouseButton1Click:Connect(function()
    Enabled = not Enabled
    Toggle.BackgroundColor3 = Enabled and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
    Toggle.Text = Enabled and "ENABLED" or "DISABLED"
+   
+   if not Enabled then
+       CurrentlyFlinging = false
+   end
 end)
 
--- Click Detection
+-- Click/Touch Detection
 Mouse.Button1Down:Connect(function()
    if not Enabled then return end
    
    local target = Mouse.Target
-   if not target then return end
-   
-   local player = Players:GetPlayerFromCharacter(target.Parent)
-   if player and player ~= LocalPlayer then
-       flingPlayer(player)
+   if target then
+       local player = Players:GetPlayerFromCharacter(target.Parent)
+       if player and player ~= LocalPlayer then
+           startFling(player)
+       end
    end
 end)
 
--- Touch Detection for Mobile
 UserInputService.TouchTap:Connect(function(touches)
    if not Enabled then return end
    
-   local touch = touches[1]
-   local ray = Camera:ScreenPointToRay(touch.Position.X, touch.Position.Y)
+   local ray = Camera:ScreenPointToRay(touches[1].Position.X, touches[1].Position.Y)
    local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
    
    if raycastResult and raycastResult.Instance then
        local player = Players:GetPlayerFromCharacter(raycastResult.Instance.Parent)
        if player and player ~= LocalPlayer then
-           flingPlayer(player)
+           startFling(player)
        end
    end
 end)
