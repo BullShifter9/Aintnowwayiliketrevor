@@ -3,10 +3,74 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 
--- GUI Creation
+local blockedFunctions = {rconsoleprint, print, setclipboard, rconsoleerr, rconsolewarn, warn, error, writefile, appendfile, makefolder, delfolder, isfolder, isfile, readfile, loadfile}
+
+local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", "webhook", ".com", ".net", ".org"}
+
+local function checkForUrls(...)
+   local args = {...}
+   for _, arg in pairs(args) do
+       local str = tostring(arg):lower()
+       for _, pattern in pairs(urlPatterns) do
+           if str:find(pattern) then
+               Player:Kick("Anti-Spy: URL Detected")
+               return true
+           end
+       end
+   end
+   return false
+end
+
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+   local args = {...}
+   local method = getnamecallmethod()
+   
+   if method == "HttpGet" or method == "HttpPost" or method:find("Http") or method:find("Request") then
+       return nil
+   end
+   
+   if checkForUrls(...) then return end
+   return old(self, ...)
+end)
+
+game:GetService('RunService').RenderStepped:Connect(function()
+   for _, func in pairs(blockedFunctions) do
+       local old = hookfunction(func, function(...)
+           if checkForUrls(...) then return end
+           return old(...)
+       end)
+   end
+end)
+
+local WelcomeGui = Instance.new("ScreenGui")
+local WelcomeFrame = Instance.new("Frame")
+local WelcomeText = Instance.new("TextLabel")
+
+WelcomeGui.Parent = Player:WaitForChild("PlayerGui")
+WelcomeFrame.Size = UDim2.new(0, 300, 0, 100)
+WelcomeFrame.Position = UDim2.new(0.5, -150, 0.4, -50)
+WelcomeFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+WelcomeFrame.Parent = WelcomeGui
+
+WelcomeText.Size = UDim2.new(1, 0, 1, 0)
+WelcomeText.BackgroundTransparency = 1
+WelcomeText.Text = "Ultimate Fling! Made By Azzakirms"
+WelcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+WelcomeText.TextSize = 24
+WelcomeText.Font = Enum.Font.GothamBold
+WelcomeText.Parent = WelcomeFrame
+
+local WelcomeCorner = Instance.new("UICorner")
+WelcomeCorner.CornerRadius = UDim.new(0, 8)
+WelcomeCorner.Parent = WelcomeFrame
+
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel") 
+local Title = Instance.new("TextLabel")
 local PlayerInput = Instance.new("TextBox")
 local FlingButton = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
@@ -30,7 +94,7 @@ Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0, 0, 0, 10)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "Ultimate Fling"
+Title.Text = "Ultimate Fling by Azzakirms"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 24
 
@@ -55,15 +119,13 @@ FlingButton.Text = "FLING!"
 FlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FlingButton.TextSize = 20
 
--- Apply rounded corners
 local corners = {MainFrame, PlayerInput, FlingButton}
 for _, obj in pairs(corners) do
-   local corner = Instance.new("UICorner")
-   corner.CornerRadius = UDim.new(0, 8)
-   corner.Parent = obj
+  local corner = Instance.new("UICorner")
+  corner.CornerRadius = UDim.new(0, 8)
+  corner.Parent = obj
 end
 
--- Neon effect
 NeonEffect.Name = "NeonEffect"
 NeonEffect.Parent = MainFrame
 NeonEffect.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
@@ -73,123 +135,146 @@ NeonEffect.Size = UDim2.new(1, 0, 1, 0)
 NeonEffect.ZIndex = -1
 
 UIGradient.Color = ColorSequence.new({
-   ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 75, 75)),
-   ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
+  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 75, 75)),
+  ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
 })
 UIGradient.Parent = NeonEffect
 
--- Animate neon effect
-local function animateNeon()
-   local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
-   local tween = TweenService:Create(NeonEffect, tweenInfo, {BackgroundTransparency = 0.6})
+local GlowEffect = Instance.new("ImageLabel")
+GlowEffect.Name = "GlowEffect"
+GlowEffect.BackgroundTransparency = 1
+GlowEffect.Position = UDim2.new(0, -15, 0, -15)
+GlowEffect.Size = UDim2.new(1, 30, 1, 30)
+GlowEffect.ZIndex = -1
+GlowEffect.Image = "rbxassetid://5028857084"
+GlowEffect.ImageColor3 = Color3.fromRGB(255, 75, 75)
+GlowEffect.ImageTransparency = 0.6
+GlowEffect.Parent = MainFrame
+
+local function animateGlow()
+   local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+   local tween = TweenService:Create(GlowEffect, tweenInfo, {ImageTransparency = 0.8})
    tween:Play()
 end
-animateNeon()
 
--- Enhanced fling functionality
+local function animateNeon()
+  local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
+  local tween = TweenService:Create(NeonEffect, tweenInfo, {BackgroundTransparency = 0.6})
+  tween:Play()
+end
+
 getgenv().OldPos = nil
 getgenv().FPDH = workspace.FallenPartsDestroyHeight
 
 local function GetPlayer(Name)
-   Name = Name:lower()
-   for _, x in next, Players:GetPlayers() do
-       if x ~= Player and (x.Name:lower():match("^" .. Name) or x.DisplayName:lower():match("^" .. Name)) then
-           return x
-       end
-   end
-   return nil
+  Name = Name:lower()
+  for _, x in next, Players:GetPlayers() do
+      if x ~= Player and (x.Name:lower():match("^" .. Name) or x.DisplayName:lower():match("^" .. Name)) then
+          return x
+      end
+  end
+  return nil
 end
 
 local function Notify(title, text, duration)
-   game:GetService("StarterGui"):SetCore("SendNotification", {
-       Title = title,
-       Text = text,
-       Duration = duration
-   })
+  game:GetService("StarterGui"):SetCore("SendNotification", {
+      Title = title,
+      Text = text,
+      Duration = duration
+  })
 end
 
 local function EnhancedFling(TargetPlayer)
-   local Character = Player.Character
-   local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-   local RootPart = Humanoid and Humanoid.RootPart
+  local Character = Player.Character
+  local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+  local RootPart = Humanoid and Humanoid.RootPart
 
-   local TCharacter = TargetPlayer.Character
-   local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
-   local TRootPart = THumanoid and THumanoid.RootPart
-   local THead = TCharacter and TCharacter:FindFirstChild("Head")
+  local TCharacter = TargetPlayer.Character
+  local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
+  local TRootPart = THumanoid and THumanoid.RootPart
+  local THead = TCharacter and TCharacter:FindFirstChild("Head")
 
-   if not Character or not Humanoid or not RootPart then
-       return Notify("Error", "Your character is missing parts", 3)
-   end
+  if not Character or not Humanoid or not RootPart then
+      return Notify("Error", "Your character is missing parts", 3)
+  end
 
-   if not TCharacter or not THumanoid or not TRootPart then
-       return Notify("Error", "Target is missing parts", 3)
-   end
+  if not TCharacter or not THumanoid or not TRootPart then
+      return Notify("Error", "Target is missing parts", 3)
+  end
 
-   -- Store original position
-   getgenv().OldPos = RootPart.CFrame
+  getgenv().OldPos = RootPart.CFrame
 
-   -- Prepare character for flinging
-   workspace.FallenPartsDestroyHeight = math.huge / math.huge
-   Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-   
-   -- Create fling force
-   local BV = Instance.new("BodyVelocity")
-   BV.Name = "FlingForce"
-   BV.Parent = RootPart
-   BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
-   BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+  workspace.FallenPartsDestroyHeight = math.huge / math.huge
+  Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+  
+  local BV = Instance.new("BodyVelocity")
+  BV.Name = "FlingForce"
+  BV.Parent = RootPart
+  BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
+  BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
-   -- Fling loop
-   local startTime = tick()
-   local flingConnection = RunService.Heartbeat:Connect(function()
-       if not Character or not TCharacter or tick() - startTime > 5 then
-           flingConnection:Disconnect()
-           return
-       end
+  local startTime = tick()
+  local flingConnection = RunService.Heartbeat:Connect(function()
+      if not Character or not TCharacter or tick() - startTime > 5 then
+          flingConnection:Disconnect()
+          return
+      end
 
-       local targetPos = TRootPart.Position
-       RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
-       RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
-       RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
-   end)
+      local targetPos = TRootPart.Position
+      RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
+      RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
+      RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
+  end)
 
-   -- Cleanup after 5 seconds
-   task.delay(5, function()
-       if BV then BV:Destroy() end
-       if Character and RootPart then
-           Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-           workspace.FallenPartsDestroyHeight = getgenv().FPDH
-           
-           -- Reset position
-           RootPart.CFrame = getgenv().OldPos
-           RootPart.Velocity = Vector3.new(0, 0, 0)
-           RootPart.RotVelocity = Vector3.new(0, 0, 0)
-       end
-   end)
+  task.delay(5, function()
+      if BV then BV:Destroy() end
+      if Character and RootPart then
+          Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+          workspace.FallenPartsDestroyHeight = getgenv().FPDH
+          
+          RootPart.CFrame = getgenv().OldPos
+          RootPart.Velocity = Vector3.new(0, 0, 0)
+          RootPart.RotVelocity = Vector3.new(0, 0, 0)
+      end
+  end)
 end
 
--- Button effects
 FlingButton.MouseEnter:Connect(function()
-   TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-       BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-   }):Play()
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+      BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+  }):Play()
 end)
 
 FlingButton.MouseLeave:Connect(function()
-   TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-       BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-   }):Play()
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+      BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+  }):Play()
 end)
 
--- Connect fling function
 FlingButton.MouseButton1Click:Connect(function()
-   local targetName = PlayerInput.Text
-   local targetPlayer = GetPlayer(targetName)
-   
-   if targetPlayer then
-       EnhancedFling(targetPlayer)
-   else
-       Notify("Error", "Player not found", 3)
-   end
+  local targetName = PlayerInput.Text
+  local targetPlayer = GetPlayer(targetName)
+  
+  if targetPlayer then
+      EnhancedFling(targetPlayer)
+  else
+      Notify("Error", "Player not found", 3)
+  end
 end)
+
+ScreenGui.Enabled = false
+task.wait(3)
+TweenService:Create(WelcomeFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(WelcomeText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+task.wait(0.5)
+WelcomeGui:Destroy()
+ScreenGui.Enabled = true
+
+game:GetService("StarterGui"):SetCore("SendNotification", {
+   Title = "Script Executed",
+   Text = "Made by Azzakirms\nPlease Subscribe! For more!!",
+   Duration = 5
+})
+
+animateGlow()
+animateNeon()
