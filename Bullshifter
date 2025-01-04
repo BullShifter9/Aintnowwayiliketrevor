@@ -1,383 +1,553 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService") 
+
+local TweenService = game:GetService("TweenService")
+
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
+
 local Player = Players.LocalPlayer
 
-local allowedWebhook = "https://discord.com/api/webhooks/1257368823745478887/CtWnhjc0IASjdBiWE8Ychrg5uonDsLE5X166dE2l8gn4W1OBd0pmFjmzyitXToqKRVgv"
-local WEBHOOK_URL = allowedWebhook
-
 local blockedFunctions = {rconsoleprint, print, setclipboard, rconsoleerr, rconsolewarn, warn, error, writefile, appendfile, makefolder, delfolder, isfolder, isfile, readfile, loadfile}
-local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", ".com", ".net", ".org"}
+
+local urlPatterns = {"https://", "http://", "discord.gg", "discord.com", "webhook", ".com", ".net", ".org"}
 
 local function checkForUrls(...)
-  local args = {...}
-  for _, arg in pairs(args) do
-      local str = tostring(arg):lower()
-      
-      if str == allowedWebhook:lower() then
-          return false
-      end
-      
-      for _, pattern in pairs(urlPatterns) do
-          if str:find(pattern) then
-              Player:Kick("Anti-Spy: Please Dont Use RemoteSpy Or Any Other Shit.")
-              return true
-          end
-      end
-  end
-  return false
+
+   local args = {...}
+
+   for _, arg in pairs(args) do
+
+       local str = tostring(arg):lower()
+
+       for _, pattern in pairs(urlPatterns) do
+
+           if str:find(pattern) then
+
+               Player:Kick("Anti-Spy: Please Dont Use RemoteSpy Or Any Other Shit.")
+
+               return true
+
+           end
+
+       end
+
+   end
+
+   return false
+
 end
 
 local mt = getrawmetatable(game)
+
 local old = mt.__namecall
+
 setreadonly(mt, false)
+
 mt.__namecall = newcclosure(function(self, ...)
-  local args = {...}
-  local method = getnamecallmethod()
-  
-  if method == "HttpGet" or method == "HttpPost" or method:find("Http") or method:find("Request") then
-      if checkForUrls(...) then return end
-  end
-  
-  return old(self, ...)
+
+   local args = {...}
+
+   local method = getnamecallmethod()
+
+   
+
+   if method == "HttpGet" or method == "HttpPost" or method:find("Http") or method:find("Request") then
+
+       return nil
+
+   end
+
+   
+
+   if checkForUrls(...) then return end
+
+   return old(self, ...)
+
 end)
 
 game:GetService('RunService').RenderStepped:Connect(function()
-  for _, func in pairs(blockedFunctions) do
-      local old = hookfunction(func, function(...)
-          if checkForUrls(...) then return end
-          return old(...)
-      end)
-  end
+
+   for _, func in pairs(blockedFunctions) do
+
+       local old = hookfunction(func, function(...)
+
+           if checkForUrls(...) then return end
+
+           return old(...)
+
+       end)
+
+   end
+
 end)
 
-local function SendWebhook()
-   local player = game:GetService("Players").LocalPlayer
-   local executor = identifyexecutor and identifyexecutor() or "Unknown"
-   local gameId = game.PlaceId
-   local userId = player.UserId
-   
-   local data = {
-       embeds = {{
-           title = "Script Execution Detected",
-           description = "Someone has executed your script!",
-           color = 5814783,
-           fields = {
-               {name = "Username", value = player.Name, inline = true},
-               {name = "Display Name", value = player.DisplayName, inline = true},
-               {name = "User ID", value = tostring(userId), inline = true},
-               {name = "Game ID", value = tostring(gameId), inline = true},
-               {name = "Game Name", value = game:GetService("MarketplaceService"):GetProductInfo(gameId).Name, inline = true},
-               {name = "Executor", value = executor, inline = true},
-               {name = "Account Age", value = tostring(player.AccountAge).." days", inline = true}
-           },
-           thumbnail = {
-               url = string.format("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420", userId)
-           },
-           timestamp = DateTime.now():ToIsoDate()
-       }}
-   }
-
-   pcall(function()
-       HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(data))
-   end)
-end
-
 local WelcomeGui = Instance.new("ScreenGui")
+
 local WelcomeFrame = Instance.new("Frame")
+
 local WelcomeText = Instance.new("TextLabel")
 
 WelcomeGui.Parent = Player:WaitForChild("PlayerGui")
+
 WelcomeFrame.Size = UDim2.new(0, 300, 0, 100)
+
 WelcomeFrame.Position = UDim2.new(0.5, -150, 0.4, -50)
+
 WelcomeFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
 WelcomeFrame.Parent = WelcomeGui
 
 WelcomeText.Size = UDim2.new(1, 0, 1, 0)
+
 WelcomeText.BackgroundTransparency = 1
+
 WelcomeText.Text = "Ultimate Fling!🗣️🗣️"
+
 WelcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+
 WelcomeText.TextSize = 24
+
 WelcomeText.Font = Enum.Font.GothamBold
+
 WelcomeText.Parent = WelcomeFrame
 
 local WelcomeCorner = Instance.new("UICorner")
+
 WelcomeCorner.CornerRadius = UDim.new(0, 8)
+
 WelcomeCorner.Parent = WelcomeFrame
 
 local ScreenGui = Instance.new("ScreenGui")
+
 local MainFrame = Instance.new("Frame")
+
 local Title = Instance.new("TextLabel")
+
 local PlayerInput = Instance.new("TextBox")
+
 local FlingButton = Instance.new("TextButton")
+
 local UICorner = Instance.new("UICorner")
+
 local UIGradient = Instance.new("UIGradient")
+
 local NeonEffect = Instance.new("Frame")
 
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
 ScreenGui.ResetOnSpawn = false
 
 MainFrame.Name = "MainFrame"
+
 MainFrame.Parent = ScreenGui
+
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
 MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+
 MainFrame.Size = UDim2.new(0, 300, 0, 200)
+
 MainFrame.Active = true
+
 MainFrame.Draggable = true
 
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Name = "MinimizeButton"
-MinimizeButton.Parent = MainFrame
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-MinimizeButton.Position = UDim2.new(1, -30, 0, 5)
-MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
-MinimizeButton.Font = Enum.Font.GothamBold
-MinimizeButton.Text = "-"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeButton.TextSize = 20
-
-local MinimizeCorner = Instance.new("UICorner")
-MinimizeCorner.CornerRadius = UDim.new(0, 4)
-MinimizeCorner.Parent = MinimizeButton
-
-local minimized = false
-local originalSize = MainFrame.Size
-local minimizedSize = UDim2.new(0, 300, 0, 40)
-
-MinimizeButton.MouseButton1Click:Connect(function()
-   minimized = not minimized
-   local targetSize = minimized and minimizedSize or originalSize
-   local buttonText = minimized and "+" or "-"
-   
-   TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = targetSize}):Play()
-   MinimizeButton.Text = buttonText
-   
-   PlayerInput.Visible = not minimized
-   FlingButton.Visible = not minimized
-   NeonEffect.Visible = not minimized
-   OuterGlow.Visible = not minimized
-   InnerGlow.Visible = not minimized
-end)
+-- Add outer glow
 
 local OuterGlow = Instance.new("Frame")
+
 OuterGlow.Name = "OuterGlow"
+
 OuterGlow.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+
 OuterGlow.BackgroundTransparency = 0.5
+
 OuterGlow.BorderSizePixel = 0
+
 OuterGlow.Position = UDim2.new(0, -5, 0, -5)
+
 OuterGlow.Size = UDim2.new(1, 10, 1, 10)
+
 OuterGlow.ZIndex = -2
+
 OuterGlow.Parent = MainFrame
 
+-- Add inner glow
+
 local InnerGlow = Instance.new("Frame")
+
 InnerGlow.Name = "InnerGlow"
+
 InnerGlow.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+
 InnerGlow.BackgroundTransparency = 0.7
+
 InnerGlow.BorderSizePixel = 0
+
 InnerGlow.Size = UDim2.new(1, 0, 1, 0)
+
 InnerGlow.ZIndex = -1
+
 InnerGlow.Parent = MainFrame
 
+-- Add corner radius to glow frames
+
 local OuterGlowCorner = Instance.new("UICorner")
+
 OuterGlowCorner.CornerRadius = UDim.new(0, 12)
+
 OuterGlowCorner.Parent = OuterGlow
 
 local InnerGlowCorner = Instance.new("UICorner")
+
 InnerGlowCorner.CornerRadius = UDim.new(0, 8)
+
 InnerGlowCorner.Parent = InnerGlow
 
 Title.Name = "Title"
+
 Title.Parent = MainFrame
+
 Title.BackgroundTransparency = 1
+
 Title.Position = UDim2.new(0, 0, 0, 10)
+
 Title.Size = UDim2.new(1, 0, 0, 30)
+
 Title.Font = Enum.Font.GothamBold
+
 Title.Text = "Ultimate Fling by Azzakirms"
+
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+
 Title.TextSize = 24
 
 PlayerInput.Name = "PlayerInput"
+
 PlayerInput.Parent = MainFrame
+
 PlayerInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+
 PlayerInput.Position = UDim2.new(0.1, 0, 0.3, 0)
+
 PlayerInput.Size = UDim2.new(0.8, 0, 0, 40)
+
 PlayerInput.Font = Enum.Font.Gotham
+
 PlayerInput.PlaceholderText = "Enter Player Name"
+
 PlayerInput.Text = ""
+
 PlayerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+
 PlayerInput.TextSize = 16
 
 FlingButton.Name = "FlingButton"
+
 FlingButton.Parent = MainFrame
+
 FlingButton.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+
 FlingButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+
 FlingButton.Size = UDim2.new(0.8, 0, 0, 50)
+
 FlingButton.Font = Enum.Font.GothamBold
+
 FlingButton.Text = "FLING!"
+
 FlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
 FlingButton.TextSize = 20
 
 local corners = {MainFrame, PlayerInput, FlingButton}
+
 for _, obj in pairs(corners) do
- local corner = Instance.new("UICorner")
- corner.CornerRadius = UDim.new(0, 8)
- corner.Parent = obj
+
+  local corner = Instance.new("UICorner")
+
+  corner.CornerRadius = UDim.new(0, 8)
+
+  corner.Parent = obj
+
 end
 
 NeonEffect.Name = "NeonEffect"
+
 NeonEffect.Parent = MainFrame
+
 NeonEffect.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+
 NeonEffect.BackgroundTransparency = 0.8
+
 NeonEffect.BorderSizePixel = 0
+
 NeonEffect.Size = UDim2.new(1, 0, 1, 0)
+
 NeonEffect.ZIndex = -1
 
 UIGradient.Color = ColorSequence.new({
- ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 75, 75)),
- ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
+
+  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 75, 75)),
+
+  ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
+
 })
+
 UIGradient.Parent = NeonEffect
 
 local function animateGlow()
-   local outerTween = TweenService:Create(OuterGlow, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-       BackgroundTransparency = 0.8,
-       Size = UDim2.new(1, 20, 1, 20),
-       Position = UDim2.new(0, -10, 0, -10)
-   })
-   
-   local innerTween = TweenService:Create(InnerGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-       BackgroundTransparency = 0.9
-   })
-   
-   outerTween:Play()
-   innerTween:Play()
+
+    local outerTween = TweenService:Create(OuterGlow, TweenInfo.new(
+
+        2,
+
+        Enum.EasingStyle.Sine,
+
+        Enum.EasingDirection.InOut,
+
+        -1,
+
+        true
+
+    ), {
+
+        BackgroundTransparency = 0.8,
+
+        Size = UDim2.new(1, 20, 1, 20),
+
+        Position = UDim2.new(0, -10, 0, -10)
+
+    })
+
+    
+
+    local innerTween = TweenService:Create(InnerGlow, TweenInfo.new(
+
+        1.5,
+
+        Enum.EasingStyle.Sine,
+
+        Enum.EasingDirection.InOut,
+
+        -1,
+
+        true
+
+    ), {
+
+        BackgroundTransparency = 0.9
+
+    })
+
+    
+
+    outerTween:Play()
+
+    innerTween:Play()
+
 end
 
 local function animateNeon()
- local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
- local tween = TweenService:Create(NeonEffect, tweenInfo, {BackgroundTransparency = 0.6})
- tween:Play()
+
+  local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
+
+  local tween = TweenService:Create(NeonEffect, tweenInfo, {BackgroundTransparency = 0.6})
+
+  tween:Play()
+
 end
 
 getgenv().OldPos = nil
+
 getgenv().FPDH = workspace.FallenPartsDestroyHeight
 
 local function GetPlayer(Name)
- Name = Name:lower()
- for _, x in next, Players:GetPlayers() do
-     if x ~= Player and (x.Name:lower():match("^" .. Name) or x.DisplayName:lower():match("^" .. Name)) then
-         return x
-     end
- end
- return nil
+
+  Name = Name:lower()
+
+  for _, x in next, Players:GetPlayers() do
+
+      if x ~= Player and (x.Name:lower():match("^" .. Name) or x.DisplayName:lower():match("^" .. Name)) then
+
+          return x
+
+      end
+
+  end
+
+  return nil
+
 end
 
 local function Notify(title, text, duration)
- game:GetService("StarterGui"):SetCore("SendNotification", {
-     Title = title,
-     Text = text,
-     Duration = duration
- })
+
+  game:GetService("StarterGui"):SetCore("SendNotification", {
+
+      Title = title,
+
+      Text = text,
+
+      Duration = duration
+
+  })
+
 end
 
 local function EnhancedFling(TargetPlayer)
- local Character = Player.Character
- local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
- local RootPart = Humanoid and Humanoid.RootPart
- local TCharacter = TargetPlayer.Character
- local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
- local TRootPart = THumanoid and THumanoid.RootPart
- local THead = TCharacter and TCharacter:FindFirstChild("Head")
 
- if not Character or not Humanoid or not RootPart then
-     return Notify("Error", "Your character is missing parts", 3)
- end
- if not TCharacter or not THumanoid or not TRootPart then
-     return Notify("Error", "Target is missing parts", 3)
- end
+  local Character = Player.Character
 
- getgenv().OldPos = RootPart.CFrame
- workspace.FallenPartsDestroyHeight = math.huge / math.huge
- Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
- 
- local BV = Instance.new("BodyVelocity")
- BV.Name = "FlingForce"
- BV.Parent = RootPart
- BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
- BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+  local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
 
- local updateDelta = 0.1
- local lastUpdate = tick()
- local startTime = tick()
+  local RootPart = Humanoid and Humanoid.RootPart
 
- local flingConnection = RunService.Heartbeat:Connect(function()
-     if not Character or not TCharacter or tick() - startTime > 5 then
-         flingConnection:Disconnect()
-         return
-     end
-     
-     if tick() - lastUpdate < updateDelta then return end
-     lastUpdate = tick()
+  local TCharacter = TargetPlayer.Character
 
-     local targetPos = TRootPart.Position
-     RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
-     RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
-     RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
- end)
+  local THumanoid = TCharacter and TCharacter:FindFirstChildOfClass("Humanoid")
 
- task.delay(5, function()
-     if BV then BV:Destroy() end
-     if Character and RootPart then
-         Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-         workspace.FallenPartsDestroyHeight = getgenv().FPDH
-         
-         RootPart.CFrame = getgenv().OldPos
-         RootPart.Velocity = Vector3.new(0, 0, 0)
-         RootPart.RotVelocity = Vector3.new(0, 0, 0)
-     end
- end)
+  local TRootPart = THumanoid and THumanoid.RootPart
+
+  local THead = TCharacter and TCharacter:FindFirstChild("Head")
+
+  if not Character or not Humanoid or not RootPart then
+
+      return Notify("Error", "Your character is missing parts", 3)
+
+  end
+
+  if not TCharacter or not THumanoid or not TRootPart then
+
+      return Notify("Error", "Target is missing parts", 3)
+
+  end
+
+  getgenv().OldPos = RootPart.CFrame
+
+  workspace.FallenPartsDestroyHeight = math.huge / math.huge
+
+  Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+  
+
+  local BV = Instance.new("BodyVelocity")
+
+  BV.Name = "FlingForce"
+
+  BV.Parent = RootPart
+
+  BV.Velocity = Vector3.new(9999999, 9999999, 9999999)
+
+  BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+
+  local startTime = tick()
+
+  local flingConnection = RunService.Heartbeat:Connect(function()
+
+      if not Character or not TCharacter or tick() - startTime > 5 then
+
+          flingConnection:Disconnect()
+
+          return
+
+      end
+
+      local targetPos = TRootPart.Position
+
+      RootPart.CFrame = CFrame.new(targetPos) * CFrame.new(0, 0, 0)
+
+      RootPart.Velocity = Vector3.new(9999999, 9999999, 9999999)
+
+      RootPart.RotVelocity = Vector3.new(9999999, 9999999, 9999999)
+
+  end)
+
+  task.delay(5, function()
+
+      if BV then BV:Destroy() end
+
+      if Character and RootPart then
+
+          Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+
+          workspace.FallenPartsDestroyHeight = getgenv().FPDH
+
+          
+
+          RootPart.CFrame = getgenv().OldPos
+
+          RootPart.Velocity = Vector3.new(0, 0, 0)
+
+          RootPart.RotVelocity = Vector3.new(0, 0, 0)
+
+      end
+
+  end)
+
 end
 
 FlingButton.MouseEnter:Connect(function()
- TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-     BackgroundColor3 = Color3.fromRGB(255, 100, 100)
- }):Play()
+
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+
+      BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+
+  }):Play()
+
 end)
 
 FlingButton.MouseLeave:Connect(function()
- TweenService:Create(FlingButton, TweenInfo.new(0.3), {
-     BackgroundColor3 = Color3.fromRGB(255, 75, 75)
- }):Play()
+
+  TweenService:Create(FlingButton, TweenInfo.new(0.3), {
+
+      BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+
+  }):Play()
+
 end)
 
 FlingButton.MouseButton1Click:Connect(function()
- local targetName = PlayerInput.Text
- local targetPlayer = GetPlayer(targetName)
- 
- if targetPlayer then
-     EnhancedFling(targetPlayer)
- else
-     Notify("Error", "Player not found", 3)
- end
+
+  local targetName = PlayerInput.Text
+
+  local targetPlayer = GetPlayer(targetName)
+
+  
+
+  if targetPlayer then
+
+      EnhancedFling(targetPlayer)
+
+  else
+
+      Notify("Error", "Player not found", 3)
+
+  end
+
 end)
 
 ScreenGui.Enabled = false
+
 task.wait(3)
 
 TweenService:Create(WelcomeFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+
 TweenService:Create(WelcomeText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
 
 task.wait(0.5)
+
 WelcomeGui:Destroy()
+
 ScreenGui.Enabled = true
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
-  Title = "Script Executed",
-  Text = "Made by Azzakirms\nPlease Subscribe! For more!!",
-  Duration = 5
+
+   Title = "Script Executed",
+
+   Text = "Made by Azzakirms\nPlease Subscribe! For more!!",
+
+   Duration = 5
+
 })
 
-SendWebhook()
 animateGlow()
+
 animateNeon()
