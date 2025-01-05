@@ -1,20 +1,22 @@
-for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
-   if gui.Name == "WelcomeRTX" or gui.Name == "RTXShaders" then
-       gui:Destroy()
+-- Services
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- Clear existing effects
+for _, effect in pairs(Lighting:GetChildren()) do
+   if effect:IsA("PostEffect") then
+       effect:Destroy()
    end
 end
 
-local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
+-- Variables
+local enabled = false
 local lastUpdate = 0
 local updateInterval = 0.1
-local enabled = false
 
+-- Configure lighting
 Lighting.Technology = Enum.Technology.Future
 Lighting.GlobalShadows = true
 Lighting.ShadowSoftness = 0.05
@@ -22,18 +24,97 @@ Lighting.ExposureCompensation = 0.25
 Lighting.EnvironmentDiffuseScale = 1.2
 Lighting.EnvironmentSpecularScale = 1.4
 Lighting.GeographicLatitude = 45
-Lighting.ClockTime = 14
-Lighting.TimeOfDay = "14:00:00"
 
-local Themes = {
+-- Create GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "RTXGui"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 300)
+frame.Position = UDim2.new(0.85, 0, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Text = "RTX Settings"
+title.Size = UDim2.new(1, 0, 0.15, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0.8, 0, 0.15, 0)
+toggleBtn.Position = UDim2.new(0.1, 0, 0.2, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
+toggleBtn.Text = "Enable RTX"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Parent = frame
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.Parent = toggleBtn
+
+-- Create effects
+local effects = {
+   SunRays = Instance.new("SunRaysEffect"),
+   Bloom = Instance.new("BloomEffect"),
+   ColorCorrection = Instance.new("ColorCorrectionEffect"),
+   Atmosphere = Instance.new("Atmosphere"),
+   DepthOfField = Instance.new("DepthOfFieldEffect"),
+   Blur = Instance.new("BlurEffect"),
+   ChromaticAberration = Instance.new("ChromaticAberrationEffect")
+}
+
+-- Configure effects
+effects.SunRays.Intensity = 0.1
+effects.SunRays.Spread = 1
+
+effects.Bloom.Intensity = 1.5
+effects.Bloom.Size = 45
+effects.Bloom.Threshold = 1.0
+
+effects.ColorCorrection.Brightness = 0.2
+effects.ColorCorrection.Contrast = 0.6
+effects.ColorCorrection.Saturation = 0.8
+effects.ColorCorrection.TintColor = Color3.fromRGB(255, 255, 253)
+
+effects.Atmosphere.Density = 0.45
+effects.Atmosphere.Offset = 0.35
+effects.Atmosphere.Color = Color3.fromRGB(220, 220, 225)
+effects.Atmosphere.Decay = Color3.fromRGB(115, 120, 135)
+effects.Atmosphere.Glare = 0.6
+effects.Atmosphere.Haze = 2.4
+
+effects.DepthOfField.FarIntensity = 0.15
+effects.DepthOfField.NearIntensity = 0.75
+effects.DepthOfField.FocusDistance = 0.05
+
+effects.Blur.Size = 3
+
+effects.ChromaticAberration.Intensity = 0.2
+
+for _, effect in pairs(effects) do
+   effect.Parent = Lighting
+   effect.Enabled = false
+end
+
+-- Themes
+local themes = {
    Default = {
        SunraysIntensity = 0.09,
        BloomIntensity = 1.3,
        Brightness = 2.5,
        Ambient = Color3.fromRGB(110, 110, 115),
        AtmosphereColor = Color3.fromRGB(230, 230, 235),
-       ReflectanceBoost = 0.35,
-       SpecularBoost = 1.3
+       ReflectanceBoost = 0.35
    },
    Night = {
        SunraysIntensity = 0.04,
@@ -41,8 +122,7 @@ local Themes = {
        Brightness = 0.3,
        Ambient = Color3.fromRGB(30, 30, 45),
        AtmosphereColor = Color3.fromRGB(40, 40, 60),
-       ReflectanceBoost = 0.4,
-       SpecularBoost = 1.4
+       ReflectanceBoost = 0.4
    },
    Sunset = {
        SunraysIntensity = 0.1,
@@ -50,17 +130,7 @@ local Themes = {
        Brightness = 2.0,
        Ambient = Color3.fromRGB(255, 170, 120),
        AtmosphereColor = Color3.fromRGB(255, 200, 160),
-       ReflectanceBoost = 0.35,
-       SpecularBoost = 1.3
-   },
-   Cinema = {
-       SunraysIntensity = 0.12,
-       BloomIntensity = 1.6,
-       Brightness = 2.2,
-       Ambient = Color3.fromRGB(95, 95, 105),
-       AtmosphereColor = Color3.fromRGB(210, 210, 220),
-       ReflectanceBoost = 0.4,
-       SpecularBoost = 1.5
+       ReflectanceBoost = 0.35
    },
    Winter = {
        SunraysIntensity = 0.03,
@@ -68,120 +138,48 @@ local Themes = {
        Brightness = 2.8,
        Ambient = Color3.fromRGB(210, 230, 255),
        AtmosphereColor = Color3.fromRGB(230, 240, 255),
-       ReflectanceBoost = 0.45,
-       SpecularBoost = 1.6
+       ReflectanceBoost = 0.45
    }
 }
 
--- GUI Creation
-local WelcomeGui = Instance.new("ScreenGui")
-WelcomeGui.Name = "WelcomeRTX"
-WelcomeGui.ResetOnSpawn = false
-WelcomeGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local WelcomeFrame = Instance.new("Frame")
-WelcomeFrame.Size = UDim2.new(0, 400, 0, 200)
-WelcomeFrame.Position = UDim2.new(0.5, -200, 0.4, -100)
-WelcomeFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-WelcomeFrame.Parent = WelcomeGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = WelcomeFrame
-
-local WelcomeTitle = Instance.new("TextLabel")
-WelcomeTitle.Text = "Enhanced RTX Shaders"
-WelcomeTitle.Size = UDim2.new(1, 0, 0.3, 0)
-WelcomeTitle.BackgroundTransparency = 1
-WelcomeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-WelcomeTitle.TextSize = 36
-WelcomeTitle.Font = Enum.Font.GothamBold
-WelcomeTitle.Parent = WelcomeFrame
-
-local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "RTXShaders"
-MainGui.ResetOnSpawn = false
-MainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 300)
-MainFrame.Position = UDim2.new(0.85, 0, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.Parent = MainGui
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local Title = Instance.new("TextLabel")
-Title.Text = "RTX Settings"
-Title.Size = UDim2.new(1, 0, 0.1, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
-
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0.8, 0, 0.15, 0)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.15, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
-ToggleButton.Text = "Enable RTX"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Parent = MainFrame
-
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0, 8)
-ToggleCorner.Parent = ToggleButton
-
-local function createEffects()
-   local effects = {
-       SunRays = Instance.new("SunRaysEffect"),
-       Bloom = Instance.new("BloomEffect"),
-       ColorCorrection = Instance.new("ColorCorrectionEffect"),
-       Atmosphere = Instance.new("Atmosphere"),
-       DepthOfField = Instance.new("DepthOfFieldEffect"),
-       Blur = Instance.new("BlurEffect"),
-       ChromaticAberration = Instance.new("ChromaticAberrationEffect")
-   }
+-- Create theme buttons
+local yOffset = 0.4
+for themeName, _ in pairs(themes) do
+   local themeBtn = Instance.new("TextButton")
+   themeBtn.Size = UDim2.new(0.8, 0, 0.12, 0)
+   themeBtn.Position = UDim2.new(0.1, 0, yOffset, 0)
+   themeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+   themeBtn.Text = themeName
+   themeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+   themeBtn.Font = Enum.Font.GothamBold
+   themeBtn.Parent = frame
    
-   effects.SunRays.Intensity = 0.1
-   effects.SunRays.Spread = 1
+   local btnCorner = Instance.new("UICorner")
+   btnCorner.CornerRadius = UDim.new(0, 6)
+   btnCorner.Parent = themeBtn
    
-   effects.Bloom.Intensity = 1.5
-   effects.Bloom.Size = 45
-   effects.Bloom.Threshold = 1.0
+   themeBtn.MouseButton1Click:Connect(function()
+       if enabled then
+           local theme = themes[themeName]
+           effects.SunRays.Intensity = theme.SunraysIntensity
+           effects.Bloom.Intensity = theme.BloomIntensity
+           Lighting.Brightness = theme.Brightness
+           Lighting.Ambient = theme.Ambient
+           effects.Atmosphere.Color = theme.AtmosphereColor
+           
+           -- Update materials
+           for _, obj in pairs(workspace:GetDescendants()) do
+               if obj:IsA("BasePart") then
+                   obj.Reflectance = obj.Reflectance * theme.ReflectanceBoost
+               end
+           end
+       end
+   end)
    
-   effects.ColorCorrection.Brightness = 0.2
-   effects.ColorCorrection.Contrast = 0.6
-   effects.ColorCorrection.Saturation = 0.8
-   effects.ColorCorrection.TintColor = Color3.fromRGB(255, 255, 253)
-   
-   effects.Atmosphere.Density = 0.45
-   effects.Atmosphere.Offset = 0.35
-   effects.Atmosphere.Color = Color3.fromRGB(220, 220, 225)
-   effects.Atmosphere.Decay = Color3.fromRGB(115, 120, 135)
-   effects.Atmosphere.Glare = 0.6
-   effects.Atmosphere.Haze = 2.4
-   
-   effects.DepthOfField.FarIntensity = 0.15
-   effects.DepthOfField.NearIntensity = 0.75
-   effects.DepthOfField.FocusDistance = 0.05
-   
-   effects.Blur.Size = 3
-   
-   effects.ChromaticAberration.Intensity = 0.2
-   
-   for _, effect in pairs(effects) do
-       effect.Parent = Lighting
-   end
-   
-   return effects
+   yOffset = yOffset + 0.15
 end
 
-local effects = createEffects()
-
+-- Material enhancement function
 local function enhanceMaterials()
    for _, obj in pairs(workspace:GetDescendants()) do
        if obj:IsA("BasePart") then
@@ -194,6 +192,7 @@ local function enhanceMaterials()
            obj.Material = Enum.Material.SmoothPlastic
            obj.CastShadow = true
            
+           -- Add reflection probe
            if not obj:FindFirstChild("ReflectionProbe") then
                local probe = Instance.new("ReflectionProbe")
                probe.Parent = obj
@@ -202,6 +201,7 @@ local function enhanceMaterials()
                probe.RefreshRate = 60
            end
            
+           -- Add surface lighting
            if not obj:FindFirstChild("SurfaceLight") then
                local surfaceLight = Instance.new("SurfaceLight")
                surfaceLight.Parent = obj
@@ -212,68 +212,44 @@ local function enhanceMaterials()
    end
 end
 
-local function applyTheme(themeName)
-   local theme = Themes[themeName]
-   effects.SunRays.Intensity = theme.SunraysIntensity
-   effects.Bloom.Intensity = theme.BloomIntensity
-   Lighting.Brightness = theme.Brightness
-   Lighting.Ambient = theme.Ambient
-   effects.Atmosphere.Color = theme.AtmosphereColor
-   
-   for _, obj in pairs(workspace:GetDescendants()) do
-       if obj:IsA("BasePart") then
-           obj.Reflectance = obj.Reflectance * theme.ReflectanceBoost
-       end
-   end
-end
-
-local themeOffset = 0.35
-for theme, _ in pairs(Themes) do
-   local ThemeButton = Instance.new("TextButton")
-   ThemeButton.Size = UDim2.new(0.8, 0, 0.12, 0)
-   ThemeButton.Position = UDim2.new(0.1, 0, themeOffset, 0)
-   ThemeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-   ThemeButton.Text = theme
-   ThemeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-   ThemeButton.Font = Enum.Font.GothamBold
-   ThemeButton.Parent = MainFrame
-   
-   local ThemeCorner = Instance.new("UICorner")
-   ThemeCorner.CornerRadius = UDim.new(0, 8)
-   ThemeCorner.Parent = ThemeButton
-   
-   themeOffset = themeOffset + 0.15
-   
-   ThemeButton.MouseButton1Click:Connect(function()
-       if enabled then
-           applyTheme(theme)
-       end
-   end)
-end
-
-ToggleButton.MouseButton1Click:Connect(function()
+-- Toggle RTX
+toggleBtn.MouseButton1Click:Connect(function()
    enabled = not enabled
-   ToggleButton.Text = enabled and "Disable RTX" or "Enable RTX"
-   ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
+   toggleBtn.Text = enabled and "Disable RTX" or "Enable RTX"
+   toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
    
    if enabled then
        enhanceMaterials()
-       applyTheme("Default")
+       
+       -- Enable effects
+       for _, effect in pairs(effects) do
+           effect.Enabled = true
+       end
+       
+       -- Apply default theme
+       local theme = themes.Default
+       effects.SunRays.Intensity = theme.SunraysIntensity
+       effects.Bloom.Intensity = theme.BloomIntensity
+       Lighting.Brightness = theme.Brightness
+       Lighting.Ambient = theme.Ambient
+       effects.Atmosphere.Color = theme.AtmosphereColor
+       
    else
+       -- Disable effects
        for _, effect in pairs(effects) do
            effect.Enabled = false
        end
+       
+       -- Reset lighting
        Lighting.Brightness = 1
        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
    end
 end)
 
+-- Dynamic updates
 RunService.Heartbeat:Connect(function()
    if enabled and tick() - lastUpdate >= updateInterval then
-       for _, effect in pairs(effects) do
-           effect.Enabled = true
-       end
-       
+       -- Update reflection values
        for _, obj in pairs(workspace:GetDescendants()) do
            if obj:IsA("BasePart") then
                obj.Reflectance = math.clamp(
@@ -283,20 +259,17 @@ RunService.Heartbeat:Connect(function()
            end
        end
        
+       -- Update time of day
        Lighting.ClockTime = (Lighting.ClockTime + 0.02) % 24
        
        lastUpdate = tick()
    end
 end)
 
+-- Set graphics quality
 settings().Rendering.QualityLevel = 21
 settings().Rendering.GraphicsMode = 2
 
-WelcomeGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-MainGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-
-task.wait(3)
-TweenService:Create(WelcomeFrame, TweenInfo.new(1), {BackgroundTransparency = 1}):Play()
-TweenService:Create(WelcomeTitle, TweenInfo.new(1), {TextTransparency = 1}):Play()
-task.wait(1)
-WelcomeGui:Destroy()
+-- Parent GUI to PlayerGui
+local player = game.Players.LocalPlayer
+gui.Parent = player:WaitForChild("PlayerGui")
