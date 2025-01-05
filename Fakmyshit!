@@ -9,34 +9,34 @@ local updateInterval = 0.1
 local enabled = false
 
 local Themes = {
-   Default = {
-       SunraysIntensity = 0.04,
-       BloomIntensity = 0.5,
-       Brightness = 2,
-       Ambient = Color3.fromRGB(70, 70, 70),
-       AtmosphereColor = Color3.fromRGB(199, 199, 199)
-   },
-   Night = {
-       SunraysIntensity = 0.02,
-       BloomIntensity = 0.8,
-       Brightness = 0.5,
-       Ambient = Color3.fromRGB(20, 20, 30),
-       AtmosphereColor = Color3.fromRGB(40, 40, 60)
-   },
-   Sunset = {
-       SunraysIntensity = 0.06,
-       BloomIntensity = 0.7,
-       Brightness = 1.5,
-       Ambient = Color3.fromRGB(255, 150, 100),
-       AtmosphereColor = Color3.fromRGB(255, 180, 140)
-   },
-   Winter = {
-       SunraysIntensity = 0.03,
-       BloomIntensity = 0.4,
-       Brightness = 2.5,
-       Ambient = Color3.fromRGB(200, 220, 255),
-       AtmosphereColor = Color3.fromRGB(220, 230, 255)
-   }
+  Default = {
+      SunraysIntensity = 0.25,
+      BloomIntensity = 1.2,
+      Brightness = 2.4,
+      Ambient = Color3.fromRGB(95, 95, 105),
+      AtmosphereColor = Color3.fromRGB(220, 220, 235)
+  },
+  Night = {
+      SunraysIntensity = 0.08,
+      BloomIntensity = 1.5,
+      Brightness = 0.35,
+      Ambient = Color3.fromRGB(12, 12, 32),
+      AtmosphereColor = Color3.fromRGB(25, 25, 45)
+  },
+  Sunset = {
+      SunraysIntensity = 0.3,
+      BloomIntensity = 1.4,
+      Brightness = 2.0,
+      Ambient = Color3.fromRGB(255, 130, 80),
+      AtmosphereColor = Color3.fromRGB(255, 160, 120)
+  },
+  Winter = {
+      SunraysIntensity = 0.2,
+      BloomIntensity = 0.9,
+      Brightness = 3.0,
+      Ambient = Color3.fromRGB(220, 235, 255),
+      AtmosphereColor = Color3.fromRGB(235, 245, 255)
+  }
 }
 
 local WelcomeGui = Instance.new("ScreenGui")
@@ -52,7 +52,7 @@ UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = WelcomeFrame
 
 local WelcomeTitle = Instance.new("TextLabel")
-WelcomeTitle.Text = "RTX Shaders"
+WelcomeTitle.Text = "Ultra Realistic RTX"
 WelcomeTitle.Size = UDim2.new(1, 0, 0.3, 0)
 WelcomeTitle.BackgroundTransparency = 1
 WelcomeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -123,145 +123,190 @@ FloatCorner.Parent = FloatingButton
 
 local themeOffset = 0.35
 for theme, _ in pairs(Themes) do
-   local ThemeButton = Instance.new("TextButton")
-   ThemeButton.Size = UDim2.new(0.8, 0, 0.12, 0)
-   ThemeButton.Position = UDim2.new(0.1, 0, themeOffset, 0)
-   ThemeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-   ThemeButton.Text = theme
-   ThemeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-   ThemeButton.Font = Enum.Font.GothamBold
-   ThemeButton.Parent = MainFrame
-   
-   local ThemeCorner = Instance.new("UICorner")
-   ThemeCorner.CornerRadius = UDim.new(0, 8)
-   ThemeCorner.Parent = ThemeButton
-   
-   themeOffset = themeOffset + 0.15
-   
-   ThemeButton.MouseButton1Click:Connect(function()
-       if enabled then
-           applyTheme(theme)
-       end
-   end)
+  local ThemeButton = Instance.new("TextButton")
+  ThemeButton.Size = UDim2.new(0.8, 0, 0.12, 0)
+  ThemeButton.Position = UDim2.new(0.1, 0, themeOffset, 0)
+  ThemeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+  ThemeButton.Text = theme
+  ThemeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+  ThemeButton.Font = Enum.Font.GothamBold
+  ThemeButton.Parent = MainFrame
+  
+  local ThemeCorner = Instance.new("UICorner")
+  ThemeCorner.CornerRadius = UDim.new(0, 8)
+  ThemeCorner.Parent = ThemeButton
+  
+  themeOffset = themeOffset + 0.15
+  
+  ThemeButton.MouseButton1Click:Connect(function()
+      if enabled then
+          applyTheme(theme)
+      end
+  end)
 end
 
 local function createEffects()
-   local effects = {
-       SunRays = Instance.new("SunRaysEffect"),
-       Bloom = Instance.new("BloomEffect"),
-       ColorCorrection = Instance.new("ColorCorrectionEffect"),
-       Atmosphere = Instance.new("Atmosphere")
-   }
-   
-   effects.Bloom.Intensity = 0.5
-   effects.Bloom.Size = 24
-   effects.Bloom.Threshold = 2
-   
-   effects.ColorCorrection.Brightness = 0.1
-   effects.ColorCorrection.Contrast = 0.2
-   effects.ColorCorrection.Saturation = 0.2
-   effects.ColorCorrection.TintColor = Color3.fromRGB(255, 250, 250)
-   
-   effects.Atmosphere.Density = 0.35
-   effects.Atmosphere.Offset = 0.25
-   effects.Atmosphere.Color = Color3.fromRGB(199, 199, 199)
-   effects.Atmosphere.Decay = Color3.fromRGB(106, 112, 125)
-   effects.Atmosphere.Glare = 0.4
-   effects.Atmosphere.Haze = 2
-   
-   for _, effect in pairs(effects) do
-       effect.Parent = Lighting
-   end
-   
-   return effects
+  local effects = {
+      SunRays = Instance.new("SunRaysEffect"),
+      Bloom = Instance.new("BloomEffect"),
+      ColorCorrection = Instance.new("ColorCorrectionEffect"),
+      Atmosphere = Instance.new("Atmosphere"),
+      DepthOfField = Instance.new("DepthOfFieldEffect"),
+      Blur = Instance.new("BlurEffect")
+  }
+  
+  effects.Bloom.Intensity = 1.2
+  effects.Bloom.Size = 40
+  effects.Bloom.Threshold = 1.2
+  
+  effects.ColorCorrection.Brightness = 0.18
+  effects.ColorCorrection.Contrast = 0.3
+  effects.ColorCorrection.Saturation = 0.3
+  effects.ColorCorrection.TintColor = Color3.fromRGB(255, 253, 250)
+  
+  effects.Atmosphere.Density = 0.45
+  effects.Atmosphere.Offset = 0.4
+  effects.Atmosphere.Color = Color3.fromRGB(220, 220, 235)
+  effects.Atmosphere.Decay = Color3.fromRGB(115, 120, 135)
+  effects.Atmosphere.Glare = 0.6
+  effects.Atmosphere.Haze = 3.0
+  
+  effects.DepthOfField.FarIntensity = 0.2
+  effects.DepthOfField.NearIntensity = 0.08
+  effects.DepthOfField.FocusDistance = 0.08
+  
+  effects.Blur.Size = 2
+  
+  for _, effect in pairs(effects) do
+      effect.Parent = Lighting
+  end
+  
+  return effects
 end
 
 local effects = createEffects()
 
 local function EnableDragging(frame)
-   local dragToggle, dragInput, dragStart, startPos
-   local dragSpeed = 0.25
+  local dragToggle, dragInput, dragStart, startPos
+  local dragSpeed = 0.25
 
-   local function updateInput(input)
-       local delta = input.Position - dragStart
-       local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-       TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
-   end
+  local function updateInput(input)
+      local delta = input.Position - dragStart
+      local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                               startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+      TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
+  end
 
-   frame.InputBegan:Connect(function(input)
-       if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-          input.UserInputType == Enum.UserInputType.Touch then
-           dragToggle = true
-           dragStart = input.Position
-           startPos = frame.Position
-           input.Changed:Connect(function()
-               if input.UserInputState == Enum.UserInputState.End then
-                   dragToggle = false
-               end
-           end)
-       end
-   end)
+  frame.InputBegan:Connect(function(input)
+      if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+         input.UserInputType == Enum.UserInputType.Touch then
+          dragToggle = true
+          dragStart = input.Position
+          startPos = frame.Position
+          input.Changed:Connect(function()
+              if input.UserInputState == Enum.UserInputState.End then
+                  dragToggle = false
+              end
+          end)
+      end
+  end)
 
-   frame.InputChanged:Connect(function(input)
-       if input.UserInputType == Enum.UserInputType.MouseMovement or
-          input.UserInputType == Enum.UserInputType.Touch then
-           dragInput = input
-       end
-   end)
+  frame.InputChanged:Connect(function(input)
+      if input.UserInputType == Enum.UserInputType.MouseMovement or
+         input.UserInputType == Enum.UserInputType.Touch then
+          dragInput = input
+      end
+  end)
 
-   UserInputService.InputChanged:Connect(function(input)
-       if input == dragInput and dragToggle then
-           updateInput(input)
-       end
-   end)
+  UserInputService.InputChanged:Connect(function(input)
+      if input == dragInput and dragToggle then
+          updateInput(input)
+      end
+  end)
 end
 
 EnableDragging(MainFrame)
 EnableDragging(FloatingButton)
 
+local function enhanceReflections()
+   local materialService = game:GetService("MaterialService")
+   
+   materialService.Use2022Materials = true
+   
+   materialService:SetBaseMaterialOverride("Plastic", {
+       Reflectance = 0.15,
+       Metalness = 0.1
+   })
+   
+   materialService:SetBaseMaterialOverride("Metal", {
+       Reflectance = 0.8,
+       Metalness = 0.9
+   })
+   
+   materialService:SetBaseMaterialOverride("Glass", {
+       Transparency = 0.5,
+       Reflectance = 0.6
+   })
+end
+
+local function createSun()
+   local sun = Instance.new("PointLight")
+   sun.Brightness = 2
+   sun.Range = 600
+   sun.Shadows = true
+   sun.Parent = game.Workspace
+   
+   return sun
+end
+
 local function applyTheme(themeName)
-   local theme = Themes[themeName]
-   effects.SunRays.Intensity = theme.SunraysIntensity
-   effects.Bloom.Intensity = theme.BloomIntensity
-   Lighting.Brightness = theme.Brightness
-   Lighting.Ambient = theme.Ambient
-   effects.Atmosphere.Color = theme.AtmosphereColor
+  local theme = Themes[themeName]
+  effects.SunRays.Intensity = theme.SunraysIntensity
+  effects.Bloom.Intensity = theme.BloomIntensity
+  Lighting.Brightness = theme.Brightness
+  Lighting.Ambient = theme.Ambient
+  effects.Atmosphere.Color = theme.AtmosphereColor
 end
 
 ToggleButton.MouseButton1Click:Connect(function()
-   enabled = not enabled
-   ToggleButton.Text = enabled and "Disable RTX" or "Enable RTX"
-   ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
-   
-   if enabled then
-       applyTheme("Default")
-   else
-       for _, effect in pairs(effects) do
-           effect.Enabled = false
-       end
-       Lighting.Brightness = 1
-       Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-   end
+  enabled = not enabled
+  ToggleButton.Text = enabled and "Disable RTX" or "Enable RTX"
+  ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
+  
+  if enabled then
+      Lighting.Technology = Enum.Technology.Future
+      Lighting.ShadowSoftness = 0.15
+      Lighting.GlobalShadows = true
+      Lighting.ExposureCompensation = 0.15
+      enhanceReflections()
+      local sun = createSun()
+      applyTheme("Default")
+  else
+      for _, effect in pairs(effects) do
+          effect.Enabled = false
+      end
+      Lighting.Brightness = 1
+      Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+  end
 end)
 
 MinimizeButton.MouseButton1Click:Connect(function()
-   MainFrame.Visible = false
-   FloatingButton.Visible = true
+  MainFrame.Visible = false
+  FloatingButton.Visible = true
 end)
 
 FloatingButton.MouseButton1Click:Connect(function()
-   MainFrame.Visible = true
-   FloatingButton.Visible = false
+  MainFrame.Visible = true
+  FloatingButton.Visible = false
 end)
 
 RunService.Heartbeat:Connect(function()
-   if enabled and tick() - lastUpdate >= updateInterval then
-       for _, effect in pairs(effects) do
-           effect.Enabled = true
-       end
-       lastUpdate = tick()
-   end
+  if enabled and tick() - lastUpdate >= updateInterval then
+      for _, effect in pairs(effects) do
+          effect.Enabled = true
+      end
+      lastUpdate = tick()
+  end
 end)
 
 WelcomeGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
