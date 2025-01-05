@@ -1,8 +1,10 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- GUI Creation
+game:GetService("TextChatService").ChatVersion = Enum.ChatVersion.LegacyChatService
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Name = "LyricPlayer"
@@ -54,7 +56,6 @@ SongButton.Text = "Never Gonna Give You Up"
 SongButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 SongButton.Parent = MainFrame
 
--- Lyrics Data
 local lyrics = {
    "We're no strangers to love\nYou know the rules and so do I",
    "A full commitment's what I'm thinkin' of\nYou wouldn't get this from any other guy",
@@ -70,7 +71,6 @@ local lyrics = {
    "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you"
 }
 
--- Functionality
 local isMinimized = false
 
 CloseButton.MouseButton1Click:Connect(function()
@@ -96,7 +96,6 @@ MinimizeButton.MouseButton1Click:Connect(function()
    end
 end)
 
--- Touch/Mouse Movement
 local dragging = false
 local dragStart
 local startPos
@@ -134,16 +133,14 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 SongButton.MouseButton1Click:Connect(function()
-   local player = Players.LocalPlayer
    for _, line in ipairs(lyrics) do
        local lines = string.split(line, "\n")
        for _, singleLine in ipairs(lines) do
-           player:Chat(singleLine)
+           ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(singleLine, "All")
            wait(4)
        end
    end
 end)
 
--- Initialize GUI
 MainFrame.Parent = ScreenGui
 ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
