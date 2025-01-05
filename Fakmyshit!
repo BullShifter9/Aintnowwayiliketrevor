@@ -7,35 +7,36 @@ local UserInputService = game:GetService("UserInputService")
 local lastUpdate = 0
 local updateInterval = 0.1
 local enabled = false
+local sun
 
 local Themes = {
   Default = {
-      SunraysIntensity = 0.25,
-      BloomIntensity = 1.2,
-      Brightness = 2.4,
-      Ambient = Color3.fromRGB(95, 95, 105),
-      AtmosphereColor = Color3.fromRGB(220, 220, 235)
+      SunraysIntensity = 0.12,
+      BloomIntensity = 0.6,
+      Brightness = 1.5,
+      Ambient = Color3.fromRGB(75, 75, 85),
+      AtmosphereColor = Color3.fromRGB(190, 190, 205)
   },
   Night = {
-      SunraysIntensity = 0.08,
-      BloomIntensity = 1.5,
-      Brightness = 0.35,
-      Ambient = Color3.fromRGB(12, 12, 32),
-      AtmosphereColor = Color3.fromRGB(25, 25, 45)
+      SunraysIntensity = 0.04,
+      BloomIntensity = 0.8,
+      Brightness = 0.2,
+      Ambient = Color3.fromRGB(10, 10, 25),
+      AtmosphereColor = Color3.fromRGB(20, 20, 35)
   },
   Sunset = {
-      SunraysIntensity = 0.3,
-      BloomIntensity = 1.4,
-      Brightness = 2.0,
-      Ambient = Color3.fromRGB(255, 130, 80),
-      AtmosphereColor = Color3.fromRGB(255, 160, 120)
+      SunraysIntensity = 0.15,
+      BloomIntensity = 0.7,
+      Brightness = 1.2,
+      Ambient = Color3.fromRGB(235, 120, 70),
+      AtmosphereColor = Color3.fromRGB(235, 150, 110)
   },
   Winter = {
-      SunraysIntensity = 0.2,
-      BloomIntensity = 0.9,
-      Brightness = 3.0,
-      Ambient = Color3.fromRGB(220, 235, 255),
-      AtmosphereColor = Color3.fromRGB(235, 245, 255)
+      SunraysIntensity = 0.1,
+      BloomIntensity = 0.5,
+      Brightness = 1.8,
+      Ambient = Color3.fromRGB(200, 215, 235),
+      AtmosphereColor = Color3.fromRGB(215, 225, 245)
   }
 }
 
@@ -121,6 +122,94 @@ local FloatCorner = Instance.new("UICorner")
 FloatCorner.CornerRadius = UDim.new(0, 25)
 FloatCorner.Parent = FloatingButton
 
+local effects = {}
+
+local function createEffects()
+  effects = {
+      SunRays = Instance.new("SunRaysEffect"),
+      Bloom = Instance.new("BloomEffect"),
+      ColorCorrection = Instance.new("ColorCorrectionEffect"),
+      Atmosphere = Instance.new("Atmosphere"),
+      DepthOfField = Instance.new("DepthOfFieldEffect"),
+      Blur = Instance.new("BlurEffect")
+  }
+  
+  effects.Bloom.Intensity = 0.6
+  effects.Bloom.Size = 32
+  effects.Bloom.Threshold = 1.5
+  
+  effects.ColorCorrection.Brightness = 0.1
+  effects.ColorCorrection.Contrast = 0.2
+  effects.ColorCorrection.Saturation = 0.15
+  effects.ColorCorrection.TintColor = Color3.fromRGB(255, 252, 250)
+  
+  effects.Atmosphere.Density = 0.35
+  effects.Atmosphere.Offset = 0.3
+  effects.Atmosphere.Color = Color3.fromRGB(190, 190, 205)
+  effects.Atmosphere.Decay = Color3.fromRGB(100, 105, 120)
+  effects.Atmosphere.Glare = 0.4
+  effects.Atmosphere.Haze = 2.2
+  
+  effects.DepthOfField.FarIntensity = 0.15
+  effects.DepthOfField.NearIntensity = 0.05
+  effects.DepthOfField.FocusDistance = 0.05
+  
+  effects.Blur.Size = 1.5
+  
+  for _, effect in pairs(effects) do
+      effect.Parent = Lighting
+  end
+end
+
+local function createSun()
+   if sun then sun:Destroy() end
+   sun = Instance.new("PointLight")
+   sun.Brightness = 2
+   sun.Range = 600
+   sun.Shadows = true
+   sun.Parent = game.Workspace
+   return sun
+end
+
+local function enhanceReflections()
+   local materialService = game:GetService("MaterialService")
+   materialService.Use2022Materials = true
+   
+   materialService:SetBaseMaterialOverride("Plastic", {
+       Reflectance = 0.15,
+       Metalness = 0.1
+   })
+   
+   materialService:SetBaseMaterialOverride("Metal", {
+       Reflectance = 0.8,
+       Metalness = 0.9
+   })
+   
+   materialService:SetBaseMaterialOverride("Glass", {
+       Transparency = 0.5,
+       Reflectance = 0.6
+   })
+end
+
+local function applyTheme(themeName)
+  local theme = Themes[themeName]
+  if theme then
+      for _, effect in pairs(effects) do
+          effect.Enabled = true
+      end
+      
+      effects.SunRays.Intensity = theme.SunraysIntensity
+      effects.Bloom.Intensity = theme.BloomIntensity
+      Lighting.Brightness = theme.Brightness
+      Lighting.Ambient = theme.Ambient
+      effects.Atmosphere.Color = theme.AtmosphereColor
+      
+      if sun then
+          sun.Brightness = theme.Brightness * 1.5
+      end
+  end
+end
+
 local themeOffset = 0.35
 for theme, _ in pairs(Themes) do
   local ThemeButton = Instance.new("TextButton")
@@ -144,47 +233,6 @@ for theme, _ in pairs(Themes) do
       end
   end)
 end
-
-local function createEffects()
-  local effects = {
-      SunRays = Instance.new("SunRaysEffect"),
-      Bloom = Instance.new("BloomEffect"),
-      ColorCorrection = Instance.new("ColorCorrectionEffect"),
-      Atmosphere = Instance.new("Atmosphere"),
-      DepthOfField = Instance.new("DepthOfFieldEffect"),
-      Blur = Instance.new("BlurEffect")
-  }
-  
-  effects.Bloom.Intensity = 1.2
-  effects.Bloom.Size = 40
-  effects.Bloom.Threshold = 1.2
-  
-  effects.ColorCorrection.Brightness = 0.18
-  effects.ColorCorrection.Contrast = 0.3
-  effects.ColorCorrection.Saturation = 0.3
-  effects.ColorCorrection.TintColor = Color3.fromRGB(255, 253, 250)
-  
-  effects.Atmosphere.Density = 0.45
-  effects.Atmosphere.Offset = 0.4
-  effects.Atmosphere.Color = Color3.fromRGB(220, 220, 235)
-  effects.Atmosphere.Decay = Color3.fromRGB(115, 120, 135)
-  effects.Atmosphere.Glare = 0.6
-  effects.Atmosphere.Haze = 3.0
-  
-  effects.DepthOfField.FarIntensity = 0.2
-  effects.DepthOfField.NearIntensity = 0.08
-  effects.DepthOfField.FocusDistance = 0.08
-  
-  effects.Blur.Size = 2
-  
-  for _, effect in pairs(effects) do
-      effect.Parent = Lighting
-  end
-  
-  return effects
-end
-
-local effects = createEffects()
 
 local function EnableDragging(frame)
   local dragToggle, dragInput, dragStart, startPos
@@ -228,63 +276,25 @@ end
 EnableDragging(MainFrame)
 EnableDragging(FloatingButton)
 
-local function enhanceReflections()
-   local materialService = game:GetService("MaterialService")
-   
-   materialService.Use2022Materials = true
-   
-   materialService:SetBaseMaterialOverride("Plastic", {
-       Reflectance = 0.15,
-       Metalness = 0.1
-   })
-   
-   materialService:SetBaseMaterialOverride("Metal", {
-       Reflectance = 0.8,
-       Metalness = 0.9
-   })
-   
-   materialService:SetBaseMaterialOverride("Glass", {
-       Transparency = 0.5,
-       Reflectance = 0.6
-   })
-end
-
-local function createSun()
-   local sun = Instance.new("PointLight")
-   sun.Brightness = 2
-   sun.Range = 600
-   sun.Shadows = true
-   sun.Parent = game.Workspace
-   
-   return sun
-end
-
-local function applyTheme(themeName)
-  local theme = Themes[themeName]
-  effects.SunRays.Intensity = theme.SunraysIntensity
-  effects.Bloom.Intensity = theme.BloomIntensity
-  Lighting.Brightness = theme.Brightness
-  Lighting.Ambient = theme.Ambient
-  effects.Atmosphere.Color = theme.AtmosphereColor
-end
-
 ToggleButton.MouseButton1Click:Connect(function()
   enabled = not enabled
   ToggleButton.Text = enabled and "Disable RTX" or "Enable RTX"
   ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
   
   if enabled then
+      createEffects()
       Lighting.Technology = Enum.Technology.Future
       Lighting.ShadowSoftness = 0.15
       Lighting.GlobalShadows = true
       Lighting.ExposureCompensation = 0.15
       enhanceReflections()
-      local sun = createSun()
+      createSun()
       applyTheme("Default")
   else
       for _, effect in pairs(effects) do
           effect.Enabled = false
       end
+      if sun then sun:Destroy() end
       Lighting.Brightness = 1
       Lighting.Ambient = Color3.fromRGB(127, 127, 127)
   end
