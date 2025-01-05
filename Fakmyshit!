@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ResetOnSpawn = false
@@ -17,34 +18,37 @@ TopBar.Size = UDim2.new(1, 0, 0.08, 0)
 TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 TopBar.Parent = MainFrame
 
--- Make GUI draggable
-local dragging = false
+-- Universal Drag System
+local dragToggle = nil
+local dragSpeed = 0.25
 local dragStart = nil
 local startPos = nil
 
+local function updateDrag(input)
+   local delta = input.Position - dragStart
+   local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+   game:GetService('TweenService'):Create(MainFrame, TweenInfo.new(dragSpeed), {Position = position}):Play()
+end
+
 TopBar.InputBegan:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 then
-       dragging = true
+   if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+       dragToggle = true
        dragStart = input.Position
        startPos = MainFrame.Position
-   end
-end)
-
-TopBar.InputEnded:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 then
-       dragging = false
+       input.Changed:Connect(function()
+           if input.UserInputState == Enum.UserInputState.End then
+               dragToggle = false
+           end
+       end)
    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-   if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-       local delta = input.Position - dragStart
-       MainFrame.Position = UDim2.new(
-           startPos.X.Scale, 
-           startPos.X.Offset + delta.X,
-           startPos.Y.Scale, 
-           startPos.Y.Offset + delta.Y
-       )
+   if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+       if dragToggle then
+           updateDrag(input)
+       end
    end
 end)
 
@@ -111,8 +115,14 @@ local lyrics = {
 }
 
 local function singLyrics()
+   local player = Players.LocalPlayer
    for _, lyric in ipairs(lyrics) do
-       game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(lyric, "All")
+       if ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and 
+          ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest") then
+           ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(lyric, "All")
+       else
+           player:Chat(lyric)
+       end
        wait(2.5)
    end
 end
