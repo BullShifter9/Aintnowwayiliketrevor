@@ -1,0 +1,157 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- GUI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Name = "LyricPlayer"
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0.4, 0, 0.6, 0)
+MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0.08, 0)
+TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TopBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.7, 0, 1, 0)
+Title.Position = UDim2.new(0.15, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Lyric Player"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Parent = TopBar
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0.1, 0, 1, 0)
+CloseButton.Position = UDim2.new(0.9, 0, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Parent = TopBar
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0.1, 0, 1, 0)
+MinimizeButton.Position = UDim2.new(0, 0, 0, 0)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Parent = TopBar
+
+local SongButton = Instance.new("TextButton")
+SongButton.Size = UDim2.new(0.4, 0, 0.08, 0)
+SongButton.Position = UDim2.new(0.3, 0, 0.1, 0)
+SongButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SongButton.Text = "Never Gonna Give You Up"
+SongButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SongButton.Parent = MainFrame
+
+local LyricLabel = Instance.new("TextLabel")
+LyricLabel.Size = UDim2.new(0.9, 0, 0.7, 0)
+LyricLabel.Position = UDim2.new(0.05, 0, 0.2, 0)
+LyricLabel.BackgroundTransparency = 1
+LyricLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+LyricLabel.TextSize = 18
+LyricLabel.TextWrapped = true
+LyricLabel.Parent = MainFrame
+
+-- Lyrics Data
+local lyrics = {
+   "We're no strangers to love\nYou know the rules and so do I",
+   "A full commitment's what I'm thinkin' of\nYou wouldn't get this from any other guy",
+   "I just wanna tell you how I'm feeling\nGotta make you understand",
+   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
+   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you",
+   "We've known each other for so long\nYour heart's been aching, but you're too shy to say it",
+   "Inside, we both know what's been going on\nWe know the game and we're gonna play it",
+   "And if you ask me how I'm feeling\nDon't tell me you're too blind to see",
+   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
+   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you",
+   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
+   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you"
+}
+
+-- Functionality
+local isMinimized = false
+
+CloseButton.MouseButton1Click:Connect(function()
+   ScreenGui:Destroy()
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+   isMinimized = not isMinimized
+   if isMinimized then
+       local tween = TweenService:Create(MainFrame, 
+           TweenInfo.new(0.5), 
+           {Size = UDim2.new(0.4, 0, 0.08, 0)}
+       )
+       tween:Play()
+       LyricLabel.Visible = false
+       SongButton.Visible = false
+   else
+       local tween = TweenService:Create(MainFrame, 
+           TweenInfo.new(0.5), 
+           {Size = UDim2.new(0.4, 0, 0.6, 0)}
+       )
+       tween:Play()
+       LyricLabel.Visible = true
+       SongButton.Visible = true
+   end
+end)
+
+-- Touch/Mouse Movement
+local dragging = false
+local dragStart
+local startPos
+
+local function updateDrag(input)
+   local delta = input.Position - dragStart
+   MainFrame.Position = UDim2.new(
+       startPos.X.Scale,
+       startPos.X.Offset + delta.X,
+       startPos.Y.Scale,
+       startPos.Y.Offset + delta.Y
+   )
+end
+
+TopBar.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or
+      input.UserInputType == Enum.UserInputType.Touch then
+       dragging = true
+       dragStart = input.Position
+       startPos = MainFrame.Position
+       input.Changed:Connect(function()
+           if input.UserInputState == Enum.UserInputState.End then
+               dragging = false
+           end
+       end)
+   end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+   if dragging and 
+      (input.UserInputType == Enum.UserInputType.MouseMovement or
+       input.UserInputType == Enum.UserInputType.Touch) then
+       updateDrag(input)
+   end
+end)
+
+SongButton.MouseButton1Click:Connect(function()
+   for _, line in ipairs(lyrics) do
+       LyricLabel.Text = line
+       wait(2)
+   end
+   LyricLabel.Text = ""
+end)
+
+-- Initialize GUI
+MainFrame.Parent = ScreenGui
+ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
