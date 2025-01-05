@@ -1,9 +1,5 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-game:GetService("TextChatService").ChatVersion = Enum.ChatVersion.LegacyChatService
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ResetOnSpawn = false
@@ -14,14 +10,43 @@ MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0.4, 0, 0.6, 0)
 MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.Active = true
-MainFrame.Draggable = true
 
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0.08, 0)
 TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 TopBar.Parent = MainFrame
+
+-- Make GUI draggable
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+TopBar.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+       dragging = true
+       dragStart = input.Position
+       startPos = MainFrame.Position
+   end
+end)
+
+TopBar.InputEnded:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+       dragging = false
+   end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+   if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+       local delta = input.Position - dragStart
+       MainFrame.Position = UDim2.new(
+           startPos.X.Scale, 
+           startPos.X.Offset + delta.X,
+           startPos.Y.Scale, 
+           startPos.Y.Offset + delta.Y
+       )
+   end
+end)
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0.7, 0, 1, 0)
@@ -52,93 +77,61 @@ local SongButton = Instance.new("TextButton")
 SongButton.Size = UDim2.new(0.4, 0, 0.08, 0)
 SongButton.Position = UDim2.new(0.3, 0, 0.1, 0)
 SongButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SongButton.Text = "Never Gonna Give You Up"
+SongButton.Text = "Ballin"
 SongButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 SongButton.Parent = MainFrame
 
 local lyrics = {
-   "We're no strangers to love\nYou know the rules and so do I",
-   "A full commitment's what I'm thinkin' of\nYou wouldn't get this from any other guy",
-   "I just wanna tell you how I'm feeling\nGotta make you understand",
-   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
-   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you",
-   "We've known each other for so long\nYour heart's been aching, but you're too shy to say it",
-   "Inside, we both know what's been going on\nWe know the game and we're gonna play it",
-   "And if you ask me how I'm feeling\nDon't tell me you're too blind to see",
-   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
-   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you",
-   "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you",
-   "Never gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you"
+   "I put the new 40s on the G",
+   "I trap until the bloody bottoms is underneath",
+   "Cause all my homies got it out the streets",
+   "I keep a hundred racks",
+   "Inside my jeans",
+   "I remember hitting the mall with the whole team",
+   "Now a homie can't answer calls",
+   "Cause I'm ballin'",
+   "I was wakin' up",
+   "Gettin' racks in the morning",
+   "I was broke, now a homie flexed up in the foreign",
+   "I'm ballin'",
+   "I'm ballin'",
+   "I ain't rich yet, but you know I ain't broke",
+   "I'm ballin'",
+   "I'm ballin'",
+   "I'm ballin'",
+   "You know I'm ballin'",
+   "Usually cost a beat",
+   "I'm ballin'",
+   "I'm ballin'",
+   "I ain't rich yet, but you know I ain't broke",
+   "I'm ballin'",
+   "I'm ballin'",
+   "I'm ballin'",
+   "You know I'm ballin'"
 }
 
-local isMinimized = false
+local function singLyrics()
+   for _, lyric in ipairs(lyrics) do
+       game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(lyric, "All")
+       wait(2.5)
+   end
+end
+
+SongButton.MouseButton1Click:Connect(singLyrics)
 
 CloseButton.MouseButton1Click:Connect(function()
    ScreenGui:Destroy()
 end)
 
+local isMinimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
    isMinimized = not isMinimized
    if isMinimized then
-       local tween = TweenService:Create(MainFrame, 
-           TweenInfo.new(0.5), 
-           {Size = UDim2.new(0.4, 0, 0.08, 0)}
-       )
-       tween:Play()
+       MainFrame:TweenSize(UDim2.new(0.4, 0, 0.08, 0), "Out", "Quad", 0.5, true)
        SongButton.Visible = false
    else
-       local tween = TweenService:Create(MainFrame, 
-           TweenInfo.new(0.5), 
-           {Size = UDim2.new(0.4, 0, 0.6, 0)}
-       )
-       tween:Play()
+       MainFrame:TweenSize(UDim2.new(0.4, 0, 0.6, 0), "Out", "Quad", 0.5, true)
        SongButton.Visible = true
-   end
-end)
-
-local dragging = false
-local dragStart
-local startPos
-
-local function updateDrag(input)
-   local delta = input.Position - dragStart
-   MainFrame.Position = UDim2.new(
-       startPos.X.Scale,
-       startPos.X.Offset + delta.X,
-       startPos.Y.Scale,
-       startPos.Y.Offset + delta.Y
-   )
-end
-
-TopBar.InputBegan:Connect(function(input)
-   if input.UserInputType == Enum.UserInputType.MouseButton1 or
-      input.UserInputType == Enum.UserInputType.Touch then
-       dragging = true
-       dragStart = input.Position
-       startPos = MainFrame.Position
-       input.Changed:Connect(function()
-           if input.UserInputState == Enum.UserInputState.End then
-               dragging = false
-           end
-       end)
-   end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-   if dragging and 
-      (input.UserInputType == Enum.UserInputType.MouseMovement or
-       input.UserInputType == Enum.UserInputType.Touch) then
-       updateDrag(input)
-   end
-end)
-
-SongButton.MouseButton1Click:Connect(function()
-   for _, line in ipairs(lyrics) do
-       local lines = string.split(line, "\n")
-       for _, singleLine in ipairs(lines) do
-           ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(singleLine, "All")
-           wait(4)
-       end
    end
 end)
 
