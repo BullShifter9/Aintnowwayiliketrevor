@@ -159,7 +159,7 @@ ThemeButton.Parent = MainFrame
 ThemeButton.Position = UDim2.new(0.1, 0, 0.8, 0)
 ThemeButton.Size = UDim2.new(0.4, 0, 0, 30)
 ThemeButton.BackgroundColor3 = Themes.Default.primary
-ThemeButton.Text = "🎨"
+ThemeButton.Text = "Theme🎨"
 ThemeButton.TextSize = 16
 ThemeButton.Font = Enum.Font.GothamBold
 
