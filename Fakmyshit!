@@ -1,329 +1,295 @@
-local Lighting = game:GetService("Lighting")
+-- Simple Murder Check Function
+local function isMurder(player)
+   if not player.Character then return false end
+   
+   -- Check backpack and character for knife
+   local hasKnife = player.Backpack:FindFirstChild("Knife") or player.Character:FindFirstChild("Knife")
+   local role = player:FindFirstChild("PlayerRole")
+   
+   return hasKnife or (role and role.Value == "Murderer")
+end
+
+-- Services
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService") 
 
-local lastUpdate = 0
-local updateInterval = 0.1
-local enabled = false
-local sun
+-- Player Variables
+local plr = Players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
 
-local Themes = {
-  Default = {
-      SunraysIntensity = 0.12,
-      BloomIntensity = 0.6,
-      Brightness = 1.5,
-      Ambient = Color3.fromRGB(75, 75, 85),
-      AtmosphereColor = Color3.fromRGB(190, 190, 205)
-  },
-  Night = {
-      SunraysIntensity = 0.04,
-      BloomIntensity = 0.8,
-      Brightness = 0.2,
-      Ambient = Color3.fromRGB(10, 10, 25),
-      AtmosphereColor = Color3.fromRGB(20, 20, 35)
-  },
-  Sunset = {
-      SunraysIntensity = 0.15,
-      BloomIntensity = 0.7,
-      Brightness = 1.2,
-      Ambient = Color3.fromRGB(235, 120, 70),
-      AtmosphereColor = Color3.fromRGB(235, 150, 110)
-  },
-  Winter = {
-      SunraysIntensity = 0.1,
-      BloomIntensity = 0.5,
-      Brightness = 1.8,
-      Ambient = Color3.fromRGB(200, 215, 235),
-      AtmosphereColor = Color3.fromRGB(215, 225, 245)
-  }
+-- Config
+local Config = {
+   Mode = "Smooth",
+   Speed = 16,
+   SafeDistance = 20,
+   AutoRejoin = true,
+   MaxCoins = plr:FindFirstChild("GamePass") and plr.GamePass:FindFirstChild("Elite") and 50 or 40,
+   SafeSpots = {}
 }
 
-local WelcomeGui = Instance.new("ScreenGui")
-WelcomeGui.Name = "WelcomeRTX"
-local WelcomeFrame = Instance.new("Frame")
-WelcomeFrame.Size = UDim2.new(0, 400, 0, 200)
-WelcomeFrame.Position = UDim2.new(0.5, -200, 0.4, -100)
-WelcomeFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-WelcomeFrame.Parent = WelcomeGui
+if workspace:FindFirstChild("Lobby") then
+   Config.SafeSpots = {
+       workspace.Lobby.Position + Vector3.new(0,5,0),
+       workspace.Lobby.Position + Vector3.new(10,5,10),
+       workspace.Lobby.Position + Vector3.new(-10,5,-10)
+   }
+end
+
+-- Stats
+local Stats = {
+   Started = 0,
+   Coins = 0,
+   Enabled = false,
+   Safe = true
+}
+
+-- GUI Creation
+local GUI = Instance.new("ScreenGui")
+GUI.Name = "FarmGUI"
+GUI.Parent = game:GetService("CoreGui")
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.new(0, 200, 0, 250)
+Main.Position = UDim2.new(0.8, 0, 0.5, -125)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Main.BorderSizePixel = 0
+Main.Parent = GUI
 
 local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = WelcomeFrame
-
-local WelcomeTitle = Instance.new("TextLabel")
-WelcomeTitle.Text = "Ultra Realistic RTX"
-WelcomeTitle.Size = UDim2.new(1, 0, 0.3, 0)
-WelcomeTitle.BackgroundTransparency = 1
-WelcomeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-WelcomeTitle.TextSize = 36
-WelcomeTitle.Font = Enum.Font.GothamBold
-WelcomeTitle.Parent = WelcomeFrame
-
-local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "RTXShaders"
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 300)
-MainFrame.Position = UDim2.new(0.85, 0, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.Parent = MainGui
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = Main
 
 local Title = Instance.new("TextLabel")
-Title.Text = "RTX Settings"
-Title.Size = UDim2.new(1, 0, 0.1, 0)
+Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
+Title.Text = "MM2 Farm"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
+Title.Parent = Main
 
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0.8, 0, 0.15, 0)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.15, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
-ToggleButton.Text = "Enable RTX"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Parent = MainFrame
-
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0, 8)
-ToggleCorner.Parent = ToggleButton
-
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Size = UDim2.new(0.1, 0, 0.1, 0)
-MinimizeButton.Position = UDim2.new(0.9, 0, 0, 0)
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-MinimizeButton.Text = "-"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeButton.Font = Enum.Font.GothamBold
-MinimizeButton.Parent = MainFrame
-
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 5)
-MinCorner.Parent = MinimizeButton
-
-local FloatingButton = Instance.new("TextButton")
-FloatingButton.Size = UDim2.new(0, 50, 0, 50)
-FloatingButton.Position = UDim2.new(0.9, 0, 0.5, 0)
-FloatingButton.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
-FloatingButton.Text = "RTX"
-FloatingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatingButton.Font = Enum.Font.GothamBold
-FloatingButton.Visible = false
-FloatingButton.Parent = MainGui
-
-local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(0, 25)
-FloatCorner.Parent = FloatingButton
-
-local effects = {}
-
-local function createEffects()
-  effects = {
-      SunRays = Instance.new("SunRaysEffect"),
-      Bloom = Instance.new("BloomEffect"),
-      ColorCorrection = Instance.new("ColorCorrectionEffect"),
-      Atmosphere = Instance.new("Atmosphere"),
-      DepthOfField = Instance.new("DepthOfFieldEffect"),
-      Blur = Instance.new("BlurEffect")
-  }
-  
-  effects.Bloom.Intensity = 0.6
-  effects.Bloom.Size = 32
-  effects.Bloom.Threshold = 1.5
-  
-  effects.ColorCorrection.Brightness = 0.1
-  effects.ColorCorrection.Contrast = 0.2
-  effects.ColorCorrection.Saturation = 0.15
-  effects.ColorCorrection.TintColor = Color3.fromRGB(255, 252, 250)
-  
-  effects.Atmosphere.Density = 0.35
-  effects.Atmosphere.Offset = 0.3
-  effects.Atmosphere.Color = Color3.fromRGB(190, 190, 205)
-  effects.Atmosphere.Decay = Color3.fromRGB(100, 105, 120)
-  effects.Atmosphere.Glare = 0.4
-  effects.Atmosphere.Haze = 2.2
-  
-  effects.DepthOfField.FarIntensity = 0.15
-  effects.DepthOfField.NearIntensity = 0.05
-  effects.DepthOfField.FocusDistance = 0.05
-  
-  effects.Blur.Size = 1.5
-  
-  for _, effect in pairs(effects) do
-      effect.Parent = Lighting
-  end
-end
-
-local function createSun()
-   if sun then sun:Destroy() end
-   sun = Instance.new("PointLight")
-   sun.Brightness = 2
-   sun.Range = 600
-   sun.Shadows = true
-   sun.Parent = game.Workspace
-   return sun
-end
-
-local function enhanceReflections()
-   local materialService = game:GetService("MaterialService")
-   materialService.Use2022Materials = true
+local function makeButton(name, pos)
+   local btn = Instance.new("TextButton")
+   btn.Size = UDim2.new(0.8, 0, 0, 25)
+   btn.Position = pos
+   btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+   btn.Text = name
+   btn.TextColor3 = Color3.new(1, 1, 1)
+   btn.Font = Enum.Font.Gotham
+   btn.Parent = Main
    
-   materialService:SetBaseMaterialOverride("Plastic", {
-       Reflectance = 0.15,
-       Metalness = 0.1
-   })
+   local corner = Instance.new("UICorner")
+   corner.CornerRadius = UDim.new(0, 6)
+   corner.Parent = btn
    
-   materialService:SetBaseMaterialOverride("Metal", {
-       Reflectance = 0.8,
-       Metalness = 0.9
-   })
+   return btn
+end
+
+local SmoothBtn = makeButton("Smooth", UDim2.new(0.1, 0, 0, 40))
+local FastBtn = makeButton("Fast", UDim2.new(0.1, 0, 0, 75))
+local SafeBtn = makeButton("Safe", UDim2.new(0.1, 0, 0, 110))
+
+local CoinsLabel = Instance.new("TextLabel")
+CoinsLabel.Size = UDim2.new(0.8, 0, 0, 25)
+CoinsLabel.Position = UDim2.new(0.1, 0, 0, 145)
+CoinsLabel.BackgroundTransparency = 1
+CoinsLabel.Text = "Coins: 0"
+CoinsLabel.TextColor3 = Color3.new(1, 1, 1)
+CoinsLabel.Font = Enum.Font.Gotham
+CoinsLabel.Parent = Main
+
+local TimeLabel = Instance.new("TextLabel")
+TimeLabel.Size = UDim2.new(0.8, 0, 0, 25) 
+TimeLabel.Position = UDim2.new(0.1, 0, 0, 170)
+TimeLabel.BackgroundTransparency = 1
+TimeLabel.Text = "Time: 00:00:00"
+TimeLabel.TextColor3 = Color3.new(1, 1, 1)
+TimeLabel.Font = Enum.Font.Gotham
+TimeLabel.Parent = Main
+
+local ToggleBtn = makeButton("START", UDim2.new(0.1, 0, 0, 205))
+
+-- Farming Functions
+local function getMurderer()
+   for _, player in pairs(Players:GetPlayers()) do
+       if isMurder(player) then
+           return player
+       end
+   end
+   return nil
+end
+
+local function getSafeSpot()
+   local murderer = getMurderer()
+   if not murderer then return Config.SafeSpots[1] end
    
-   materialService:SetBaseMaterialOverride("Glass", {
-       Transparency = 0.5,
-       Reflectance = 0.6
-   })
+   local best = nil
+   local maxDist = 0
+   
+   for _, spot in pairs(Config.SafeSpots) do
+       local dist = (murderer.Character.HumanoidRootPart.Position - spot).magnitude
+       if dist > maxDist then
+           maxDist = dist
+           best = spot
+       end
+   end
+   
+   return best
 end
 
-local function applyTheme(themeName)
-  local theme = Themes[themeName]
-  if theme then
-      for _, effect in pairs(effects) do
-          effect.Enabled = true
-      end
-      
-      effects.SunRays.Intensity = theme.SunraysIntensity
-      effects.Bloom.Intensity = theme.BloomIntensity
-      Lighting.Brightness = theme.Brightness
-      Lighting.Ambient = theme.Ambient
-      effects.Atmosphere.Color = theme.AtmosphereColor
-      
-      if sun then
-          sun.Brightness = theme.Brightness * 1.5
-      end
-  end
+local FarmModes = {
+   Smooth = function(part)
+       if not Stats.Safe then return false end
+       
+       local dist = (root.Position - part.Position).Magnitude
+       local tween = TweenService:Create(root, 
+           TweenInfo.new(dist/Config.Speed, Enum.EasingStyle.Linear),
+           {CFrame = CFrame.new(part.Position)}
+       )
+       tween:Play()
+       tween.Completed:Wait()
+       return true
+   end,
+   
+   Fast = function(part)
+       if not Stats.Safe then return false end
+       root.CFrame = CFrame.new(part.Position)
+       task.wait(0.1)
+       return true
+   end,
+   
+   Safe = function(part)
+       if not Stats.Safe then return false end
+       
+       local murderer = getMurderer()
+       if murderer and (murderer.Character.HumanoidRootPart.Position - part.Position).Magnitude < Config.SafeDistance then
+           return false
+       end
+       
+       root.CFrame = CFrame.new(part.Position)
+       task.wait(0.1) 
+       return true
+   end
+}
+
+local function collect()
+   if Stats.Coins >= Config.MaxCoins then
+       if workspace:FindFirstChild("Lobby") then
+           root.CFrame = workspace.Lobby.CFrame
+       end
+       Stats.Enabled = false
+       return false
+   end
+
+   local murderer = getMurderer()
+   if murderer and (murderer.Character.HumanoidRootPart.Position - root.Position).Magnitude < Config.SafeDistance then
+       Stats.Safe = false
+       root.CFrame = CFrame.new(getSafeSpot())
+       task.wait(1)
+       Stats.Safe = true
+       return false
+   end
+
+   for _, item in pairs(workspace:GetChildren()) do
+       if ((item.Name == "Token" or item.Name == "SnowToken") and item:FindFirstChild("TokenPart")) or
+           (item.Name == "Coin" and item:FindFirstChild("CoinPart")) then
+           local part = item:FindFirstChild("TokenPart") or item:FindFirstChild("CoinPart")
+           
+           if FarmModes[Config.Mode](part) then
+               Stats.Coins += 1
+               return true
+           end
+       end
+   end
+   return false
 end
 
-local themeOffset = 0.35
-for theme, _ in pairs(Themes) do
-  local ThemeButton = Instance.new("TextButton")
-  ThemeButton.Size = UDim2.new(0.8, 0, 0.12, 0)
-  ThemeButton.Position = UDim2.new(0.1, 0, themeOffset, 0)
-  ThemeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-  ThemeButton.Text = theme
-  ThemeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-  ThemeButton.Font = Enum.Font.GothamBold
-  ThemeButton.Parent = MainFrame
-  
-  local ThemeCorner = Instance.new("UICorner")
-  ThemeCorner.CornerRadius = UDim.new(0, 8)
-  ThemeCorner.Parent = ThemeButton
-  
-  themeOffset = themeOffset + 0.15
-  
-  ThemeButton.MouseButton1Click:Connect(function()
-      if enabled then
-          applyTheme(theme)
-      end
-  end)
+-- Button Handlers
+local function updateButtons()
+   SmoothBtn.BackgroundColor3 = Config.Mode == "Smooth" and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
+   FastBtn.BackgroundColor3 = Config.Mode == "Fast" and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
+   SafeBtn.BackgroundColor3 = Config.Mode == "Safe" and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
 end
 
-local function EnableDragging(frame)
-  local dragToggle, dragInput, dragStart, startPos
-  local dragSpeed = 0.25
-
-  local function updateInput(input)
-      local delta = input.Position - dragStart
-      local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                               startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-      TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
-  end
-
-  frame.InputBegan:Connect(function(input)
-      if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-         input.UserInputType == Enum.UserInputType.Touch then
-          dragToggle = true
-          dragStart = input.Position
-          startPos = frame.Position
-          input.Changed:Connect(function()
-              if input.UserInputState == Enum.UserInputState.End then
-                  dragToggle = false
-              end
-          end)
-      end
-  end)
-
-  frame.InputChanged:Connect(function(input)
-      if input.UserInputType == Enum.UserInputType.MouseMovement or
-         input.UserInputType == Enum.UserInputType.Touch then
-          dragInput = input
-      end
-  end)
-
-  UserInputService.InputChanged:Connect(function(input)
-      if input == dragInput and dragToggle then
-          updateInput(input)
-      end
-  end)
-end
-
-EnableDragging(MainFrame)
-EnableDragging(FloatingButton)
-
-ToggleButton.MouseButton1Click:Connect(function()
-  enabled = not enabled
-  ToggleButton.Text = enabled and "Disable RTX" or "Enable RTX"
-  ToggleButton.BackgroundColor3 = enabled and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(40, 120, 200)
-  
-  if enabled then
-      createEffects()
-      Lighting.Technology = Enum.Technology.Future
-      Lighting.ShadowSoftness = 0.15
-      Lighting.GlobalShadows = true
-      Lighting.ExposureCompensation = 0.15
-      enhanceReflections()
-      createSun()
-      applyTheme("Default")
-  else
-      for _, effect in pairs(effects) do
-          effect.Enabled = false
-      end
-      if sun then sun:Destroy() end
-      Lighting.Brightness = 1
-      Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-  end
+SmoothBtn.MouseButton1Click:Connect(function()
+   Config.Mode = "Smooth"
+   updateButtons()
 end)
 
-MinimizeButton.MouseButton1Click:Connect(function()
-  MainFrame.Visible = false
-  FloatingButton.Visible = true
+FastBtn.MouseButton1Click:Connect(function()
+   Config.Mode = "Fast"
+   updateButtons()
 end)
 
-FloatingButton.MouseButton1Click:Connect(function()
-  MainFrame.Visible = true
-  FloatingButton.Visible = false
+SafeBtn.MouseButton1Click:Connect(function()
+   Config.Mode = "Safe"
+   updateButtons()
 end)
 
-RunService.Heartbeat:Connect(function()
-  if enabled and tick() - lastUpdate >= updateInterval then
-      for _, effect in pairs(effects) do
-          effect.Enabled = true
-      end
-      lastUpdate = tick()
-  end
+ToggleBtn.MouseButton1Click:Connect(function()
+   Stats.Enabled = not Stats.Enabled
+   Stats.Safe = true
+   
+   if Stats.Enabled then
+       ToggleBtn.Text = "STOP"
+       ToggleBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+       Stats.Started = os.time()
+       
+       task.spawn(function()
+           while Stats.Enabled do
+               pcall(function()
+                   if not collect() then task.wait(0.1) end
+                   
+                   local elapsed = os.time() - Stats.Started
+                   TimeLabel.Text = string.format(
+                       "Time: %02d:%02d:%02d",
+                       math.floor(elapsed/3600),
+                       math.floor((elapsed%3600)/60),
+                       elapsed%60
+                   )
+                   CoinsLabel.Text = string.format("Coins: %d", Stats.Coins)
+               end)
+               task.wait()
+           end
+       end)
+   else
+       ToggleBtn.Text = "START"
+       ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+   end
 end)
 
-WelcomeGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-MainGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+-- Make GUI Draggable
+local dragging, dragStart, startPos = false, nil, nil
 
-task.wait(3)
-TweenService:Create(WelcomeFrame, TweenInfo.new(1), {BackgroundTransparency = 1}):Play()
-TweenService:Create(WelcomeTitle, TweenInfo.new(1), {TextTransparency = 1}):Play()
-task.wait(1)
-WelcomeGui:Destroy()
+Main.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+       dragging = true
+       dragStart = input.Position
+       startPos = Main.Position
+   end
+end)
+
+UIS.InputEnded:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 then
+       dragging = false
+   end
+end)
+
+UIS.InputChanged:Connect(function(input)
+   if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+       local delta = input.Position - dragStart
+       Main.Position = UDim2.new(
+           startPos.X.Scale,
+           startPos.X.Offset + delta.X,
+           startPos.Y.Scale,
+           startPos.Y.Offset + delta.Y
+       )
+   end
+end)
+
+updateButtons()
