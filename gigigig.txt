@@ -1,0 +1,826 @@
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Theme Colors
+local Theme = {
+    Primary = Color3.fromRGB(30, 30, 35),
+    Secondary = Color3.fromRGB(45, 45, 50),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDark = Color3.fromRGB(200, 200, 200),
+    Background = Color3.fromRGB(25, 25, 30),
+}
+
+-- Main GUIs
+local LoadingGui = Instance.new("ScreenGui")
+local MainGui = Instance.new("ScreenGui")
+
+-- Loading GUI Elements
+local LoadingFrame = Instance.new("Frame")
+local LoadingBarBackground = Instance.new("Frame")
+local LoadingBar = Instance.new("Frame")
+local LoadingText = Instance.new("TextLabel")
+local ProgressText = Instance.new("TextLabel")
+local StatusText = Instance.new("TextLabel")
+
+-- Main GUI Elements
+local MainFrame = Instance.new("Frame")
+local TitleBar = Instance.new("Frame")
+local TitleText = Instance.new("TextLabel")
+local TabHolder = Instance.new("ScrollingFrame")
+local TabContent = Instance.new("Frame")
+local UIListLayout = Instance.new("UIListLayout")
+
+-- GUI Setup Function
+local function SetupLoadingGUI()
+    LoadingGui.Name = "LoadingGui"
+    LoadingGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    LoadingGui.ResetOnSpawn = false
+    LoadingGui.DisplayOrder = 999
+
+    LoadingFrame.Name = "LoadingFrame"
+    LoadingFrame.Parent = LoadingGui
+    LoadingFrame.BackgroundColor3 = Theme.Background
+    LoadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+    LoadingFrame.Size = UDim2.new(0, 400, 0, 200)
+    LoadingFrame.BorderSizePixel = 0
+    LoadingFrame.ClipsDescendants = true
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 10)
+    UICorner.Parent = LoadingFrame
+
+    LoadingBarBackground.Name = "LoadingBarBackground"
+    LoadingBarBackground.Parent = LoadingFrame
+    LoadingBarBackground.BackgroundColor3 = Theme.Secondary
+    LoadingBarBackground.Position = UDim2.new(0.1, 0, 0.7, 0)
+    LoadingBarBackground.Size = UDim2.new(0.8, 0, 0, 20)
+    LoadingBarBackground.BorderSizePixel = 0
+
+    local UICorner2 = Instance.new("UICorner")
+    UICorner2.CornerRadius = UDim.new(0, 5)
+    UICorner2.Parent = LoadingBarBackground
+
+    LoadingBar.Name = "LoadingBar"
+    LoadingBar.Parent = LoadingBarBackground
+    LoadingBar.BackgroundColor3 = Theme.Accent
+    LoadingBar.Size = UDim2.new(0, 0, 1, 0)
+    LoadingBar.BorderSizePixel = 0
+
+    local UICorner3 = Instance.new("UICorner")
+    UICorner3.CornerRadius = UDim.new(0, 5)
+    UICorner3.Parent = LoadingBar
+
+    LoadingText.Name = "LoadingText"
+    LoadingText.Parent = LoadingFrame
+    LoadingText.BackgroundTransparency = 1
+    LoadingText.Position = UDim2.new(0, 0, 0.2, 0)
+    LoadingText.Size = UDim2.new(1, 0, 0, 30)
+    LoadingText.Font = Enum.Font.GothamBold
+    LoadingText.Text = "Troll Script By Azzakirms"
+    LoadingText.TextColor3 = Theme.Text
+    LoadingText.TextSize = 24
+
+    ProgressText.Name = "ProgressText"
+    ProgressText.Parent = LoadingFrame
+    ProgressText.BackgroundTransparency = 1
+    ProgressText.Position = UDim2.new(0, 0, 0.6, 0)
+    ProgressText.Size = UDim2.new(1, 0, 0, 20)
+    ProgressText.Font = Enum.Font.GothamSemibold
+    ProgressText.Text = "0%"
+    ProgressText.TextColor3 = Theme.Text
+    ProgressText.TextSize = 18
+
+    StatusText.Name = "StatusText"
+    StatusText.Parent = LoadingFrame
+    StatusText.BackgroundTransparency = 1
+    StatusText.Position = UDim2.new(0, 0, 0.85, 0)
+    StatusText.Size = UDim2.new(1, 0, 0, 20)
+    StatusText.Font = Enum.Font.GothamMedium
+    StatusText.Text = "Initializing..."
+    StatusText.TextColor3 = Theme.TextDark
+    StatusText.TextSize = 14
+end
+
+local function SetupMainGUI()
+    MainGui.Name = "MainGui"
+    MainGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    MainGui.ResetOnSpawn = false
+    MainGui.Enabled = false
+
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = MainGui
+    MainFrame.BackgroundColor3 = Theme.Background
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
+    MainFrame.Size = UDim2.new(0, 500, 0, 300)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+
+    local MainFrameCorner = Instance.new("UICorner")
+    MainFrameCorner.CornerRadius = UDim.new(0, 8)
+    MainFrameCorner.Parent = MainFrame
+
+    -- Title Bar
+    TitleBar.Name = "TitleBar"
+    TitleBar.Parent = MainFrame
+    TitleBar.BackgroundColor3 = Theme.Primary
+    TitleBar.Size = UDim2.new(1, 0, 0, 30)
+    TitleBar.BorderSizePixel = 0
+
+    local TitleBarCorner = Instance.new("UICorner")
+    TitleBarCorner.CornerRadius = UDim.new(0, 8)
+    TitleBarCorner.Parent = TitleBar
+
+    TitleText.Name = "TitleText"
+    TitleText.Parent = TitleBar
+    TitleText.BackgroundTransparency = 1
+    TitleText.Size = UDim2.new(1, 0, 1, 0)
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.Text = "Troll Script By Azzakirms!!"
+    TitleText.TextColor3 = Theme.Accent
+    TitleText.TextSize = 16
+
+    TabHolder.Name = "TabHolder"
+    TabHolder.Parent = MainFrame
+    TabHolder.BackgroundColor3 = Theme.Primary
+    TabHolder.Position = UDim2.new(0, 0, 0, 30)
+    TabHolder.Size = UDim2.new(0, 100, 1, -30)
+    TabHolder.ScrollBarThickness = 4
+    TabHolder.ScrollBarImageColor3 = Theme.Accent
+
+    local TabHolderCorner = Instance.new("UICorner")
+    TabHolderCorner.CornerRadius = UDim.new(0, 8)
+    TabHolderCorner.Parent = TabHolder
+
+    TabContent.Name = "TabContent"
+    TabContent.Parent = MainFrame
+    TabContent.BackgroundColor3 = Theme.Secondary
+    TabContent.Position = UDim2.new(0, 100, 0, 30)
+    TabContent.Size = UDim2.new(1, -100, 1, -30)
+
+    local TabContentCorner = Instance.new("UICorner")
+    TabContentCorner.CornerRadius = UDim.new(0, 8)
+    TabContentCorner.Parent = TabContent
+
+    UIListLayout.Parent = TabHolder
+    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.Padding = UDim.new(0, 5)
+end
+
+local function CreateTabButton(name)
+    local TabButton = Instance.new("TextButton")
+    local TabPage = Instance.new("Frame")
+    
+    TabButton.Name = name.."Button"
+    TabButton.Parent = TabHolder
+    TabButton.BackgroundColor3 = Theme.Secondary
+    TabButton.Size = UDim2.new(1, -10, 0, 40)
+    TabButton.Font = Enum.Font.GothamSemibold
+    TabButton.Text = name
+    TabButton.TextColor3 = Theme.Text
+    TabButton.TextSize = 14
+    TabButton.AutoButtonColor = false
+
+    -- Add hover effect
+    TabButton.MouseEnter:Connect(function()
+        if TabButton.BackgroundColor3 ~= Theme.Accent then
+            TweenService:Create(TabButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Theme.Secondary:Lerp(Theme.Accent, 0.3)
+            }):Play()
+        end
+    end)
+
+    TabButton.MouseLeave:Connect(function()
+        if TabButton.BackgroundColor3 ~= Theme.Accent then
+            TweenService:Create(TabButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Theme.Secondary
+            }):Play()
+        end
+    end)
+    
+    local TabButtonCorner = Instance.new("UICorner")
+    TabButtonCorner.CornerRadius = UDim.new(0, 6)
+    TabButtonCorner.Parent = TabButton
+    
+    TabPage.Name = name.."Page"
+    TabPage.Parent = TabContent
+    TabPage.BackgroundTransparency = 1
+    TabPage.Size = UDim2.new(1, 0, 1, 0)
+    TabPage.Visible = false
+    
+    return TabButton, TabPage
+end
+
+-- Loading System
+local LoadingSystem = {
+    States = {
+        {name = "Initializing System", duration = 0.5},
+        {name = "Loading UI Elements", duration = 0.7},
+        {name = "Preparing Interface", duration = 0.6},
+        {name = "Loading Modules", duration = 0.8},
+        {name = "Finalizing", duration = 0.4}
+    },
+    CurrentProgress = 0,
+    IsLoading = false
+}
+
+function LoadingSystem:UpdateProgress(progress, status)
+    if not LoadingBar or not ProgressText then return end
+    
+    progress = math.clamp(progress, 0, 100)
+    
+    local tween = TweenService:Create(
+        LoadingBar,
+        TweenInfo.new(0.03, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Size = UDim2.new(progress/100, 0, 1, 0)}
+    )
+    tween:Play()
+    
+    ProgressText.Text = math.floor(progress) .. "%"
+    if status then
+        StatusText.Text = status
+    end
+    
+    self.CurrentProgress = progress
+end
+
+function LoadingSystem:Start()
+    if self.IsLoading then return end
+    self.IsLoading = true
+    
+    self:UpdateProgress(0, "Starting...")
+    
+    local totalDuration = 0
+    for _, state in ipairs(self.States) do
+        totalDuration = totalDuration + state.duration
+    end
+    
+    local currentProgress = 0
+    
+    task.spawn(function()
+        for _, state in ipairs(self.States) do
+            local startProgress = currentProgress
+            local progressPerState = (state.duration / totalDuration) * 100
+            local endProgress = startProgress + progressPerState
+            
+            StatusText.Text = state.name
+            
+            for i = 1, 20 do
+                local progress = startProgress + (progressPerState * (i/20))
+                self:UpdateProgress(progress)
+                task.wait(state.duration/20)
+            end
+            
+            currentProgress = endProgress
+        end
+        
+        self:UpdateProgress(100, "Complete!")
+        task.wait(0.5)
+        
+        MainGui.Enabled = true
+        LoadingGui:Destroy()
+        self.IsLoading = false
+    end)
+end
+
+-- Initialize GUI
+SetupLoadingGUI()
+SetupMainGUI()
+
+-- Create tabs
+local tabs = {}
+local tabNames = {"Home", "Player", "Visual", "Credits"}
+for i, name in ipairs(tabNames) do
+    table.insert(tabs, {CreateTabButton(name)})
+end
+
+-- Set up tab switching
+for i, tab in ipairs(tabs) do
+    local button, page = tab[1], tab[2]
+    button.MouseButton1Click:Connect(function()
+        for _, otherTab in ipairs(tabs) do
+            otherTab[2].Visible = false
+            TweenService:Create(otherTab[1], TweenInfo.new(0.2), {
+                BackgroundColor3 = Theme.Secondary
+            }):Play()
+        end
+        page.Visible = true
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Theme.Accent
+        }):Play()
+    end)
+end
+
+-- Show first tab by default
+tabs[1][2].Visible = true
+TweenService:Create(tabs[1][1], TweenInfo.new(0.2), {
+    BackgroundColor3 = Theme.Accent
+}):Play()
+
+-- Setup Home tab content
+local HomePage = tabs[1][2]
+
+-- Create ScrollingFrame for content
+local HomeScroll = Instance.new("ScrollingFrame")
+HomeScroll.Name = "HomeScroll"
+HomeScroll.Parent = HomePage
+HomeScroll.BackgroundTransparency = 1
+HomeScroll.Position = UDim2.new(0, 0, 0, 0)
+HomeScroll.Size = UDim2.new(1, 0, 1, 0)
+HomeScroll.CanvasSize = UDim2.new(0, 0, 0, 400)
+HomeScroll.ScrollBarThickness = 4
+HomeScroll.ScrollBarImageColor3 = Theme.Accent
+
+-- Function to find player by partial name
+local function findPlayerByPartialName(partialName)
+    partialName = partialName:lower()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player.Name:lower():sub(1, #partialName) == partialName then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Create R6 Title
+local R6Title = Instance.new("TextLabel")
+R6Title.Name = "R6Title"
+R6Title.Parent = HomeScroll
+R6Title.BackgroundTransparency = 1
+R6Title.Position = UDim2.new(0, 10, 0, 10)
+R6Title.Size = UDim2.new(1, -20, 0, 30)
+R6Title.Font = Enum.Font.GothamBold
+R6Title.Text = "R6"
+R6Title.TextColor3 = Theme.Text
+R6Title.TextSize = 20
+R6Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Create R6 Player Name Input
+local NameInput = Instance.new("TextBox")
+NameInput.Name = "NameInput"
+NameInput.Parent = HomeScroll
+NameInput.BackgroundColor3 = Theme.Primary
+NameInput.Position = UDim2.new(0, 10, 0, 80)
+NameInput.Size = UDim2.new(1, -20, 0, 30)
+NameInput.Font = Enum.Font.Gotham
+NameInput.PlaceholderText = "Enter player name"
+NameInput.Text = ""
+NameInput.TextColor3 = Theme.Text
+NameInput.TextSize = 14
+
+local NameInputCorner = Instance.new("UICorner")
+NameInputCorner.CornerRadius = UDim.new(0, 6)
+NameInputCorner.Parent = NameInput
+
+-- Create R6 Toggle Button
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = HomeScroll
+ToggleButton.BackgroundColor3 = Theme.Accent
+ToggleButton.Position = UDim2.new(0, 10, 0, 120)
+ToggleButton.Size = UDim2.new(1, -20, 0, 30)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "Start"
+ToggleButton.TextColor3 = Theme.Text
+ToggleButton.TextSize = 14
+
+local ToggleButtonCorner = Instance.new("UICorner")
+ToggleButtonCorner.CornerRadius = UDim.new(0, 6)
+ToggleButtonCorner.Parent = ToggleButton
+
+-- R6 Animation and Following Logic
+local following = false
+local animationId = "10714068222"
+
+ToggleButton.MouseButton1Click:Connect(function()
+    if ToggleButton.Text == "Start" then
+        local targetPlayer = findPlayerByPartialName(NameInput.Text)
+        if targetPlayer then
+            following = true
+            ToggleButton.Text = "Stop"
+
+            local LocalPlayer = game.Players.LocalPlayer
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://" .. animationId
+            local animator = humanoid:LoadAnimation(animation)
+
+            coroutine.wrap(function()
+                local lastCFrame = nil
+                while following do
+                    local targetCharacter = targetPlayer.Character
+                    if targetCharacter and targetCharacter.PrimaryPart then
+                        local targetCFrame = targetCharacter.PrimaryPart.CFrame
+                        local followCFrame = targetCFrame * CFrame.new(0, 0, 1.2)
+                        
+                        -- Get the target's velocity
+                        local targetVelocity = targetCharacter.PrimaryPart.Velocity
+                        
+                        -- If target is jumping (significant upward velocity), adjust follow position
+                        if math.abs(targetVelocity.Y) > 1 then
+                            -- Create a smoother follow by lerping between current and target position
+                            local currentPos = LocalPlayer.Character.PrimaryPart.Position
+                            local targetPos = followCFrame.Position
+                            local smoothedPos = currentPos:Lerp(targetPos, 0.5)
+                            
+                            LocalPlayer.Character:SetPrimaryPartCFrame(
+                                CFrame.new(smoothedPos) *
+                                CFrame.Angles(0, math.atan2(-targetCFrame.LookVector.X, -targetCFrame.LookVector.Z), 0)
+                            )
+                        else
+                            -- Normal following when not jumping
+                            LocalPlayer.Character:SetPrimaryPartCFrame(
+                                CFrame.new(followCFrame.Position) *
+                                CFrame.Angles(0, math.atan2(-targetCFrame.LookVector.X, -targetCFrame.LookVector.Z), 0)
+                            )
+                        end
+                        
+                        animator:Play()
+                        task.wait(0.1)
+                        animator:Stop()
+                        task.wait(0.1)
+                    else
+                        following = false
+                        ToggleButton.Text = "Start"
+                        break
+                    end
+                end
+            end)()
+        else
+            print("Target not found!")
+        end
+    else
+        following = false
+        ToggleButton.Text = "Start"
+    end
+end)
+
+-- Create R15 Title
+local R15Title = Instance.new("TextLabel")
+R15Title.Name = "R15Title"
+R15Title.Parent = HomeScroll
+R15Title.BackgroundTransparency = 1
+R15Title.Position = UDim2.new(0, 10, 0, 170)
+R15Title.Size = UDim2.new(1, -20, 0, 30)
+R15Title.Font = Enum.Font.GothamBold
+R15Title.Text = "R15"
+R15Title.TextColor3 = Theme.Text
+R15Title.TextSize = 20
+R15Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Create R15 Player Name Input
+local R15NameInput = Instance.new("TextBox")
+R15NameInput.Name = "R15NameInput"
+R15NameInput.Parent = HomeScroll
+R15NameInput.BackgroundColor3 = Theme.Primary
+R15NameInput.Position = UDim2.new(0, 10, 0, 240)
+R15NameInput.Size = UDim2.new(1, -20, 0, 30)
+R15NameInput.Font = Enum.Font.Gotham
+R15NameInput.PlaceholderText = "Enter player name"
+R15NameInput.Text = ""
+R15NameInput.TextColor3 = Theme.Text
+R15NameInput.TextSize = 14
+
+local R15NameInputCorner = Instance.new("UICorner")
+R15NameInputCorner.CornerRadius = UDim.new(0, 6)
+R15NameInputCorner.Parent = R15NameInput
+
+-- Create R15 Toggle Button
+local R15ToggleButton = Instance.new("TextButton")
+R15ToggleButton.Name = "R15ToggleButton"
+R15ToggleButton.Parent = HomeScroll
+R15ToggleButton.BackgroundColor3 = Theme.Accent
+R15ToggleButton.Position = UDim2.new(0, 10, 0, 280)
+R15ToggleButton.Size = UDim2.new(1, -20, 0, 30)
+R15ToggleButton.Font = Enum.Font.GothamBold
+R15ToggleButton.Text = "Start"
+R15ToggleButton.TextColor3 = Theme.Text
+R15ToggleButton.TextSize = 14
+
+local R15ToggleButtonCorner = Instance.new("UICorner")
+R15ToggleButtonCorner.CornerRadius = UDim.new(0, 6)
+R15ToggleButtonCorner.Parent = R15ToggleButton
+
+-- R15 Animation and Following Logic
+local R15following = false
+local activeAnimation = nil
+local R15animationId = "10714068222"
+
+R15ToggleButton.MouseButton1Click:Connect(function()
+    if R15ToggleButton.Text == "Start" then
+        local targetPlayer = findPlayerByPartialName(R15NameInput.Text)
+        if targetPlayer then
+            R15following = true
+            R15ToggleButton.Text = "Stop"
+
+            local LocalPlayer = game.Players.LocalPlayer
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local animation = Instance.new("Animation")
+                animation.AnimationId = "rbxassetid://" .. R15animationId
+                activeAnimation = humanoid:LoadAnimation(animation)
+                activeAnimation:Play()
+            end
+
+            coroutine.wrap(function()
+                local lastPosition = nil
+                while R15following do
+                    local targetCharacter = targetPlayer.Character
+                    if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
+                        local targetHRP = targetCharacter.HumanoidRootPart
+                        local targetVelocity = targetHRP.Velocity
+                        
+                        -- If target is jumping, use smoother following
+                        if math.abs(targetVelocity.Y) > 1 then
+                            local currentPos = LocalPlayer.Character.HumanoidRootPart.Position
+                            local targetPos = targetHRP.Position + targetHRP.CFrame.LookVector * 2.5
+                            local smoothedPos = currentPos:Lerp(targetPos, 0.3)
+                            
+                            local tweenSmooth = TweenService:Create(
+                                LocalPlayer.Character.HumanoidRootPart,
+                                TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+                                {CFrame = CFrame.new(smoothedPos, targetHRP.Position)}
+                            )
+                            tweenSmooth:Play()
+                            task.wait(0.1)
+                        else
+                            -- Normal following behavior when not jumping
+                            local forwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, 2.5)
+                            local backwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
+                            
+                            local tweenForward = TweenService:Create(
+                                LocalPlayer.Character.HumanoidRootPart,
+                                TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+                                {CFrame = forwardCFrame}
+                            )
+                            tweenForward:Play()
+                            tweenForward.Completed:Wait()
+
+                            local tweenBackward = TweenService:Create(
+                                LocalPlayer.Character.HumanoidRootPart,
+                                TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+                                {CFrame = backwardCFrame}
+                            )
+                            tweenBackward:Play()
+                            tweenBackward.Completed:Wait()
+                        end
+                        
+                        lastPosition = targetHRP.Position
+                    else
+                        R15following = false
+                        R15ToggleButton.Text = "Start"
+                        break
+                    end
+                end
+            end)()
+        else
+            print("Target not found!")
+        end
+    else
+        R15following = false
+        R15ToggleButton.Text = "Start"
+        
+        if activeAnimation then
+            activeAnimation:Stop()
+            activeAnimation = nil
+        end
+    end
+end)
+
+-- Setup Player tab content (Tab 2)
+local PlayerPage = tabs[2][2]
+
+-- Create ScrollingFrame for content
+local PlayerScroll = Instance.new("ScrollingFrame")
+PlayerScroll.Name = "PlayerScroll"
+PlayerScroll.Parent = PlayerPage
+PlayerScroll.BackgroundTransparency = 1
+PlayerScroll.Position = UDim2.new(0, 0, 0, 0)
+PlayerScroll.Size = UDim2.new(1, 0, 1, 0)
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 400)
+PlayerScroll.ScrollBarThickness = 4
+PlayerScroll.ScrollBarImageColor3 = Theme.Accent
+
+-- Create R6 Title
+local R6Title = Instance.new("TextLabel")
+R6Title.Name = "R6Title"
+R6Title.Parent = PlayerScroll
+R6Title.BackgroundTransparency = 1
+R6Title.Position = UDim2.new(0, 10, 0, 10)
+R6Title.Size = UDim2.new(1, -20, 0, 30)
+R6Title.Font = Enum.Font.GothamBold
+R6Title.Text = "R6"
+R6Title.TextColor3 = Theme.Text
+R6Title.TextSize = 20
+R6Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Create R6 Player Name Input
+local PlayerNameInput = Instance.new("TextBox")
+PlayerNameInput.Name = "PlayerNameInput"
+PlayerNameInput.Parent = PlayerScroll
+PlayerNameInput.BackgroundColor3 = Theme.Primary
+PlayerNameInput.Position = UDim2.new(0, 10, 0, 80)
+PlayerNameInput.Size = UDim2.new(1, -20, 0, 30)
+PlayerNameInput.Font = Enum.Font.Gotham
+PlayerNameInput.PlaceholderText = "Enter player name"
+PlayerNameInput.Text = ""
+PlayerNameInput.TextColor3 = Theme.Text
+PlayerNameInput.TextSize = 14
+
+local PlayerNameInputCorner = Instance.new("UICorner")
+PlayerNameInputCorner.CornerRadius = UDim.new(0, 6)
+PlayerNameInputCorner.Parent = PlayerNameInput
+
+-- Create R6 Toggle Button
+local PlayerToggleButton = Instance.new("TextButton")
+PlayerToggleButton.Name = "PlayerToggleButton"
+PlayerToggleButton.Parent = PlayerScroll
+PlayerToggleButton.BackgroundColor3 = Theme.Accent
+PlayerToggleButton.Position = UDim2.new(0, 10, 0, 120)
+PlayerToggleButton.Size = UDim2.new(1, -20, 0, 30)
+PlayerToggleButton.Font = Enum.Font.GothamBold
+PlayerToggleButton.Text = "Start"
+PlayerToggleButton.TextColor3 = Theme.Text
+PlayerToggleButton.TextSize = 14
+
+local PlayerToggleButtonCorner = Instance.new("UICorner")
+PlayerToggleButtonCorner.CornerRadius = UDim.new(0, 6)
+PlayerToggleButtonCorner.Parent = PlayerToggleButton
+
+-- Create R15 Title
+local R15Title = Instance.new("TextLabel")
+R15Title.Name = "R15Title"
+R15Title.Parent = PlayerScroll
+R15Title.BackgroundTransparency = 1
+R15Title.Position = UDim2.new(0, 10, 0, 170)
+R15Title.Size = UDim2.new(1, -20, 0, 30)
+R15Title.Font = Enum.Font.GothamBold
+R15Title.Text = "R15"
+R15Title.TextColor3 = Theme.Text
+R15Title.TextSize = 20
+R15Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Create R15 Player Name Input
+local PlayerR15NameInput = Instance.new("TextBox")
+PlayerR15NameInput.Name = "PlayerR15NameInput"
+PlayerR15NameInput.Parent = PlayerScroll
+PlayerR15NameInput.BackgroundColor3 = Theme.Primary
+PlayerR15NameInput.Position = UDim2.new(0, 10, 0, 240)
+PlayerR15NameInput.Size = UDim2.new(1, -20, 0, 30)
+PlayerR15NameInput.Font = Enum.Font.Gotham
+PlayerR15NameInput.PlaceholderText = "Enter player name"
+PlayerR15NameInput.Text = ""
+PlayerR15NameInput.TextColor3 = Theme.Text
+PlayerR15NameInput.TextSize = 14
+
+local PlayerR15NameInputCorner = Instance.new("UICorner")
+PlayerR15NameInputCorner.CornerRadius = UDim.new(0, 6)
+PlayerR15NameInputCorner.Parent = PlayerR15NameInput
+
+-- Create R15 Toggle Button
+local PlayerR15ToggleButton = Instance.new("TextButton")
+PlayerR15ToggleButton.Name = "PlayerR15ToggleButton"
+PlayerR15ToggleButton.Parent = PlayerScroll
+PlayerR15ToggleButton.BackgroundColor3 = Theme.Accent
+PlayerR15ToggleButton.Position = UDim2.new(0, 10, 0, 280)
+PlayerR15ToggleButton.Size = UDim2.new(1, -20, 0, 30)
+PlayerR15ToggleButton.Font = Enum.Font.GothamBold
+PlayerR15ToggleButton.Text = "Start"
+PlayerR15ToggleButton.TextColor3 = Theme.Text
+PlayerR15ToggleButton.TextSize = 14
+
+local PlayerR15ToggleButtonCorner = Instance.new("UICorner")
+PlayerR15ToggleButtonCorner.CornerRadius = UDim.new(0, 6)
+PlayerR15ToggleButtonCorner.Parent = PlayerR15ToggleButton
+
+-- Player Tab Animation and Following Logic (R6)
+local playerFollowing = false
+local playerActiveAnimation = nil
+local playerAnimationId = "189854234" -- R6 dance animation
+
+PlayerToggleButton.MouseButton1Click:Connect(function()
+    if PlayerToggleButton.Text == "Start" then
+        local targetPlayer = findPlayerByPartialName(PlayerNameInput.Text)
+        if targetPlayer then
+            playerFollowing = true
+            PlayerToggleButton.Text = "Stop"
+
+            -- Animation
+            local LocalPlayer = game.Players.LocalPlayer
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://" .. playerAnimationId
+            local animator = humanoid:LoadAnimation(animation)
+
+            coroutine.wrap(function()
+                local lastCFrame = nil
+                while playerFollowing do
+                    local targetCharacter = targetPlayer.Character
+                    if targetCharacter and targetCharacter.PrimaryPart then
+                        local targetCFrame = targetCharacter.PrimaryPart.CFrame
+                        local targetVelocity = targetCharacter.PrimaryPart.Velocity
+                        
+                        if math.abs(targetVelocity.Y) > 1 then
+                            local currentPos = LocalPlayer.Character.PrimaryPart.Position
+                            local targetPos = targetCFrame.Position + targetCFrame.LookVector * 1.2
+                            local smoothedPos = currentPos:Lerp(targetPos, 0.5)
+                            
+                            LocalPlayer.Character:SetPrimaryPartCFrame(
+                                CFrame.new(smoothedPos) *
+                                CFrame.Angles(0, math.atan2(-targetCFrame.LookVector.X, -targetCFrame.LookVector.Z), 0)
+                            )
+                        else
+                            local followCFrame = targetCFrame * CFrame.new(0, 0, 1.2)
+                            LocalPlayer.Character:SetPrimaryPartCFrame(
+                                CFrame.new(followCFrame.Position) *
+                                CFrame.Angles(0, math.atan2(-targetCFrame.LookVector.X, -targetCFrame.LookVector.Z), 0)
+                            )
+                        end
+                        
+                        animator:Play()
+                        task.wait(0.1)
+                        animator:Stop()
+                        task.wait(0.1)
+                    else
+                        playerFollowing = false
+                        PlayerToggleButton.Text = "Start"
+                        break
+                    end
+                end
+            end)()
+        else
+            print("Target not found!")
+        end
+    else
+        playerFollowing = false
+        PlayerToggleButton.Text = "Start"
+    end
+end)
+
+-- Player Tab Animation and Following Logic (R15)
+local playerR15Following = false
+local playerR15ActiveAnimation = nil
+local playerR15AnimationId = "10714360343" -- R15 dance animation
+
+PlayerR15ToggleButton.MouseButton1Click:Connect(function()
+    if PlayerR15ToggleButton.Text == "Start" then
+        local targetPlayer = findPlayerByPartialName(PlayerR15NameInput.Text)
+        if targetPlayer then
+            playerR15Following = true
+            PlayerR15ToggleButton.Text = "Stop"
+
+            local LocalPlayer = game.Players.LocalPlayer
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local animation = Instance.new("Animation")
+                animation.AnimationId = "rbxassetid://" .. playerR15AnimationId
+                playerR15ActiveAnimation = humanoid:LoadAnimation(animation)
+                playerR15ActiveAnimation:Play()
+            end
+
+            coroutine.wrap(function()
+                while playerR15Following do
+                    local targetCharacter = targetPlayer.Character
+                    if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
+                        local targetHRP = targetCharacter.HumanoidRootPart
+                        local targetVelocity = targetHRP.Velocity
+                        
+                        if math.abs(targetVelocity.Y) > 1 then
+                            local currentPos = LocalPlayer.Character.HumanoidRootPart.Position
+                            local targetPos = targetHRP.Position + targetHRP.CFrame.LookVector * 2
+                            local smoothedPos = currentPos:Lerp(targetPos, 0.3)
+                            
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(smoothedPos, targetHRP.Position)
+                            task.wait(0.1)
+                        else
+                            local followCFrame = targetHRP.CFrame * CFrame.new(0, 0, 2.5)
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = followCFrame
+                            task.wait(0.1)
+                        end
+                    else
+                        playerR15Following = false
+                        PlayerR15ToggleButton.Text = "Start"
+                        break
+                    end
+                end
+            end)()
+        else
+            print("Target not found!")
+        end
+    else
+        playerR15Following = false
+        PlayerR15ToggleButton.Text = "Start"
+        
+        if playerR15ActiveAnimation then
+            playerR15ActiveAnimation:Stop()
+            playerR15ActiveAnimation = nil
+        end
+    end
+end)
+
+-- Start loading system
+task.spawn(function()
+    task.wait(0.1)
+    LoadingSystem:Start()
+end)
