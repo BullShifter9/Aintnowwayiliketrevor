@@ -1,0 +1,636 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local TeleportService = game:GetService("TeleportService")
+
+local Settings = {
+   AutoFarm = false,
+   CoinType = "All",
+   NoReplicateCount = 0,
+   PreviousCoin = nil,
+   MaxDistance = 150,
+   MinimumWaitTime = 0.1,
+   MaximumWaitTime = 0.5,
+   AntiAFK = false,
+   AntiKick = false,
+   AutoRejoin = false,
+   FarmType = "Safe",
+   TweenSpeed = 0.04,
+   Minimized = false,
+   AutoKillAll = false,
+   AutoShootMurderer = false,
+   AutoReturnToLobby = false,
+   SafeDistance = 10,
+   Statistics = {
+       CoinsCollected = 0,
+       StartTime = 0,
+       SessionTime = 0,
+       AutoRejoins = 0
+   }
+}
+
+local player = Players.LocalPlayer
+local currentTween = nil
+local isMobile = UserInputService.TouchEnabled
+
+local function getMurderer()
+   for _, player in pairs(Players:GetPlayers()) do
+       if player.Character and player.Character:FindFirstChild("Knife") then
+           return player
+       end
+   end
+   return nil
+end
+
+local function getSheriff()
+   for _, player in pairs(Players:GetPlayers()) do
+       if player.Character and player.Character:FindFirstChild("Gun") then
+           return player
+       end
+   end
+   return nil
+end
+
+local function isPlayerMurdererOrSheriff()
+   if not player.Character then return false end
+   return player.Character:FindFirstChild("Knife") or player.Character:FindFirstChild("Gun")
+end
+
+local function returnToLobby()
+   local lobbySpawn = workspace:FindFirstChild("Lobby", true)
+   if lobbySpawn and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+       player.Character.HumanoidRootPart.CFrame = lobbySpawn.CFrame * CFrame.new(0, 5, 0)
+   end
+end
+
+local function teleportBehindPlayer(target)
+   if not target.Character or not player.Character then return end
+   local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+   local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
+   if not targetHRP or not myHRP then return end
+   
+   local behind = targetHRP.CFrame * CFrame.new(0, 0, Settings.SafeDistance)
+   myHRP.CFrame = behind
+end
+
+local function killPlayer(target)
+   if not target.Character or not player.Character then return end
+   local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+   local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
+   if not targetHRP or not myHRP then return end
+   
+   myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -2)
+   task.wait(0.1)
+   local knife = player.Character:FindFirstChild("Knife")
+   if knife then
+       knife:Activate()
+   end
+end
+
+local function layDown(character)
+   if character and character:FindFirstChild("Humanoid") then
+       character.Humanoid.Sit = true
+   end
+end
+
+local function getCurrentMap()
+   local map = workspace:FindFirstChild("Map")
+   if map and map:FindFirstChild("CoinContainer") then
+       return map
+   end
+   
+   for _, v in pairs(workspace:GetChildren()) do
+       if v:FindFirstChild("CoinContainer") then
+           return v
+       end
+   end
+   return nil
+end
+
+local function validateCoin(coin)
+   if not coin or not coin:IsA("BasePart") then return false end
+   if not coin:FindFirstChild("CoinVisual") then return false end
+   if not coin.Parent or not coin.Parent.Name == "CoinContainer" then return false end
+   return true
+end
+
+local function adjustFarmingBehavior(farmType)
+   local behaviors = {
+       Fast = {
+           tweenSpeed = 0.4,
+           waitTime = 0.3,
+           maxDistance = 60
+       },
+       Safe = {
+           tweenSpeed = 0.5,
+           waitTime = 0.4,
+           maxDistance = 50
+       },
+       Smooth = {
+           tweenSpeed = 0.6,
+           waitTime = 0.5,
+           maxDistance = 40
+       }
+   }
+   
+   local selected = behaviors[farmType]
+   if selected then
+       Settings.TweenSpeed = selected.tweenSpeed
+       Settings.MinimumWaitTime = selected.waitTime
+       Settings.MaxDistance = selected.maxDistance
+   end
+end
+
+local function getClosestCollectible(previousCoin)
+   local character = player.Character
+   if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+   
+   local hrp = character.HumanoidRootPart
+   local currentMap = getCurrentMap()
+   if not currentMap then return nil end
+   
+   local coinContainer = currentMap:FindFirstChild("CoinContainer")
+   if not coinContainer then return nil end
+   
+   local closestCoin = nil
+   local shortestDistance = Settings.MaxDistance
+   
+   for _, coin in pairs(coinContainer:GetChildren()) do
+       if coin and coin:IsA("BasePart") and coin.Name == "Coin_Server" 
+           and coin ~= previousCoin 
+           and coin:FindFirstChild("CoinVisual") then
+           
+           local distance = (hrp.Position - coin.Position).Magnitude
+           if distance < shortestDistance then
+               closestCoin = coin
+               shortestDistance = distance
+           end
+       end
+   end
+   
+   if closestCoin == Settings.PreviousCoin then
+       Settings.NoReplicateCount += 1
+       if Settings.NoReplicateCount > 3 then
+           Settings.NoReplicateCount = 0
+           task.wait(Settings.MaximumWaitTime)
+           return getClosestCollectible(Settings.PreviousCoin)
+       end
+   else
+       Settings.NoReplicateCount = 0
+   end
+   
+   return closestCoin
+end
+
+local function farmCollectibles()
+   task.spawn(function()
+       while Settings.AutoFarm do
+           local character = player.Character
+           if not character or not character:FindFirstChild("HumanoidRootPart") then 
+               task.wait(1)
+               continue 
+           end
+           
+           local hrp = character.HumanoidRootPart
+           local collectible = getClosestCollectible(Settings.PreviousCoin)
+           
+           if collectible then
+               Settings.PreviousCoin = collectible
+               
+               if currentTween then currentTween:Cancel() end
+               currentTween = TweenService:Create(hrp,
+                   TweenInfo.new(Settings.TweenSpeed, Enum.EasingStyle.Linear),
+                   {CFrame = collectible.CFrame * CFrame.new(0, 3, 0)}
+               )
+               currentTween:Play()
+               currentTween.Completed:Wait()
+               
+               hrp.Velocity = Vector3.new(0, 0, 0)
+               task.wait(0.1)
+               
+               if collectible and collectible.Parent then
+                   firetouchinterest(hrp, collectible, 0)
+                   task.wait(0.1)
+                   firetouchinterest(hrp, collectible, 1)
+                   Settings.Statistics.CoinsCollected += 1
+               end
+           else
+               task.wait(0.5)
+           end
+           
+           task.wait(Settings.MinimumWaitTime)
+       end
+   end)
+end
+
+local function handleMurdererSheriff()
+   task.spawn(function()
+       while true do
+           if Settings.AutoKillAll or Settings.AutoShootMurderer or Settings.AutoReturnToLobby then
+               if not player.Character then
+                   task.wait(1)
+                   continue
+               end
+               
+               if player.Character:FindFirstChild("Knife") then
+                   if Settings.AutoKillAll then
+                       for _, target in pairs(Players:GetPlayers()) do
+                           if target ~= player and target.Character then
+                               killPlayer(target)
+                               task.wait(0.2)
+                           end
+                       end
+                   end
+               elseif player.Character:FindFirstChild("Gun") then
+                   if Settings.AutoShootMurderer then
+                       local murderer = getMurderer()
+                       if murderer then
+                           teleportBehindPlayer(murderer)
+                           player.Character.Gun:Activate()
+                       end
+                   end
+               else
+                   if Settings.AutoReturnToLobby then
+                       returnToLobby()
+                   end
+               end
+           end
+           task.wait(0.5)
+       end
+   end)
+end
+
+local function setupAntiAFK()
+   local connection
+   connection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+       if Settings.AntiAFK then
+           VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+           wait(1)
+           VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+       else
+           if connection then
+               connection:Disconnect()
+           end
+       end
+   end)
+end
+
+local function setupAutoRejoin()
+   game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
+       if Settings.AutoRejoin then
+           if child.Name == 'ErrorPrompt' then
+               Settings.Statistics.AutoRejoins += 1
+               task.wait(1)
+               TeleportService:Teleport(game.PlaceId, player)
+           end
+       end
+   end)
+end
+
+local function setupAntiKick()
+   local oldNamecall
+   oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+       local args = {...}
+       local method = getnamecallmethod()
+       
+       if Settings.AntiKick and (method == "Kick" or method == "kick") then
+           return nil
+       end
+       
+       return oldNamecall(self, ...)
+   end))
+end
+
+local function formatTime(seconds)
+   local hours = math.floor(seconds / 3600)
+   local minutes = math.floor((seconds % 3600) / 60)
+   local secs = math.floor(seconds % 60)
+   return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+local function updateStatistics(statsLabel)
+   if Settings.Statistics.StartTime == 0 then
+       Settings.Statistics.StartTime = tick()
+   end
+   
+   task.spawn(function()
+       while true do
+           if not Settings.Minimized and statsLabel then
+               Settings.Statistics.SessionTime = tick() - Settings.Statistics.StartTime
+               statsLabel.Text = string.format(
+                   "Coins: %d | Time: %s\nRejoins: %d",
+                   Settings.Statistics.CoinsCollected,
+                   formatTime(Settings.Statistics.SessionTime),
+                   Settings.Statistics.AutoRejoins
+               )
+           end
+           task.wait(1)
+       end
+   end)
+end
+
+local function CreateToggle(parent, text, defaultState, callback)
+   local ToggleFrame = Instance.new("Frame")
+   ToggleFrame.Size = UDim2.new(1, -20, 0, 40)
+   ToggleFrame.BackgroundTransparency = 1
+   ToggleFrame.Parent = parent
+
+   local ToggleButton = Instance.new("TextButton")
+   ToggleButton.Size = UDim2.new(0, 30, 0, 30)
+   ToggleButton.Position = UDim2.new(0, 5, 0.5, -15)
+   ToggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+   ToggleButton.Text = ""
+   ToggleButton.Parent = ToggleFrame
+
+   local UICorner = Instance.new("UICorner")
+   UICorner.CornerRadius = UDim.new(0, 6)
+   UICorner.Parent = ToggleButton
+
+   local ToggleText = Instance.new("TextLabel")
+   ToggleText.Size = UDim2.new(1, -50, 1, 0)
+   ToggleText.Position = UDim2.new(0, 45, 0, 0)
+   ToggleText.BackgroundTransparency = 1
+   ToggleText.Text = text
+   ToggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+   ToggleText.TextSize = 14
+   ToggleText.Font = Enum.Font.GothamBold
+   ToggleText.TextXAlignment = Enum.TextXAlignment.Left
+   ToggleText.Parent = ToggleFrame
+
+   local state = defaultState
+   local function updateToggle()
+       ToggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
+   end
+
+   ToggleButton.MouseButton1Click:Connect(function()
+       state = not state
+       updateToggle()
+       callback(state)
+   end)
+
+   updateToggle()
+   return ToggleFrame
+end
+
+local function CreateFarmTypeSelector(parent)
+   local TypeFrame = Instance.new("Frame")
+   TypeFrame.Size = UDim2.new(1, -20, 0, 80)
+   TypeFrame.BackgroundTransparency = 1
+   TypeFrame.Parent = parent
+
+   local Title = Instance.new("TextLabel")
+   Title.Size = UDim2.new(1, 0, 0, 20)
+   Title.BackgroundTransparency = 1
+   Title.Text = "Farm Type"
+   Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+   Title.TextSize = 14
+   Title.Font = Enum.Font.GothamBold
+   Title.Parent = TypeFrame
+
+   local ButtonHolder = Instance.new("Frame")
+   ButtonHolder.Size = UDim2.new(1, 0, 0, 50)
+   ButtonHolder.Position = UDim2.new(0, 0, 0, 25)
+   ButtonHolder.BackgroundTransparency = 1
+   ButtonHolder.Parent = TypeFrame
+
+   local function createTypeButton(name, position)
+       local Button = Instance.new("TextButton")
+       Button.Size = UDim2.new(0.3, -4, 1, 0)
+       Button.Position = UDim2.new(position * 0.33, 2, 0, 0)
+       Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+       Button.Text = name
+       Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+       Button.TextSize = 12
+       Button.Font = Enum.Font.GothamBold
+       Button.Parent = ButtonHolder
+
+       local Corner = Instance.new("UICorner")
+       Corner.CornerRadius = UDim.new(0, 6)
+       Corner.Parent = Button
+
+       Button.MouseButton1Click:Connect(function()
+           Settings.FarmType = name
+           adjustFarmingBehavior(name)
+           
+           for _, btn in ipairs(ButtonHolder:GetChildren()) do
+               if btn:IsA("TextButton") then
+                   btn.BackgroundColor3 = btn.Text == name and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
+               end
+           end
+       end)
+
+       if name == Settings.FarmType then
+           Button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+       end
+   end
+
+   createTypeButton("Fast", 0)
+   createTypeButton("Safe", 1)
+   createTypeButton("Smooth", 2)
+
+   return TypeFrame
+end
+
+local function createGui()
+   local ScreenGui = Instance.new("ScreenGui")
+   ScreenGui.Name = "FarmGUI"
+   ScreenGui.ResetOnSpawn = false
+   if syn then syn.protect_gui(ScreenGui) end
+   
+   local guiParent = if isMobile then player:WaitForChild("PlayerGui") else game:GetService("CoreGui")
+   ScreenGui.Parent = guiParent
+   
+   local MainFrame = Instance.new("Frame")
+   MainFrame.Size = UDim2.new(0, 200, 0, 400)
+   MainFrame.Position = UDim2.new(0.5, -100, 0.5, -200)
+   MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+   MainFrame.BorderSizePixel = 0
+   MainFrame.Active = true
+   MainFrame.Parent = ScreenGui
+
+   local Corner = Instance.new("UICorner")
+   Corner.CornerRadius = UDim.new(0, 8)
+   Corner.Parent = MainFrame
+
+   local TitleBar = Instance.new("Frame")
+   TitleBar.Size = UDim2.new(1, 0, 0, 30)
+   TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+   TitleBar.BorderSizePixel = 0
+   TitleBar.Parent = MainFrame
+
+   local TitleCorner = Instance.new("UICorner")
+   TitleCorner.CornerRadius = UDim.new(0, 8)
+   TitleCorner.Parent = TitleBar
+
+   local Title = Instance.new("TextLabel")
+   Title.Size = UDim2.new(0.7, 0, 1, 0)
+   Title.Position = UDim2.new(0.05, 0, 0, 0)
+   Title.BackgroundTransparency = 1
+   Title.Text = "Auto Farm"
+   Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+   Title.TextSize = 14
+   Title.Font = Enum.Font.GothamBold
+   Title.TextXAlignment = Enum.TextXAlignment.Left
+   Title.Parent = TitleBar
+
+   local MinimizeButton = Instance.new("TextButton")
+   MinimizeButton.Size = UDim2.new(0, 20, 0, 20)
+   MinimizeButton.Position = UDim2.new(1, -25, 0, 5)
+   MinimizeButton.Text = "X"
+   MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+   MinimizeButton.BackgroundTransparency = 1
+   MinimizeButton.Parent = TitleBar
+
+   local MinimizedFrame = Instance.new("Frame")
+   MinimizedFrame.Size = UDim2.new(0, 50, 0, 50)
+   MinimizedFrame.Position = UDim2.new(0.5, -25, 0.5, -25)
+   MinimizedFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+   MinimizedFrame.BorderSizePixel = 0
+   MinimizedFrame.Visible = false
+   MinimizedFrame.Parent = ScreenGui
+
+   local MinimizedCorner = Instance.new("UICorner")
+   MinimizedCorner.CornerRadius = UDim.new(0, 8)
+   MinimizedCorner.Parent = MinimizedFrame
+
+   local ExpandButton = Instance.new("TextButton")
+   ExpandButton.Size = UDim2.new(1, 0, 1, 0)
+   ExpandButton.BackgroundTransparency = 1
+   ExpandButton.Text = "+"
+   ExpandButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+   ExpandButton.TextSize = 24
+   ExpandButton.Font = Enum.Font.GothamBold
+   ExpandButton.Parent = MinimizedFrame
+
+   local ScrollFrame = Instance.new("ScrollingFrame")
+   ScrollFrame.Size = UDim2.new(1, -10, 1, -40)
+   ScrollFrame.Position = UDim2.new(0, 5, 0, 35)
+   ScrollFrame.BackgroundTransparency = 1
+   ScrollFrame.ScrollBarThickness = 4
+   ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+   ScrollFrame.Parent = MainFrame
+
+   local ListLayout = Instance.new("UIListLayout")
+   ListLayout.Padding = UDim.new(0, 5)
+   ListLayout.Parent = ScrollFrame
+
+   local StatsLabel = Instance.new("TextLabel")
+   StatsLabel.Size = UDim2.new(1, -20, 0, 40)
+   StatsLabel.BackgroundTransparency = 1
+   StatsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+   StatsLabel.TextSize = 12
+   StatsLabel.Font = Enum.Font.GothamBold
+   StatsLabel.Parent = ScrollFrame
+
+   local typeSelector = CreateFarmTypeSelector(ScrollFrame)
+
+   local farmToggle = CreateToggle(ScrollFrame, "Auto Farm", Settings.AutoFarm, function(state)
+       Settings.AutoFarm = state
+       if state then
+           farmCollectibles()
+       elseif currentTween then
+           currentTween:Cancel()
+       end
+   end)
+
+   local antiAFKToggle = CreateToggle(ScrollFrame, "Anti AFK", Settings.AntiAFK, function(state)
+       Settings.AntiAFK = state
+   end)
+
+   local antiKickToggle = CreateToggle(ScrollFrame, "Anti Kick", Settings.AntiKick, function(state)
+       Settings.AntiKick = state
+   end)
+
+   local autoRejoinToggle = CreateToggle(ScrollFrame, "Auto Rejoin", Settings.AutoRejoin, function(state)
+       Settings.AutoRejoin = state
+   end)
+
+   local autoKillToggle = CreateToggle(ScrollFrame, "Auto Kill All (Murderer)", Settings.AutoKillAll, function(state)
+       Settings.AutoKillAll = state
+   end)
+
+   local autoShootToggle = CreateToggle(ScrollFrame, "Auto Shoot Murderer (Sheriff)", Settings.AutoShootMurderer, function(state)
+       Settings.AutoShootMurderer = state
+   end)
+
+   local autoReturnToggle = CreateToggle(ScrollFrame, "Auto Return to Lobby", Settings.AutoReturnToLobby, function(state)
+       Settings.AutoReturnToLobby = state
+   end)
+
+   MinimizeButton.MouseButton1Click:Connect(function()
+       Settings.Minimized = true
+       MainFrame.Visible = false
+       MinimizedFrame.Visible = true
+   end)
+
+   ExpandButton.MouseButton1Click:Connect(function()
+       Settings.Minimized = false
+       MainFrame.Visible = true
+       MinimizedFrame.Visible = false
+   end)
+
+   local function setupDragging(gui)
+       local dragging = false
+       local dragInput
+       local dragStart
+       local startPos
+
+       local function update(input)
+           local delta = input.Position - dragStart
+           gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+               startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+       end
+
+       gui.InputBegan:Connect(function(input)
+           if input.UserInputType == Enum.UserInputType.MouseButton1 or
+              input.UserInputType == Enum.UserInputType.Touch then
+               dragging = true
+               dragStart = input.Position
+               startPos = gui.Position
+
+               input.Changed:Connect(function()
+                   if input.UserInputState == Enum.UserInputState.End then
+                       dragging = false
+                   end
+               end)
+           end
+       end)
+
+       gui.InputChanged:Connect(function(input)
+           if input.UserInputType == Enum.UserInputType.MouseMovement or
+              input.UserInputType == Enum.UserInputType.Touch then
+               dragInput = input
+           end
+       end)
+
+       UserInputService.InputChanged:Connect(function(input)
+           if input == dragInput and dragging then
+               update(input)
+           end
+       end)
+   end
+
+   setupDragging(MainFrame)
+   setupDragging(MinimizedFrame)
+
+   updateStatistics(StatsLabel)
+
+   return ScreenGui, MainFrame, MinimizedFrame
+end
+
+local gui, mainFrame, minimizedFrame = createGui()
+setupAntiAFK()
+setupAntiKick()
+setupAutoRejoin()
+adjustFarmingBehavior(Settings.FarmType)
+handleMurdererSheriff()
+
+player.CharacterAdded:Connect(function(char)
+   task.wait(1)
+   layDown(char)
+end)
+
+if player.Character then
+   layDown(player.Character)
+end
