@@ -10,7 +10,7 @@ local VALID_COIN_TYPES = {["Coin_Server"] = true, ["SnowToken"] = true}
 local state = {
    currentTarget = nil,
    roles = {},
-   murder = nil,
+   murder = nil, 
    sheriff = nil,
    hero = nil,
    gunDrop = nil,
@@ -26,9 +26,14 @@ local state = {
    coinScanInterval = 0.5,
    nearbyRange = 50,
    maxCoinsPerScan = 10,
+   coinAura = false,
+   coinAuraRange = 8,
+   coinAuraActive = false,
+   smallCoinSize = Vector3.new(2, 2, 2),
+   roleNotifications = true,
    espColors = {
        murderer = Color3.fromRGB(255, 0, 0),
-       sheriff = Color3.fromRGB(0, 0, 255),
+       sheriff = Color3.fromRGB(0, 0, 255), 
        hero = Color3.fromRGB(255, 255, 0),
        innocent = Color3.fromRGB(0, 255, 0)
    },
@@ -58,7 +63,7 @@ local state = {
 local UI_CONFIG = {
    buttonSize = UDim2.new(0.08, 0, 0.16, 0),
    defaultPosition = UDim2.new(0.897, 0, 0.3, 0),
-   imageId = "rbxassetid://6023426923",
+   imageId = "rbxassetid://5871701051",
    tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
    gunDropColor = Color3.fromRGB(255, 255, 0),
    gunGrabRange = 20,
@@ -74,8 +79,9 @@ local UI_CONFIG = {
    }
 }
 
-local ESPFolder = Instance.new("Folder", game.CoreGui)
+local ESPFolder = Instance.new("Folder")
 ESPFolder.Name = "ESPElements"
+ESPFolder.Parent = game.CoreGui
 
 local ESPSystem = {
    pool = {},
@@ -223,7 +229,7 @@ function PredictionHelper.advancedPredict(murderer)
    local acceleration = PredictionHelper.calculateAcceleration()
    
    local pingValue = state.customPing > 0 and state.customPing or 
-                    (game.Players.LocalPlayer:GetNetworkPing() * 1000)
+                   (game.Players.LocalPlayer:GetNetworkPing() * 1000)
    local timeOffset = math.clamp(pingValue / 1000 * cfg.smoothing, 0, cfg.maxExtrapolation)
    
    local predictedPosition = torso.Position +
@@ -233,10 +239,10 @@ function PredictionHelper.advancedPredict(murderer)
    
    if state.predictJump and humanoid.Jump then
        local jumpProgress = (tick() % state.predictionConfig.jumpTime) / 
-                          state.predictionConfig.jumpTime
+                         state.predictionConfig.jumpTime
        local jumpOffset = math.sin(jumpProgress * math.pi) * 
-                         state.predictionConfig.jumpHeight * 
-                         (1 - jumpProgress)
+                        state.predictionConfig.jumpHeight * 
+                        (1 - jumpProgress)
        predictedPosition += Vector3.new(0, jumpOffset, 0)
    end
    
@@ -261,7 +267,7 @@ local function CalculatePredictedPosition(murderer)
    if not upperTorso or not humanoid then return nil end
    
    local pingValue = state.customPing > 0 and state.customPing or 
-                    (game.Players.LocalPlayer:GetNetworkPing() * 1000)
+                   (game.Players.LocalPlayer:GetNetworkPing() * 1000)
    
    local compensation = math.clamp(
        pingValue * state.predictionConfig.multiplier,
@@ -278,15 +284,15 @@ local function CalculatePredictedPosition(murderer)
    
    if state.predictJump and humanoid.Jump then
        local jumpProgress = (tick() % state.predictionConfig.jumpTime) / 
-                          state.predictionConfig.jumpTime
+                         state.predictionConfig.jumpTime
        local jumpOffset = math.sin(jumpProgress * math.pi) * 
-                         state.predictionConfig.jumpHeight
+                        state.predictionConfig.jumpHeight
        basePosition += Vector3.new(0, jumpOffset, 0)
    end
    
    return basePosition + 
-          (velocity * finalCompensation) + 
-          (moveDirection * (2.8 * finalCompensation))
+         (velocity * finalCompensation) + 
+         (moveDirection * (2.8 * finalCompensation))
 end
 
 function GrabGunMobile.init()
@@ -380,311 +386,434 @@ do
    button.Position = UI_CONFIG.defaultPosition
    button.Size = UI_CONFIG.buttonSize
    button.Image = UI_CONFIG.imageId
-    button.Visible = false
-    button.Parent = gui
+   button.Visible = false
+   button.Parent = gui
 
-    Instance.new("UICorner", button).CornerRadius = UDim.new(0.1, 0)
-    
-    local dragging, dragInput, dragStart, startPos
+   Instance.new("UICorner", button).CornerRadius = UDim.new(0.1, 0)
+   
+   local dragging, dragInput, dragStart, startPos
 
-    local function updateDrag(input)
-        if not dragging then return end
-        local delta = input.Position - dragStart
-        local targetPos = UDim2.new(
-            startPos.X.Scale + delta.X / workspace.CurrentCamera.ViewportSize.X,
-            startPos.X.Offset,
-            startPos.Y.Scale + delta.Y / workspace.CurrentCamera.ViewportSize.Y,
-            startPos.Y.Offset
-        )
-        TweenService:Create(button, UI_CONFIG.tweenInfo, {Position = targetPos}):Play()
-    end
+   local function updateDrag(input)
+       if not dragging then return end
+       local delta = input.Position - dragStart
+       local targetPos = UDim2.new(
+           startPos.X.Scale + delta.X / workspace.CurrentCamera.ViewportSize.X,
+           startPos.X.Offset,
+           startPos.Y.Scale + delta.Y / workspace.CurrentCamera.ViewportSize.Y,
+           startPos.Y.Offset
+       )
+       TweenService:Create(button, UI_CONFIG.tweenInfo, {Position = targetPos}):Play()
+   end
 
-    button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = button.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
+   button.InputBegan:Connect(function(input)
+       if input.UserInputType == Enum.UserInputType.MouseButton1 or
+          input.UserInputType == Enum.UserInputType.Touch then
+           dragging = true
+           dragStart = input.Position
+           startPos = button.Position
+           
+           input.Changed:Connect(function()
+               if input.UserInputState == Enum.UserInputState.End then
+                   dragging = false
+               end
+           end)
+       end
+   end)
 
-    button.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
+   button.InputChanged:Connect(function(input)
+       if input.UserInputType == Enum.UserInputType.MouseMovement or
+          input.UserInputType == Enum.UserInputType.Touch then
+           dragInput = input
+       end
+   end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            updateDrag(input)
-        end
-    end)
+   UserInputService.InputChanged:Connect(function(input)
+       if input == dragInput and dragging then
+           updateDrag(input)
+       end
+   end)
 end
 
 local function findNearestCoin(localRoot)
-    local currentTime = tick()
-    if currentTime - state.lastCoinScan < state.coinScanInterval and state.currentTarget then
-        return state.currentTarget
-    end
-    state.lastCoinScan = currentTime
+   local currentTime = tick()
+   if currentTime - state.lastCoinScan < state.coinScanInterval and state.currentTarget then
+       return state.currentTarget
+   end
+   state.lastCoinScan = currentTime
 
-    local nearestDist = math.huge
-    local nearestCoin = nil
-    local coinsProcessed = 0
-    
-    local nearbyParts = workspace:GetPartBoundsInRadius(localRoot.Position, state.nearbyRange)
-    
-    for _, part in ipairs(nearbyParts) do
-        if VALID_COIN_TYPES[part.Name] then
-            local dist = (localRoot.Position - part.Position).Magnitude
-            if dist < nearestDist then
-                nearestDist = dist
-                nearestCoin = part
-            end
-            
-            coinsProcessed = coinsProcessed + 1
-            if coinsProcessed >= state.maxCoinsPerScan then
-                break
-            end
-        end
-    end
-    
-    return nearestCoin
+   local nearestDist = math.huge
+   local nearestCoin = nil
+   local coinsProcessed = 0
+   
+   local nearbyParts = workspace:GetPartBoundsInRadius(localRoot.Position, state.nearbyRange)
+   
+   for _, part in ipairs(nearbyParts) do
+       if VALID_COIN_TYPES[part.Name] then
+           local dist = (localRoot.Position - part.Position).Magnitude
+           if dist < nearestDist then
+               nearestDist = dist
+               nearestCoin = part
+           end
+           
+           coinsProcessed = coinsProcessed + 1
+           if coinsProcessed >= state.maxCoinsPerScan then
+               break
+           end
+       end
+   end
+   
+   return nearestCoin
+end
+
+local function collectNearbyCoins()
+   if state.coinAuraActive then return end
+   
+   local character = Players.LocalPlayer.Character
+   if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+   
+   local hrp = character.HumanoidRootPart
+   local nearbyParts = workspace:GetPartBoundsInRadius(hrp.Position, state.coinAuraRange)
+   
+   state.coinAuraActive = true
+   
+   for _, part in ipairs(nearbyParts) do
+       if VALID_COIN_TYPES[part.Name] and part.Size.magnitude <= state.smallCoinSize.magnitude then
+           local originalPos = hrp.CFrame
+           hrp.CFrame = part.CFrame
+           task.wait(0.05)
+           hrp.CFrame = originalPos
+       end
+   end
+   
+   state.coinAuraActive = false
+end
+
+local function checkAndNotifyRole()
+   local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+   local localPlayer = Players.LocalPlayer
+   
+   if not roles or not roles[localPlayer.Name] then return end
+   
+   local myRole = roles[localPlayer.Name].Role
+   local notificationConfig = {
+       Time = 5,
+       Image = "rbxassetid://4483345998"
+   }
+   
+   if myRole == "Murderer" then
+       notificationConfig.Name = "Role: Murderer"
+       notificationConfig.Content = "You are the Murderer! Eliminate all players."
+   elseif myRole == "Sheriff" then
+       notificationConfig.Name = "Role: Sheriff"
+       notificationConfig.Content = "You are the Sheriff! Protect the innocents."
+   else
+       notificationConfig.Name = "Role: Innocent"
+       notificationConfig.Content = "You are Innocent! Try to survive."
+   end
+   
+   OrionLib:MakeNotification(notificationConfig)
 end
 
 ShootMurdererUI.button.MouseButton1Click:Connect(function()
-    local player = game.Players.LocalPlayer
-    local gun = player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-    if not gun then return end
-    
-    if gun.Parent == player.Backpack then
-        player.Character.Humanoid:EquipTool(gun)
-        task.wait()
-    end
-    
-    local murderer = GetMurderer()
-    if not murderer then return end
-    
-    local predictedPosition
-    if state.predictionMethods.current == 1 then
-        predictedPosition = CalculatePredictedPosition(murderer)
-    else
-        predictedPosition = PredictionHelper.advancedPredict(murderer)
-        PredictionHelper.updateHistory(murderer)
-    end
-    
-    if not predictedPosition then return end
-    
-    player.Character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
+   local player = game.Players.LocalPlayer
+   local gun = player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+   if not gun then return end
+   
+   if gun.Parent == player.Backpack then
+       player.Character.Humanoid:EquipTool(gun)
+       task.wait()
+   end
+   
+   local murderer = GetMurderer()
+   if not murderer then return end
+   
+   local predictedPosition
+   if state.predictionMethods.current == 1 then
+       predictedPosition = CalculatePredictedPosition(murderer)
+   else
+       predictedPosition = PredictionHelper.advancedPredict(murderer)
+       PredictionHelper.updateHistory(murderer)
+   end
+   
+   if not predictedPosition then return end
+   
+   player.Character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
 end)
 
 RunService.Heartbeat:Connect(function()
-    state.roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    
-    for playerName, playerData in pairs(state.roles) do
-        if playerData.Role == "Murderer" then
-            state.murder = playerName
-        elseif playerData.Role == "Sheriff" then
-            state.sheriff = playerName
-        elseif playerData.Role == "Hero" then
-            state.hero = playerName
-        end
-    end
+   state.roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+   
+   for playerName, playerData in pairs(state.roles) do
+       if playerData.Role == "Murderer" then
+           state.murder = playerName
+       elseif playerData.Role == "Sheriff" then
+           state.sheriff = playerName
+       end
+   end
+   
+   -- Update hero status
+   local localPlayer = Players.LocalPlayer
+   if localPlayer.Character then
+       local hasGun = localPlayer.Character:FindFirstChild("Gun") or 
+                     localPlayer.Backpack:FindFirstChild("Gun")
+       if hasGun and localPlayer.Name ~= state.sheriff then
+           state.hero = localPlayer.Name
+       else
+           state.hero = nil
+       end
+   end
 
-    if state.espEnabled then
-        for player in pairs(ESPSystem.active) do
-            ESPSystem.updatePlayer(player)
-        end
-        
-        while #ESPSystem.updateQueue > 0 do 
-            ESPSystem.updatePlayer(table.remove(ESPSystem.updateQueue, 1))
-        end
-    end
+   if state.espEnabled then
+       for player in pairs(ESPSystem.active) do
+           ESPSystem.updatePlayer(player)
+       end
+       
+       while #ESPSystem.updateQueue > 0 do 
+           ESPSystem.updatePlayer(table.remove(ESPSystem.updateQueue, 1))
+       end
+   end
 
-    if state.autoCoin and not state.autoCoinOperator then
-        state.autoCoinOperator = true
-        
-        local character = Players.LocalPlayer.Character
-        if not character then 
-            state.autoCoinOperator = false
-            return 
-        end
-        
-        local localRoot = character:FindFirstChild("HumanoidRootPart")
-        if not localRoot then 
-            state.autoCoinOperator = false
-            return 
-        end
+   if state.coinAura then
+       collectNearbyCoins()
+   end
 
-        tweenRefPart.CFrame = localRoot.CFrame
-        state.currentTarget = findNearestCoin(localRoot)
+   if state.autoCoin and not state.autoCoinOperator then
+       state.autoCoinOperator = true
+       
+       local character = Players.LocalPlayer.Character
+       if not character then 
+           state.autoCoinOperator = false
+           return 
+       end
+       
+       local localRoot = character:FindFirstChild("HumanoidRootPart")
+       if not localRoot then 
+           state.autoCoinOperator = false
+           return 
+       end
 
-        if state.currentTarget then
-            state.coinFound = true
-            local distance = (localRoot.Position - state.currentTarget.Position).Magnitude
-            state.tweenSpeed = math.min(math.max(distance / 100, 0.1), 2)
-            
-            local tweenInfo = TweenInfo.new(state.tweenSpeed, Enum.EasingStyle.Linear)
-            local tween = TweenService:Create(tweenRefPart, tweenInfo, {
-                CFrame = state.currentTarget.CFrame
-            })
-            
-            local connection
-            connection = tween.Completed:Connect(function()
-                connection:Disconnect()
-                if state.currentTarget and state.currentTarget.Parent then
-                    state.currentTarget.Parent = nil
-                end
-                state.currentTarget = nil
-                state.coinFound = false
-                state.autoCoinOperator = false
-            end)
-            
-            tween:Play()
-        else
-            state.autoCoinOperator = false
-        end
-    end
+       tweenRefPart.CFrame = localRoot.CFrame
+       state.currentTarget = findNearestCoin(localRoot)
 
-    if state.autoCoin and state.coinFound then
-        Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tweenRefPart.CFrame
-    end
+       if state.currentTarget then
+           state.coinFound = true
+           local distance = (localRoot.Position - state.currentTarget.Position).Magnitude
+           state.tweenSpeed = math.min(math.max(distance / 100, 0.1), 2)
+           
+           local tweenInfo = TweenInfo.new(state.tweenSpeed, Enum.EasingStyle.Linear)
+           local tween = TweenService:Create(tweenRefPart, tweenInfo, {
+               CFrame = state.currentTarget.CFrame
+           })
+           
+           local connection
+           connection = tween.Completed:Connect(function()
+               connection:Disconnect()
+               if state.currentTarget and state.currentTarget.Parent then
+                   state.currentTarget.Parent = nil
+               end
+               state.currentTarget = nil
+               state.coinFound = false
+               state.autoCoinOperator = false
+           end)
+           
+           tween:Play()
+       else
+           state.autoCoinOperator = false
+       end
+   end
+
+   if state.autoCoin and state.coinFound then
+       Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tweenRefPart.CFrame
+   end
 end)
 
 workspace.DescendantAdded:Connect(function(descendant)
-    if descendant.Name == "GunDrop" then
-        state.gunDrop = descendant
-    end
+   if descendant.Name == "GunDrop" then
+       state.gunDrop = descendant
+       
+       if state.gunDropEsp then
+           local highlight = Instance.new("Highlight")
+           highlight.Name = "GunDrop_Highlight"
+           highlight.FillColor = UI_CONFIG.gunDropColor
+           highlight.OutlineColor = UI_CONFIG.gunDropColor
+           highlight.Adornee = descendant
+           highlight.Parent = ESPFolder
+       end
+   end
 end)
 
 workspace.DescendantRemoving:Connect(function(descendant)
-    if descendant.Name == "GunDrop" then
-        state.gunDrop = nil
-    end
+   if descendant.Name == "GunDrop" then
+       state.gunDrop = nil
+       
+       if state.gunDropEsp then
+           for _, highlight in ipairs(ESPFolder:GetChildren()) do
+               if highlight.Name == "GunDrop_Highlight" and highlight.Adornee == descendant then
+                   highlight:Destroy()
+               end
+           end
+       end
+   end
 end)
 
 Players.PlayerAdded:Connect(function(player)
-    table.insert(ESPSystem.updateQueue, player)
+   table.insert(ESPSystem.updateQueue, player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    if ESPSystem.active[player] then
-        ESPSystem.returnToPool(ESPSystem.active[player])
-        ESPSystem.active[player] = nil
-    end
+   if ESPSystem.active[player] then
+       ESPSystem.returnToPool(ESPSystem.active[player])
+       ESPSystem.active[player] = nil
+   end
 end)
 
 GrabGunMobile.init()
 
 local Window = OrionLib:MakeWindow({
-    Name = "MM2 Helper",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "MM2Helper"
+   Name = "MM2 Helper",
+   HidePremium = false,
+   SaveConfig = true,
+   ConfigFolder = "MM2Helper"
 })
 
 local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://6035067834",
-    PremiumOnly = false
+   Name = "Main",
+   Icon = "rbxassetid://6035067834",
+   PremiumOnly = false
+})
+
+local coinSection = MainTab:AddSection({
+   Name = "Coin Settings"
+})
+
+coinSection:AddToggle({
+   Name = "Coin Aura",
+   Default = false,
+   Callback = function(Value)
+       state.coinAura = Value
+   end
+})
+
+coinSection:AddSlider({
+   Name = "Coin Aura Range",
+   Min = 5,
+   Max = 15,
+   Default = 8,
+   Color = Color3.fromRGB(255,255,255),
+   Increment = 1,
+   ValueName = "studs",
+   Callback = function(Value)
+       state.coinAuraRange = Value
+   end    
+})
+
+MainTab:AddToggle({
+   Name = "Role Notifications",
+   Default = true,
+   Callback = function(Value)
+       state.roleNotifications = Value
+   end
 })
 
 local shootSection = MainTab:AddSection({
-    Name = "Shoot Murderer Settings"
+   Name = "Shoot Murderer Settings"
 })
 
 shootSection:AddToggle({
-    Name = "Predict Jumps",
-    Default = false,
-    Callback = function(Value)
-        state.predictJump = Value
-    end
+   Name = "Predict Jumps",
+   Default = false,
+   Callback = function(Value)
+       state.predictJump = Value
+   end
 })
 
 shootSection:AddDropdown({
-    Name = "Prediction Method",
-    Default = "Default",
-    Options = {"Default", "Advanced"},
-    Callback = function(Value)
-        state.predictionMethods.current = Value == "Default" and 1 or 2
-    end
+   Name = "Prediction Method",
+   Default = "Default",
+   Options = {"Default", "Advanced"},
+   Callback = function(Value)
+       state.predictionMethods.current = Value == "Default" and 1 or 2
+   end
 })
 
 shootSection:AddTextbox({
-    Name = "Prediction Ping (ms)",
-    Default = "0",
-    TextDisappear = false,
-    Callback = function(Value)
-        state.customPing = tonumber(Value) or 0
-    end
+   Name = "Prediction Ping (ms)",
+   Default = "0",
+   TextDisappear = false,
+   Callback = function(Value)
+       state.customPing = tonumber(Value) or 0
+   end
 })
 
 MainTab:AddToggle({
-    Name = "ESP",
-    Default = false,
-    Callback = function(Value)
-        state.espEnabled = Value
-        if not Value then
-            for player, esp in pairs(ESPSystem.active) do
-                ESPSystem.returnToPool(esp)
-                ESPSystem.active[player] = nil
-            end
-            table.clear(ESPSystem.updateQueue)
-        end
-    end
+   Name = "ESP",
+   Default = false,
+   Callback = function(Value)
+       state.espEnabled = Value
+       if not Value then
+           for player, esp in pairs(ESPSystem.active) do
+               ESPSystem.returnToPool(esp)
+               ESPSystem.active[player] = nil
+           end
+           table.clear(ESPSystem.updateQueue)
+       end
+   end
 })
 
 MainTab:AddToggle({
-    Name = "Auto Collect Coins",
-    Default = false,
-    Callback = function(Value)
-        state.autoCoin = Value
-        if not Value then
-            state.currentTarget = nil
-            state.coinFound = false
-            state.autoCoinOperator = false
-        end
-    end
+   Name = "Auto Collect Coins",
+   Default = false,
+   Callback = function(Value)
+       state.autoCoin = Value
+       if not Value then
+           state.currentTarget = nil
+           state.coinFound = false
+           state.autoCoinOperator = false
+       end
+   end
 })
 
 local gunSection = MainTab:AddSection({
-    Name = "Gun Settings"
+   Name = "Gun Settings"
 })
 
 gunSection:AddToggle({
-    Name = "Gun Drop ESP",
-    Default = false,
-    Callback = function(Value)
-        state.gunDropEsp = Value
-        if not Value then
-            for _, highlight in ipairs(ESPFolder:GetChildren()) do
-                if highlight.Name == "GunDrop_Highlight" then
-                    highlight:Destroy()
-                end
-            end
-        end
-    end
+   Name = "Gun Drop ESP",
+   Default = false,
+   Callback = function(Value)
+       state.gunDropEsp = Value
+       if not Value then
+           for _, highlight in ipairs(ESPFolder:GetChildren()) do
+               if highlight.Name == "GunDrop_Highlight" then
+                   highlight:Destroy()
+               end
+           end
+       end
+   end
 })
 
 gunSection:AddButton({
-    Name = "Toggle Grab Gun Button",
-    Callback = function()
-        GrabGunMobile.toggle()
-    end
+   Name = "Toggle Grab Gun Button",
+   Callback = function()
+       GrabGunMobile.toggle()
+   end
 })
 
 MainTab:AddButton({
-    Name = "Toggle Shoot Murderer",
-    Callback = function()
-        ShootMurdererUI.button.Visible = not ShootMurdererUI.button.Visible
-    end
+   Name = "Toggle Shoot Murderer",
+   Callback = function()
+       ShootMurdererUI.button.Visible = not ShootMurdererUI.button.Visible
+   end
 })
+
+for _, v in ipairs(getconnections(ReplicatedStorage.Remotes.Gameplay.RoundStart.OnClientEvent)) do
+   local oldCallback = v.Function
+   v.Function = function(...)
+       if state.roleNotifications then
+           task.delay(1, checkAndNotifyRole)
+       end
+       return oldCallback(...)
+   end
+end
 
 OrionLib:Init()
