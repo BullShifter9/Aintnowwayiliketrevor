@@ -820,6 +820,7 @@ ESPTab:AddToggle({
           end
       end
   end
+})
 
 -- Add ESP Toggle to UI
 ESPTab:AddToggle({
