@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
 local VALID_COIN_TYPES = {["Coin_Server"] = true, ["SnowToken"] = true}
 
@@ -705,6 +706,142 @@ ESPTab:AddToggle({
           end
       end
   end
+
+-- ESP Configuration
+local ESP_CONFIG = {
+    updateRate = 0.5,
+    colors = {
+        sheriff = Color3.fromRGB(0, 0, 255),
+        murderer = Color3.fromRGB(255, 0, 0),
+        innocent = Color3.fromRGB(0, 255, 0)
+    },
+    transparency = 0.5,
+    outlineTransparency = 0.3
+}
+
+-- State Management
+local state = {
+    roles = nil,
+    Murder = nil,
+    Sheriff = nil,
+    Hero = nil,
+    espEnabled = false,
+    espConnection = nil
+}
+
+-- Role Detection Function
+function IsAlive(Player)
+    for i, v in pairs(state.roles) do
+        if Player.Name == i then
+            return not (v.Killed or v.Dead)
+        end
+    end
+    return false
+end
+
+-- Role Update Loop
+RunService.RenderStepped:Connect(function()
+    state.roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    for i, v in pairs(state.roles) do
+        if v.Role == "Murderer" then
+            state.Murder = i
+        elseif v.Role == "Sheriff" then
+            state.Sheriff = i
+        elseif v.Role == "Hero" then
+            state.Hero = i
+        end
+    end
+end)
+
+-- ESP Core Functions
+local function CreateHighlight(player)
+    local character = player.Character
+    if not character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESPHighlight"
+    highlight.FillTransparency = ESP_CONFIG.transparency
+    highlight.OutlineTransparency = ESP_CONFIG.outlineTransparency
+    highlight.Parent = character
+    
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "ESPName"
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Size = UDim2.new(0, 200, 0, 50)
+    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+    billboardGui.Parent = character.Head
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.Parent = billboardGui
+    
+    return highlight, nameLabel
+end
+
+local function UpdateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local highlight = player.Character:FindFirstChild("ESPHighlight")
+            local nameGui = player.Character.Head:FindFirstChild("ESPName")
+            
+            if not highlight or not nameGui then
+                highlight, nameGui = CreateHighlight(player)
+            end
+            
+            local color
+            if player.Name == state.Sheriff and IsAlive(player) then
+                color = ESP_CONFIG.colors.sheriff
+            elseif player.Name == state.Murder and IsAlive(player) then
+                color = ESP_CONFIG.colors.murderer
+            else
+                color = ESP_CONFIG.colors.innocent
+            end
+            
+            highlight.FillColor = color
+            highlight.OutlineColor = color
+            nameGui.TextLabel.Text = player.Name
+            nameGui.TextLabel.TextColor3 = color
+        end
+    end
+end
+
+local function ClearESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local highlight = player.Character:FindFirstChild("ESPHighlight")
+            if highlight then highlight:Destroy() end
+            
+            local nameGui = player.Character.Head:FindFirstChild("ESPName")
+            if nameGui then nameGui:Destroy() end
+        end
+    end
+end
+
+-- Add ESP Toggle to UI
+ESPTab:AddToggle({
+    Name = "ESP All",
+    Default = false,
+    Callback = function(Value)
+        state.espEnabled = Value
+        
+        if state.espEnabled then
+            state.espConnection = RunService.RenderStepped:Connect(function()
+                task.wait(ESP_CONFIG.updateRate)
+                pcall(UpdateESP)
+            end)
+        else
+            if state.espConnection then
+                state.espConnection:Disconnect()
+                state.espConnection = nil
+            end
+            ClearESP()
+        end
+    end
 })
 
+-- Initialize OrionLib
 OrionLib:Init()
