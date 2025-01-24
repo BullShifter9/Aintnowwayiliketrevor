@@ -1,401 +1,411 @@
--- MM2 Advanced Combat & ESP System
--- Developed by Azzakirms
--- High-Performance Roblox Murder Mystery Utility
-
--- Critical Service Initialization
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 local TweenService = game:GetService("TweenService")
-
--- Performance Configuration
-local CONFIG = {
-    ESP_UPDATE_RATE = 0.2,
-    RENDER_DISTANCE = 150,
-    MAX_PLAYERS_RENDERED = 12,
-    PREDICTION_ACCURACY = 0.85,
-    OPTIMIZATION_LEVEL = 2  -- Advanced optimization
-}
-
--- Advanced Theme Configuration
-local Theme = {
-    Background = Color3.fromRGB(25, 25, 25),
-    Secondary = Color3.fromRGB(30, 30, 30),
-    Accent = Color3.fromRGB(45, 45, 45),
-    Text = Color3.fromRGB(255, 255, 255),
-    NeonBlue = Color3.fromRGB(0, 255, 255),
-    Success = Color3.fromRGB(0, 255, 128),
-    Error = Color3.fromRGB(255, 75, 75)
-}
-
--- Role Color Mapping
-local ROLE_COLORS = {
-    M = Color3.fromRGB(255, 0, 0),     -- Murderer
-    S = Color3.fromRGB(0, 0, 255),     -- Sheriff
-    H = Color3.fromRGB(102, 153, 0),   -- Hero
-    I = Color3.fromRGB(0, 255, 0)      -- Innocent
-}
-
--- Utility Functions
-local function CreateElement(class, properties)
-    local element = Instance.new(class)
-    for prop, value in pairs(properties or {}) do
-        element[prop] = value
-    end
-    return element
-end
-
--- Advanced Dragging Module
-local function CreateDraggable(gui, dragPoint)
-    local dragging = false
-    local offset, input
-
-    local function update(input)
-        local delta = input.Position - input.Origin
-        gui.Position = UDim2.new(
-            input.Start.X.Scale, 
-            input.Start.X.Offset + delta.X, 
-            input.Start.Y.Scale, 
-            input.Start.Y.Offset + delta.Y
-        )
-    end
-
-    dragPoint.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            offset = gui.Position
-            input.Origin = input.Position
-            input.Start = gui.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then
-                update(input)
-            end
-        end
-    end)
-end
-
--- Object Pooling System
-local ObjectPool = {
-    highlights = {},
-    tags = {}
-}
-
-function ObjectPool.getHighlight()
-    local highlight = table.remove(ObjectPool.highlights)
-    if not highlight then
-        highlight = Instance.new("Highlight")
-    end
-    return highlight
-end
-
-function ObjectPool.getTag()
-    local tag = table.remove(ObjectPool.tags)
-    if not tag then
-        tag = Instance.new("BillboardGui")
-        tag.AlwaysOnTop = true
-        tag.Size = UDim2.new(0, 100, 0, 30)
-        tag.StudsOffset = Vector3.new(0, 2, 0)
-        
-        local label = Instance.new("TextLabel")
-        label.BackgroundTransparency = 1
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 12
-        label.Parent = tag
-    end
-    return tag
-end
-
--- Physics & Prediction Constants
-local PHYSICS_CONSTANTS = {
-    GRAVITY = 196.2,
-    FRICTION_GROUND = 0.55,
-    AIR_RESISTANCE = 0.035,
-    PREDICTION_WINDOW = 0.75,
-    PRECISION_SCALE = 15
-}
-
--- ESP System Configuration
-local ESPSystem = {
-    enabled = false,
-    lastUpdate = 0,
-    connection = nil,
-    activeESP = {},
-    cachedRoles = {}
-}
-
--- Role Update Mechanism
-function ESPSystem.updateRoles()
-    local success, data = pcall(function()
-        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-    
-    if not success then 
-        warn("[ESP] Role update failed")
-        return 
-    end
-    
-    table.clear(ESPSystem.cachedRoles)
-    
-    for name, info in pairs(data) do
-        ESPSystem.cachedRoles[name] = {
-            role = info.Role and info.Role:sub(1,1) or "I",
-            alive = not (info.Killed or info.Dead)
-        }
-    end
-end
-
-return {
-    CONFIG = CONFIG,
-    Theme = Theme,
-    CreateElement = CreateElement,
-    CreateDraggable = CreateDraggable,
-    ObjectPool = ObjectPool,
-    ESPSystem = ESPSystem
-}
-
--- Combat Prediction and Targeting Module
-local CombatPrediction = {}
-
--- Advanced Velocity Simulation
-function CombatPrediction.SimulateVelocity(currentVelocity, deltaTime)
-    -- Non-linear velocity decay with exponential friction modeling
-    local decayFactor = math.exp(-PHYSICS_CONSTANTS.FRICTION_GROUND * deltaTime)
-    return Vector3.new(
-        currentVelocity.X * decayFactor,
-        currentVelocity.Y,  -- Vertical velocity less affected by friction
-        currentVelocity.Z * decayFactor
-    )
-end
-
--- Comprehensive Trajectory Prediction Algorithm
-function CombatPrediction.PredictTrajectory(murderer, localPlayer)
-    -- Robust null-check to prevent potential runtime errors
-    local character = murderer.Character
-    if not character then return nil end
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    
-    if not (rootPart and humanoid) then return nil end
-    
-    -- State vector extraction with high-precision measurements
-    local currentPosition = rootPart.Position
-    local currentVelocity = rootPart.AssemblyLinearVelocity
-    local moveDirection = humanoid.MoveDirection
-    
-    -- Configurable prediction window
-    local predictionTime = PHYSICS_CONSTANTS.PREDICTION_WINDOW
-    
-    -- Advanced velocity simulation accounting for environmental factors
-    local simulatedVelocity = CombatPrediction.SimulateVelocity(currentVelocity, predictionTime)
-    
-    -- Multi-dimensional trajectory calculation
-    local gravitationalOffset = 0.5 * Vector3.new(0, -PHYSICS_CONSTANTS.GRAVITY, 0) * predictionTime^2
-    local movementProjection = moveDirection * predictionTime * PHYSICS_CONSTANTS.PRECISION_SCALE
-    
-    -- Predictive position computation with multi-factor analysis
-    local predictedPosition = currentPosition + 
-        (simulatedVelocity * predictionTime) + 
-        gravitationalOffset + 
-        movementProjection
-    
-    -- Dynamic target acquisition
-    local targetPosition = localPlayer.Character.HumanoidRootPart.Position
-    local distanceToTarget = (targetPosition - predictedPosition).Magnitude
-    
-    -- Adaptive precision modulation
-    local precisionModulator = math.min(distanceToTarget / 50, 1.2)
-    
-    -- Interpolated aim correction with contextual awareness
-    local finalPredictedPosition = CFrame.new(predictedPosition):Lerp(
-        CFrame.new(targetPosition), 
-        1 - precisionModulator
-    ).Position
-    
-    -- Stochastic refinement for subtle aim variation
-    local temporalVariance = math.sin(tick() * 3) * 0.2
-    local spatialVariance = math.cos(tick() * 2) * 0.15
-    
-    return finalPredictedPosition + Vector3.new(
-        temporalVariance,
-        spatialVariance,
-        temporalVariance * 0.5
-    )
-end
-
--- Advanced Shot Attempt Mechanism
-function CombatPrediction.AttemptShot(murderer)
-    local localPlayer = Players.LocalPlayer
-    
-    -- Comprehensive validation layer
-    if not (murderer and localPlayer.Character) then 
-        warn("[Combat] Invalid shot parameters")
-        return false 
-    end
-    
-    -- Adaptive gun detection
-    local gun = localPlayer.Character:FindFirstChild("Gun") or 
-                localPlayer.Backpack:FindFirstChild("Gun")
-    
-    if not gun then 
-        warn("[Combat] No gun found")
-        return false 
-    end
-    
-    -- Safe tool equipping with error handling
-    if gun.Parent == localPlayer.Backpack then
-        pcall(function()
-            localPlayer.Character.Humanoid:EquipTool(gun)
-        end)
-        task.wait(0.1)
-    end
-    
-    -- Predictive position calculation
-    local predictedPosition = CombatPrediction.PredictTrajectory(murderer, localPlayer)
-    
-    if not predictedPosition then
-        warn("[Combat] Position prediction failed")
-        return false
-    end
-    
-    -- Robust shot execution with multiple fallback methods
-    local shotMethods = {
-        function()
-            return localPlayer.Character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(
-                1, predictedPosition, "AH2"
-            )
-        end,
-        function()
-            return localPlayer.Character.Gun.KnifeServer.ShootGun:InvokeServer(
-                1, predictedPosition, "AH"
-            )
-        end
-    }
-    
-    -- Iterative shot attempt with comprehensive error management
-    for _, shotMethod in ipairs(shotMethods) do
-        local success, result = pcall(shotMethod)
-        if success then return true end
-    end
-    
-    warn("[Combat] All shot methods failed")
-    return false
-end
-
--- Combat System Controller
-local CombatSystem = {
-    jumpPredict = false,
-    pingValue = 100,
-    predictionActive = false
-}
-
--- Toggle Prediction Mode
-function CombatSystem.TogglePrediction()
-    CombatSystem.predictionActive = not CombatSystem.predictionActive
-    return CombatSystem.predictionActive
-end
-
--- Find Potential Murderer
-function CombatSystem.FindMurderer()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("Knife") then
-            return player
-        end
-    end
-    return nil
-end
-
-return {
-    CombatPrediction = CombatPrediction,
-    CombatSystem = CombatSystem
-}
-
--- Advanced UI System for Murder Mystery 2
--- Developed with precision and performance optimization
-
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- Import previous modules
-local BaseModule = require(script.Parent.BaseModule)
-local CombatModule = require(script.Parent.CombatModule)
+local VALID_COIN_TYPES = {["Coin_Server"] = true, ["SnowToken"] = true}
 
--- UI Configuration Constants
-local UI_CONFIG = {
-    THEME = {
-        PRIMARY_BG = Color3.fromRGB(25, 25, 25),
-        SECONDARY_BG = Color3.fromRGB(35, 35, 35),
-        ACCENT = Color3.fromRGB(60, 60, 60),
-        TEXT_COLOR = Color3.fromRGB(220, 220, 220),
-        HIGHLIGHT = Color3.fromRGB(0, 255, 128)
-    },
-    SIZING = {
-        MAIN_WIDTH = 500,
-        MAIN_HEIGHT = 600,
-        BUTTON_HEIGHT = 40,
-        ICON_SIZE = 50
-    }
+local state = {
+   currentTarget = nil,
+   roles = {},
+   murder = nil,
+   sheriff = nil,
+   hero = nil,
+   gunDrop = nil,
+   espEnabled = false,
+   autoCoin = false,
+   autoCoinOperator = false,
+   coinFound = false,
+   tweenSpeed = 0.08,
+   predictJump = false,
+   customPing = 0,
+   gunDropEsp = false,
+   lastCoinScan = 0,
+   coinScanInterval = 0.5,
+   nearbyRange = 50,
+   maxCoinsPerScan = 10,
+   espColors = {
+       murderer = Color3.fromRGB(255, 0, 0),
+       sheriff = Color3.fromRGB(0, 0, 255),
+       hero = Color3.fromRGB(255, 255, 0),
+       innocent = Color3.fromRGB(0, 255, 0)
+   },
+   predictionConfig = {
+       base = 1.0,
+       multiplier = 0.01,
+       maxCompensation = 5.0,
+       jumpHeight = 7.2,
+       jumpTime = 0.65,
+       gravityMult = 2.1
+   },
+   predictionMethods = {
+       current = 1,
+       advanced = {
+           velocityWeight = 2.5,
+           directionWeight = 1.8,
+           accelerationWeight = 1.2,
+           smoothing = 0.15,
+           maxExtrapolation = 8,
+           lastPositions = {},
+           lastVelocities = {},
+           maxHistorySize = 10
+       }
+   }
 }
 
--- Advanced UI Creation Module
-local UISystem = {}
+local UI_CONFIG = {
+   buttonSize = UDim2.new(0.08, 0, 0.16, 0),
+   defaultPosition = UDim2.new(0.897, 0, 0.3, 0),
+   imageId = "rbxassetid://6023426923",
+   tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+   gunDropColor = Color3.fromRGB(255, 255, 0),
+   gunGrabRange = 20,
+   murdererWarningRange = 15,
+   grabGunButtonConfig = {
+       size = UDim2.new(0.15, 0, 0.08, 0),
+       position = UDim2.new(0.02, 0, 0.1, 0),
+       backgroundColor = Color3.fromRGB(40, 40, 40),
+       textColor = Color3.fromRGB(255, 255, 255),
+       cornerRadius = UDim.new(0.2, 0),
+       font = Enum.Font.GothamBold,
+       textSize = 14
+   }
+}
 
--- Sophisticated Element Creation Wrapper
-function UISystem.CreateStyledElement(elementType, properties)
-    local element = Instance.new(elementType)
-    
-    -- Apply base styling
-    element.BackgroundColor3 = UI_CONFIG.THEME.SECONDARY_BG
-    element.BorderSizePixel = 0
-    
-    -- Apply custom properties
-    for prop, value in pairs(properties or {}) do
-        element[prop] = value
-    end
-    
-    -- Add rounded corners
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = element
-    
-    return element
+local ESPFolder = Instance.new("Folder", game.CoreGui)
+ESPFolder.Name = "ESPElements"
+
+local ESPSystem = {
+   pool = {},
+   active = {},
+   updateQueue = {}
+}
+
+local PredictionHelper = {
+   lastUpdate = 0,
+   updateInterval = 0.1
+}
+
+local tweenRefPart = Instance.new("Part")
+tweenRefPart.Name = "AutoCoinPart"
+tweenRefPart.Transparency = 1
+tweenRefPart.Size = Vector3.new(1, 0.5, 1)
+tweenRefPart.Position = Vector3.new(0, 10000, 0)
+tweenRefPart.Anchored = true
+tweenRefPart.CanCollide = false
+tweenRefPart.Parent = workspace
+
+local ShootMurdererUI = {
+   gui = Instance.new("ScreenGui"),
+   button = Instance.new("ImageButton")
+}
+
+local GrabGunMobile = {
+   gui = nil,
+   button = nil,
+   visible = false
+}
+
+function ESPSystem.getFromPool()
+   local esp = table.remove(ESPSystem.pool)
+   if not esp then
+       esp = {
+           highlight = Instance.new("Highlight"),
+           billboard = Instance.new("BillboardGui"),
+           label = Instance.new("TextLabel")
+       }
+       
+       esp.highlight.FillTransparency = 0.5
+       esp.highlight.OutlineTransparency = 0
+       
+       esp.billboard.AlwaysOnTop = true
+       esp.billboard.Size = UDim2.new(0, 200, 0, 50)
+       esp.billboard.StudsOffset = Vector3.new(0, 3, 0)
+       
+       esp.label.BackgroundTransparency = 1
+       esp.label.Size = UDim2.new(1, 0, 1, 0)
+       esp.label.TextSize = 14
+       esp.label.Font = Enum.Font.GothamBold
+       
+       esp.billboard.Parent = ESPFolder
+       esp.highlight.Parent = ESPFolder
+       esp.label.Parent = esp.billboard
+   end
+   return esp
 end
 
--- Advanced Draggable Interface
-function UISystem.MakeDraggable(frame, dragHandle)
-    local dragging = false
-    local dragInput
-    local dragStart
-    local startPos
+function ESPSystem.returnToPool(esp)
+   esp.highlight.Adornee = nil
+   esp.billboard.Adornee = nil
+   esp.label.Text = ""
+   table.insert(ESPSystem.pool, esp)
+end
 
-    local function update(input)
+function ESPSystem.updatePlayer(player)
+   if player == Players.LocalPlayer then return end
+   
+   local character = player.Character
+   if not character or not character:FindFirstChild("HumanoidRootPart") then
+       if ESPSystem.active[player] then
+           ESPSystem.returnToPool(ESPSystem.active[player])
+           ESPSystem.active[player] = nil
+       end
+       return
+   end
+   
+   local role = "innocent"
+   local color = state.espColors.innocent
+   
+   if player.Name == state.murder then
+       role = "murderer"
+       color = state.espColors.murderer
+   elseif player.Name == state.sheriff then
+       role = "sheriff"
+       color = state.espColors.sheriff
+   elseif player.Name == state.hero then
+       role = "hero"
+       color = state.espColors.hero
+   end
+   
+   local esp = ESPSystem.active[player] or ESPSystem.getFromPool()
+   ESPSystem.active[player] = esp
+   
+   esp.highlight.Adornee = character
+   esp.billboard.Adornee = character:FindFirstChild("Head")
+   esp.highlight.FillColor = color
+   esp.highlight.OutlineColor = color
+   esp.label.TextColor3 = color
+   esp.label.Text = string.format("%s (%s)", player.Name, role:upper())
+end
+
+function PredictionHelper.updateHistory(murderer)
+   if not murderer or not murderer.Character then return end
+   
+   local torso = murderer.Character:FindFirstChild("UpperTorso")
+   if not torso then return end
+   
+   local currentTime = tick()
+   if currentTime - PredictionHelper.lastUpdate < PredictionHelper.updateInterval then
+       return
+   end
+   PredictionHelper.lastUpdate = currentTime
+   
+   local currentPos = torso.Position
+   local currentVel = torso.AssemblyLinearVelocity
+   
+   table.insert(state.predictionMethods.advanced.lastPositions, 1, currentPos)
+   table.insert(state.predictionMethods.advanced.lastVelocities, 1, currentVel)
+   
+   if #state.predictionMethods.advanced.lastPositions > state.predictionMethods.advanced.maxHistorySize then
+       table.remove(state.predictionMethods.advanced.lastPositions)
+       table.remove(state.predictionMethods.advanced.lastVelocities)
+   end
+end
+
+function PredictionHelper.calculateAcceleration()
+   local velocities = state.predictionMethods.advanced.lastVelocities
+   if #velocities < 2 then return Vector3.new() end
+   
+   return (velocities[1] - velocities[#velocities]) / #velocities
+end
+
+function PredictionHelper.advancedPredict(murderer)
+   if not murderer or not murderer.Character then return nil end
+   
+   local torso = murderer.Character:FindFirstChild("UpperTorso")
+   local humanoid = murderer.Character:FindFirstChild("Humanoid")
+   if not torso or not humanoid then return nil end
+
+   local cfg = state.predictionMethods.advanced
+   local currentVel = torso.AssemblyLinearVelocity
+   local acceleration = PredictionHelper.calculateAcceleration()
+   
+   local pingValue = state.customPing > 0 and state.customPing or 
+                    (game.Players.LocalPlayer:GetNetworkPing() * 1000)
+   local timeOffset = math.clamp(pingValue / 1000 * cfg.smoothing, 0, cfg.maxExtrapolation)
+   
+   local predictedPosition = torso.Position +
+       (currentVel * cfg.velocityWeight * timeOffset) +
+       (humanoid.MoveDirection * cfg.directionWeight) +
+       (acceleration * cfg.accelerationWeight * timeOffset * timeOffset)
+   
+   if state.predictJump and humanoid.Jump then
+       local jumpProgress = (tick() % state.predictionConfig.jumpTime) / 
+                          state.predictionConfig.jumpTime
+       local jumpOffset = math.sin(jumpProgress * math.pi) * 
+                         state.predictionConfig.jumpHeight * 
+                         (1 - jumpProgress)
+       predictedPosition += Vector3.new(0, jumpOffset, 0)
+   end
+   
+   return predictedPosition
+end
+
+local function GetMurderer()
+   local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+   for playerName, data in pairs(roles) do
+       if data.Role == "Murderer" then
+           return Players[playerName]
+       end
+   end
+   return nil
+end
+
+local function CalculatePredictedPosition(murderer)
+   if not murderer or not murderer.Character then return nil end
+   
+   local upperTorso = murderer.Character:FindFirstChild("UpperTorso")
+   local humanoid = murderer.Character:FindFirstChild("Humanoid")
+   if not upperTorso or not humanoid then return nil end
+   
+   local pingValue = state.customPing > 0 and state.customPing or 
+                    (game.Players.LocalPlayer:GetNetworkPing() * 1000)
+   
+   local compensation = math.clamp(
+       pingValue * state.predictionConfig.multiplier,
+       0,
+       state.predictionConfig.maxCompensation
+   )
+   
+   local velocity = upperTorso.AssemblyLinearVelocity
+   local basePosition = upperTorso.Position
+   local moveDirection = humanoid.MoveDirection
+   
+   local speedMultiplier = humanoid.WalkSpeed / 16
+   local finalCompensation = compensation * speedMultiplier
+   
+   if state.predictJump and humanoid.Jump then
+       local jumpProgress = (tick() % state.predictionConfig.jumpTime) / 
+                          state.predictionConfig.jumpTime
+       local jumpOffset = math.sin(jumpProgress * math.pi) * 
+                         state.predictionConfig.jumpHeight
+       basePosition += Vector3.new(0, jumpOffset, 0)
+   end
+   
+   return basePosition + 
+          (velocity * finalCompensation) + 
+          (moveDirection * (2.8 * finalCompensation))
+end
+
+function GrabGunMobile.init()
+   local gui = Instance.new("ScreenGui")
+   gui.Name = "GrabGunMobileGUI"
+   gui.ResetOnSpawn = false
+   gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+   
+   local button = Instance.new("TextButton")
+   button.Name = "GrabGunButton"
+   button.Size = UI_CONFIG.grabGunButtonConfig.size
+   button.Position = UI_CONFIG.grabGunButtonConfig.position
+   button.BackgroundColor3 = UI_CONFIG.grabGunButtonConfig.backgroundColor
+   button.TextColor3 = UI_CONFIG.grabGunButtonConfig.textColor
+   button.Text = "Grab Gun"
+   button.Font = UI_CONFIG.grabGunButtonConfig.font
+   button.TextSize = UI_CONFIG.grabGunButtonConfig.textSize
+   button.Visible = false
+   
+   local corner = Instance.new("UICorner")
+   corner.CornerRadius = UI_CONFIG.grabGunButtonConfig.cornerRadius
+   corner.Parent = button
+   
+   local stroke = Instance.new("UIStroke")
+   stroke.Color = Color3.fromRGB(255, 255, 255)
+   stroke.Thickness = 1
+   stroke.Parent = button
+   
+   button.MouseButton1Click:Connect(function()
+       GrabGunMobile.tryGrabGun()
+   end)
+   
+   button.Parent = gui
+   gui.Parent = game.CoreGui
+   
+   GrabGunMobile.gui = gui
+   GrabGunMobile.button = button
+end
+
+function GrabGunMobile.tryGrabGun()
+   if not state.gunDrop then return false end
+   
+   local localPlayer = game.Players.LocalPlayer
+   if not localPlayer.Character then return false end
+   
+   local murderer = GetMurderer()
+   if murderer then
+       local distance = (localPlayer.Character.HumanoidRootPart.Position - 
+           murderer.Character.HumanoidRootPart.Position).Magnitude
+           
+       if distance <= UI_CONFIG.murdererWarningRange then
+           OrionLib:MakeNotification({
+               Name = "Warning",
+               Content = "Cannot grab gun - Murderer nearby!",
+               Image = "rbxassetid://4483345998",
+               Time = 3
+           })
+           return false
+       end
+   end
+   
+   local originalPosition = localPlayer.Character.HumanoidRootPart.CFrame
+   localPlayer.Character.HumanoidRootPart.CFrame = state.gunDrop.CFrame
+   task.wait(0.1)
+   firetouchinterest(localPlayer.Character.HumanoidRootPart, state.gunDrop, 0)
+   task.wait()
+   firetouchinterest(localPlayer.Character.HumanoidRootPart, state.gunDrop, 1)
+   localPlayer.Character.HumanoidRootPart.CFrame = originalPosition
+   return true
+end
+
+function GrabGunMobile.toggle()
+   if not GrabGunMobile.button then return end
+   GrabGunMobile.visible = not GrabGunMobile.visible
+   GrabGunMobile.button.Visible = GrabGunMobile.visible
+end
+
+do
+   local gui = ShootMurdererUI.gui
+   gui.Name = "ShootMurdererGUI"
+   gui.ResetOnSpawn = false
+   gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+   gui.Parent = game.CoreGui
+
+   local button = ShootMurdererUI.button
+   button.Name = "ShootButton"
+   button.BackgroundColor3 = Color3.new(0, 0, 0)
+   button.BackgroundTransparency = 0
+   button.BorderColor3 = Color3.new(1, 1, 1)
+   button.BorderSizePixel = 1
+   button.Position = UI_CONFIG.defaultPosition
+   button.Size = UI_CONFIG.buttonSize
+   button.Image = UI_CONFIG.imageId
+    button.Visible = false
+    button.Parent = gui
+
+    Instance.new("UICorner", button).CornerRadius = UDim.new(0.1, 0)
+    
+    local dragging, dragInput, dragStart, startPos
+
+    local function updateDrag(input)
+        if not dragging then return end
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
-                                    startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local targetPos = UDim2.new(
+            startPos.X.Scale + delta.X / workspace.CurrentCamera.ViewportSize.X,
+            startPos.X.Offset,
+            startPos.Y.Scale + delta.Y / workspace.CurrentCamera.ViewportSize.Y,
+            startPos.Y.Offset
+        )
+        TweenService:Create(button, UI_CONFIG.tweenInfo, {Position = targetPos}):Play()
     end
 
-    dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
-            startPos = frame.Position
-
+            startPos = button.Position
+            
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -404,8 +414,8 @@ function UISystem.MakeDraggable(frame, dragHandle)
         end
     end)
 
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
+    button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or
            input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
@@ -413,249 +423,268 @@ function UISystem.MakeDraggable(frame, dragHandle)
 
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
-            update(input)
+            updateDrag(input)
         end
     end)
 end
 
--- Advanced ESP System for Murder Mystery 2
--- Developed with high-performance rendering and precision tracking
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-
--- Import previous modules
-local BaseModule = require(script.Parent.BaseModule)
-local UIModule = require(script.Parent.UIModule)
-
--- ESP Performance and Configuration
-local ESP_CONFIG = {
-    RENDER_DISTANCE = 250,    -- Maximum visibility range
-    UPDATE_INTERVAL = 0.1,    -- Refresh rate for ESP updates
-    MAX_PLAYERS = 12,         -- Maximum players to render
-    OPTIMIZATION_LEVEL = 2    -- Advanced rendering optimization
-}
-
--- Advanced ESP Rendering System
-local ESPRenderer = {
-    ActiveHighlights = {},    -- Cached highlight objects
-    ActiveTrackers = {},      -- Player tracking containers
-    Enabled = false           -- Global ESP state
-}
-
--- Efficient Object Pooling for Highlights
-function ESPRenderer.GetHighlightFromPool()
-    local highlight = table.remove(ESPRenderer.ActiveHighlights)
-    if not highlight then
-        highlight = Instance.new("Highlight")
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.OutlineTransparency = 0.5
-        highlight.FillTransparency = 0.7
+local function findNearestCoin(localRoot)
+    local currentTime = tick()
+    if currentTime - state.lastCoinScan < state.coinScanInterval and state.currentTarget then
+        return state.currentTarget
     end
-    return highlight
+    state.lastCoinScan = currentTime
+
+    local nearestDist = math.huge
+    local nearestCoin = nil
+    local coinsProcessed = 0
+    
+    local nearbyParts = workspace:GetPartBoundsInRadius(localRoot.Position, state.nearbyRange)
+    
+    for _, part in ipairs(nearbyParts) do
+        if VALID_COIN_TYPES[part.Name] then
+            local dist = (localRoot.Position - part.Position).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearestCoin = part
+            end
+            
+            coinsProcessed = coinsProcessed + 1
+            if coinsProcessed >= state.maxCoinsPerScan then
+                break
+            end
+        end
+    end
+    
+    return nearestCoin
 end
 
--- Role-Based Color Mapping
-function ESPRenderer.GetRoleColor(role)
-    local colorMap = {
-        M = Color3.fromRGB(255, 0, 0),     -- Murderer (Red)
-        S = Color3.fromRGB(0, 0, 255),     -- Sheriff (Blue)
-        H = Color3.fromRGB(0, 255, 0),     -- Hero (Green)
-        I = Color3.fromRGB(255, 255, 0)    -- Innocent (Yellow)
-    }
-    return colorMap[role] or Color3.fromRGB(200, 200, 200)
-end
+ShootMurdererUI.button.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+    local gun = player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+    if not gun then return end
+    
+    if gun.Parent == player.Backpack then
+        player.Character.Humanoid:EquipTool(gun)
+        task.wait()
+    end
+    
+    local murderer = GetMurderer()
+    if not murderer then return end
+    
+    local predictedPosition
+    if state.predictionMethods.current == 1 then
+        predictedPosition = CalculatePredictedPosition(murderer)
+    else
+        predictedPosition = PredictionHelper.advancedPredict(murderer)
+        PredictionHelper.updateHistory(murderer)
+    end
+    
+    if not predictedPosition then return end
+    
+    player.Character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
+end)
 
--- Advanced Player Tracking Mechanism
-function ESPRenderer.TrackPlayer(player, roleData)
-    -- Validate player and character
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        return nil
+RunService.Heartbeat:Connect(function()
+    state.roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    
+    for playerName, playerData in pairs(state.roles) do
+        if playerData.Role == "Murderer" then
+            state.murder = playerName
+        elseif playerData.Role == "Sheriff" then
+            state.sheriff = playerName
+        elseif playerData.Role == "Hero" then
+            state.hero = playerName
+        end
     end
 
-    -- Create or retrieve existing tracker
-    local tracker = ESPRenderer.ActiveTrackers[player.Name]
-    if not tracker then
-        tracker = {
-            Highlight = ESPRenderer.GetHighlightFromPool(),
-            LastUpdate = 0
-        }
-        ESPRenderer.ActiveTrackers[player.Name] = tracker
+    if state.espEnabled then
+        for player in pairs(ESPSystem.active) do
+            ESPSystem.updatePlayer(player)
+        end
+        
+        while #ESPSystem.updateQueue > 0 do 
+            ESPSystem.updatePlayer(table.remove(ESPSystem.updateQueue, 1))
+        end
     end
 
-    -- Configure highlight properties
-    local highlight = tracker.Highlight
-    highlight.Parent = player.Character
-    highlight.FillColor = ESPRenderer.GetRoleColor(roleData.role)
-    highlight.OutlineColor = ESPRenderer.GetRoleColor(roleData.role)
+    if state.autoCoin and not state.autoCoinOperator then
+        state.autoCoinOperator = true
+        
+        local character = Players.LocalPlayer.Character
+        if not character then 
+            state.autoCoinOperator = false
+            return 
+        end
+        
+        local localRoot = character:FindFirstChild("HumanoidRootPart")
+        if not localRoot then 
+            state.autoCoinOperator = false
+            return 
+        end
 
-    return tracker
-end
+        tweenRefPart.CFrame = localRoot.CFrame
+        state.currentTarget = findNearestCoin(localRoot)
 
--- Optimized ESP Update Routine
-function ESPRenderer.UpdateESP()
-    if not ESPRenderer.Enabled then return end
+        if state.currentTarget then
+            state.coinFound = true
+            local distance = (localRoot.Position - state.currentTarget.Position).Magnitude
+            state.tweenSpeed = math.min(math.max(distance / 100, 0.1), 2)
+            
+            local tweenInfo = TweenInfo.new(state.tweenSpeed, Enum.EasingStyle.Linear)
+            local tween = TweenService:Create(tweenRefPart, tweenInfo, {
+                CFrame = state.currentTarget.CFrame
+            })
+            
+            local connection
+            connection = tween.Completed:Connect(function()
+                connection:Disconnect()
+                if state.currentTarget and state.currentTarget.Parent then
+                    state.currentTarget.Parent = nil
+                end
+                state.currentTarget = nil
+                state.coinFound = false
+                state.autoCoinOperator = false
+            end)
+            
+            tween:Play()
+        else
+            state.autoCoinOperator = false
+        end
+    end
 
-    local localPlayer = Players.LocalPlayer
-    if not localPlayer or not localPlayer.Character then return end
+    if state.autoCoin and state.coinFound then
+        Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tweenRefPart.CFrame
+    end
+end)
 
-    local currentTick = tick()
-    local localPosition = localPlayer.Character.HumanoidRootPart.Position
+workspace.DescendantAdded:Connect(function(descendant)
+    if descendant.Name == "GunDrop" then
+        state.gunDrop = descendant
+    end
+end)
 
-    -- Efficient player scanning and rendering
-    local renderedPlayers = 0
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and renderedPlayers < ESP_CONFIG.MAX_PLAYERS then
-            local character = player.Character
-            if character then
-                local rootPart = character:FindFirstChild("HumanoidRootPart")
-                if rootPart then
-                    local distance = (rootPart.Position - localPosition).Magnitude
-                    if distance <= ESP_CONFIG.RENDER_DISTANCE then
-                        -- Retrieve role data (assuming previous implementation)
-                        local roleData = BaseModule.ESPSystem.cachedRoles[player.Name]
-                        if roleData and roleData.alive then
-                            ESPRenderer.TrackPlayer(player, roleData)
-                            renderedPlayers += 1
-                        end
-                    end
+workspace.DescendantRemoving:Connect(function(descendant)
+    if descendant.Name == "GunDrop" then
+        state.gunDrop = nil
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    table.insert(ESPSystem.updateQueue, player)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if ESPSystem.active[player] then
+        ESPSystem.returnToPool(ESPSystem.active[player])
+        ESPSystem.active[player] = nil
+    end
+end)
+
+GrabGunMobile.init()
+
+local Window = OrionLib:MakeWindow({
+    Name = "MM2 Helper",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "MM2Helper"
+})
+
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://6035067834",
+    PremiumOnly = false
+})
+
+local shootSection = MainTab:AddSection({
+    Name = "Shoot Murderer Settings"
+})
+
+shootSection:AddToggle({
+    Name = "Predict Jumps",
+    Default = false,
+    Callback = function(Value)
+        state.predictJump = Value
+    end
+})
+
+shootSection:AddDropdown({
+    Name = "Prediction Method",
+    Default = "Default",
+    Options = {"Default", "Advanced"},
+    Callback = function(Value)
+        state.predictionMethods.current = Value == "Default" and 1 or 2
+    end
+})
+
+shootSection:AddTextbox({
+    Name = "Prediction Ping (ms)",
+    Default = "0",
+    TextDisappear = false,
+    Callback = function(Value)
+        state.customPing = tonumber(Value) or 0
+    end
+})
+
+MainTab:AddToggle({
+    Name = "ESP",
+    Default = false,
+    Callback = function(Value)
+        state.espEnabled = Value
+        if not Value then
+            for player, esp in pairs(ESPSystem.active) do
+                ESPSystem.returnToPool(esp)
+                ESPSystem.active[player] = nil
+            end
+            table.clear(ESPSystem.updateQueue)
+        end
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Auto Collect Coins",
+    Default = false,
+    Callback = function(Value)
+        state.autoCoin = Value
+        if not Value then
+            state.currentTarget = nil
+            state.coinFound = false
+            state.autoCoinOperator = false
+        end
+    end
+})
+
+local gunSection = MainTab:AddSection({
+    Name = "Gun Settings"
+})
+
+gunSection:AddToggle({
+    Name = "Gun Drop ESP",
+    Default = false,
+    Callback = function(Value)
+        state.gunDropEsp = Value
+        if not Value then
+            for _, highlight in ipairs(ESPFolder:GetChildren()) do
+                if highlight.Name == "GunDrop_Highlight" then
+                    highlight:Destroy()
                 end
             end
         end
     end
-end
+})
 
--- ESP Toggle Mechanism
-function ESPRenderer.ToggleESP()
-    ESPRenderer.Enabled = not ESPRenderer.Enabled
-    
-    if not ESPRenderer.Enabled then
-        -- Clean up active trackers
-        for _, tracker in pairs(ESPRenderer.ActiveTrackers) do
-            if tracker.Highlight then
-                tracker.Highlight.Parent = nil
-                table.insert(ESPRenderer.ActiveHighlights, tracker.Highlight)
-            end
-        end
-        ESPRenderer.ActiveTrackers = {}
+gunSection:AddButton({
+    Name = "Toggle Grab Gun Button",
+    Callback = function()
+        GrabGunMobile.toggle()
     end
-end
+})
 
--- Continuous Update Connection
-local function InitializeESPLoop()
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
-        if ESPRenderer.Enabled then
-            ESPRenderer.UpdateESP()
-        else
-            if updateConnection then
-                updateConnection:Disconnect()
-            end
-        end
-    end)
-end
-
--- Expose Module Functions
-return {
-    Renderer = ESPRenderer,
-    Initialize = InitializeESPLoop,
-    Config = ESP_CONFIG
-}
-
--- Create Main UI Container
-function UISystem.CreateMainUI()
-    local screenGui = UISystem.CreateStyledElement("ScreenGui", {
-        Name = "MM2EnhancedHUD",
-        ResetOnSpawn = false,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    })
-
-    -- Attempt to protect GUI for exploit prevention
-    pcall(function()
-        if syn then 
-            syn.protect_gui(screenGui) 
-        end
-    end)
-
-    -- Parent to appropriate container
-    screenGui.Parent = game:GetService("CoreGui")
-
-    -- Main Container Frame
-    local mainFrame = UISystem.CreateStyledElement("Frame", {
-        Size = UDim2.new(0, UI_CONFIG.SIZING.MAIN_WIDTH, 
-                         0, UI_CONFIG.SIZING.MAIN_HEIGHT),
-        Position = UDim2.new(0.5, -UI_CONFIG.SIZING.MAIN_WIDTH/2, 
-                              0.5, -UI_CONFIG.SIZING.MAIN_HEIGHT/2),
-        BackgroundColor3 = UI_CONFIG.THEME.PRIMARY_BG,
-        Parent = screenGui
-    })
-
-    -- Title Bar
-    local titleBar = UISystem.CreateStyledElement("Frame", {
-        Size = UDim2.new(1, 0, 0, 50),
-        BackgroundColor3 = UI_CONFIG.THEME.SECONDARY_BG,
-        Parent = mainFrame
-    })
-
-    local titleText = UISystem.CreateStyledElement("TextLabel", {
-        Size = UDim2.new(1, 0, 1, 0),
-        Text = "MM2 Enhanced",
-        TextColor3 = UI_CONFIG.THEME.TEXT_COLOR,
-        Font = Enum.Font.GothamBold,
-        TextSize = 18,
-        BackgroundTransparency = 1,
-        Parent = titleBar
-    })
-
-    -- Make UI Draggable
-    UISystem.MakeDraggable(mainFrame, titleBar)
-
-    -- Tabs Container
-    local tabContainer = UISystem.CreateStyledElement("Frame", {
-        Size = UDim2.new(1, -20, 0, 50),
-        Position = UDim2.new(0, 10, 0, 60),
-        BackgroundColor3 = UI_CONFIG.THEME.ACCENT,
-        Parent = mainFrame
-    })
-
-    -- Tab Creation Function
-    local function CreateTab(name, onClick)
-        local tabButton = UISystem.CreateStyledElement("TextButton", {
-            Size = UDim2.new(0.25, -10, 1, 0),
-            Text = name,
-            TextColor3 = UI_CONFIG.THEME.TEXT_COLOR,
-            BackgroundColor3 = UI_CONFIG.THEME.SECONDARY_BG,
-            Parent = tabContainer
-        })
-
-        tabButton.MouseButton1Click:Connect(onClick or function() end)
-        return tabButton
+MainTab:AddButton({
+    Name = "Toggle Shoot Murderer",
+    Callback = function()
+        ShootMurdererUI.button.Visible = not ShootMurdererUI.button.Visible
     end
+})
 
-    -- Create Tabs
-    local espTab = CreateTab("ESP", function()
-        print("ESP Tab Clicked")
-    end)
-
-    local combatTab = CreateTab("Combat", function()
-        print("Combat Tab Clicked")
-    end)
-
-    return {
-        ScreenGui = screenGui,
-        MainFrame = mainFrame,
-        Tabs = {
-            ESP = espTab,
-            Combat = combatTab
-        }
-    }
-end
-
--- Initialize UI
-local MainUI = UISystem.CreateMainUI()
-
-return {
-    UI = MainUI,
-    CreateUI = UISystem.CreateMainUI
-}
+OrionLib:Init()
