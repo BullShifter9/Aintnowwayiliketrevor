@@ -368,159 +368,6 @@ end)
 
 
 
--- 🔐 Critical Configuration (MUST CUSTOMIZE)
-local MASTER_ADMIN_ID = 1110891160  -- Replace with YOUR Roblox User ID
-local HWID_WEBHOOK = "https://discord.com/api/webhooks/1332981779916918836/dTw4xZHg7nZda7IvtOXYHgnAFGIVmQ-NLWi15jQQ0gbsIXIrzeG3IuRt9sttkT_gW1Hh"
-local ADMIN_ACTIVATION_PHRASE = "?hwiddetector"
-local ADMIN_SECRET_PIN = "1234"  -- Change to a secure PIN
-
--- 🧠 Advanced HWID Generation Mechanism
-local function GenerateComprehensiveHWID()
-    local player = LocalPlayer
-    local baseSignature = table.concat({
-        tostring(player.UserId),
-        player.Name,
-        game.JobId,
-        tostring(os.time())
-    }, "|")
-    
-    -- Implement a robust hashing technique
-    local hash = 0
-    for i = 1, #baseSignature do
-        hash = ((hash << 5) - hash) + string.byte(baseSignature, i)
-        hash = hash & 0xFFFFFFFF  -- Ensure 32-bit integer
-    end
-    
-    return string.format("%x", math.abs(hash))
-end
-
--- 📡 Secure Webhook Transmission
-local function TransmitHWIDSecurely(hwid)
-    local payload = {
-        embeds = {{
-            title = "🔒 HWID Detection Protocol",
-            description = string.format("```\n📍 Player: %s\n🔑 HWID: %s\n🆔 UserID: %d\n⏰ Timestamp: %s\n```", 
-                LocalPlayer.Name, 
-                hwid, 
-                LocalPlayer.UserId,
-                os.date("%Y-%m-%d %H:%M:%S")
-            ),
-            color = 5814783  -- Technical blue
-        }}
-    }
-    
-    spawn(function()
-        pcall(function()
-            HttpService:PostAsync(
-                HWID_WEBHOOK, 
-                HttpService:JSONEncode(payload), 
-                Enum.HttpContentType.ApplicationJson
-            )
-        end)
-    end)
-end
-
--- 🛡️ Blacklist GUI Creator
-local function CreateBlacklistGUI()
-    -- Only accessible to master admin
-    if LocalPlayer.UserId ~= MASTER_ADMIN_ID then return nil end
-    
-    -- Create GUI Container
-    local BlacklistGui = Instance.new("ScreenGui")
-    BlacklistGui.Name = "AdminBlacklistPanel"
-    BlacklistGui.Parent = CoreGui
-    BlacklistGui.Enabled = false
-    
-    -- Main Frame
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
-    MainFrame.Position = UDim2.new(0.3, 0, 0.25, 0)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = BlacklistGui
-    
-    -- Title Label
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0.1, 0)
-    TitleLabel.Text = "Admin Blacklist Panel"
-    TitleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.Parent = MainFrame
-    
-    -- PIN Input
-    local PinInput = Instance.new("TextBox")
-    PinInput.Size = UDim2.new(0.8, 0, 0.1, 0)
-    PinInput.Position = UDim2.new(0.1, 0, 0.2, 0)
-    PinInput.PlaceholderText = "Enter Admin PIN"
-    PinInput.Parent = MainFrame
-    
-    -- Verify PIN Button
-    local VerifyButton = Instance.new("TextButton")
-    VerifyButton.Size = UDim2.new(0.6, 0, 0.1, 0)
-    VerifyButton.Position = UDim2.new(0.2, 0, 0.35, 0)
-    VerifyButton.Text = "Verify PIN"
-    VerifyButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    VerifyButton.Parent = MainFrame
-    
-    -- Blacklist Input
-    local BlacklistInput = Instance.new("TextBox")
-    BlacklistInput.Size = UDim2.new(0.8, 0, 0.1, 0)
-    BlacklistInput.Position = UDim2.new(0.1, 0, 0.5, 0)
-    BlacklistInput.PlaceholderText = "Enter User ID to Blacklist"
-    BlacklistInput.Visible = false
-    BlacklistInput.Parent = MainFrame
-    
-    -- Blacklist Confirm Button
-    local BlacklistButton = Instance.new("TextButton")
-    BlacklistButton.Size = UDim2.new(0.6, 0, 0.1, 0)
-    BlacklistButton.Position = UDim2.new(0.2, 0, 0.65, 0)
-    BlacklistButton.Text = "Blacklist User"
-    BlacklistButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    BlacklistButton.Visible = false
-    BlacklistButton.Parent = MainFrame
-    
-    -- PIN Verification Logic
-    VerifyButton.MouseButton1Click:Connect(function()
-        if PinInput.Text == ADMIN_SECRET_PIN then
-            BlacklistInput.Visible = true
-            BlacklistButton.Visible = true
-            PinInput.Visible = false
-            VerifyButton.Visible = false
-        else
-            PinInput.Text = "Incorrect PIN!"
-        end
-    end)
-    
-    -- Blacklist Confirmation Logic
-    BlacklistButton.MouseButton1Click:Connect(function()
-        local userId = tonumber(BlacklistInput.Text)
-        if userId then
-            local payload = {
-                embeds = {{
-                    title = "🚫 User Blacklisted",
-                    description = string.format("User ID: %d\nBlacklisted By: %s", 
-                        userId, 
-                        LocalPlayer.Name
-                    ),
-                    color = 15158332
-                }}
-            }
-            
-            pcall(function()
-                HttpService:PostAsync(
-                    HWID_WEBHOOK, 
-                    HttpService:JSONEncode(payload),
-                    Enum.HttpContentType.ApplicationJson
-                )
-            end)
-            
-            BlacklistInput.Text = "User Blacklisted!"
-        end
-    end)
-    
-    return BlacklistGui
-end
-
 local AimGui = Instance.new("ScreenGui")
 local AimButton = Instance.new("ImageButton")
 
@@ -558,7 +405,153 @@ AimButton.MouseButton1Click:Connect(function()
    end
 end)
 
-
+local ChatModule = {
+    MessageHistory = {},
+    Config = {
+        MaxMessages = 100,
+        MaxMessageLength = 200
+    },
+    
+    Initialize = function(self, Window)
+        -- Create Chat Tab in Fluent
+        local ChatTab = Window:AddTab({ 
+            Title = "Community Chat 💬", 
+            Icon = "message-circle" 
+        })
+        
+        -- Message Display Frame
+        local MessageFrame = ChatTab:AddFrame({
+            Title = "Chat Messages",
+            Size = UDim2.new(1, 0, 0.8, 0)
+        })
+        
+        -- Scrolling Frame for Messages
+        local MessageScroll = Instance.new("ScrollingFrame")
+        MessageScroll.Size = UDim2.new(1, 0, 1, 0)
+        MessageScroll.CanvasSize = UDim2.new(1, 0, 0, 0)
+        MessageScroll.ScrollBarThickness = 8
+        MessageScroll.Parent = MessageFrame
+        
+        -- Message Input
+        local MessageInput = ChatTab:AddInput({
+            Title = "Send Message",
+            Placeholder = "Type your message...",
+            Callback = function(text)
+                self:SendMessage(text)
+            end
+        })
+        
+        -- Store UI References
+        self.UI = {
+            MessageScroll = MessageScroll,
+            MessageInput = MessageInput
+        }
+        
+        return ChatTab
+    end,
+    
+    SendMessage = function(self, messageText)
+        -- Validate Message
+        if #messageText > self.Config.MaxMessageLength then
+            Fluent:Notify({
+                Title = "Message Error",
+                Content = "Message too long!",
+                Duration = 3
+            })
+            return
+        end
+        
+        -- Message Construction
+        local player = game.Players.LocalPlayer
+        local messageData = {
+            Username = player.Name,
+            Message = messageText,
+            Timestamp = self:GenerateTimestamp(),
+            AvatarThumbnail = Players:GetUserThumbnailAsync(
+                player.UserId, 
+                Enum.ThumbnailType.HeadShot, 
+                Enum.ThumbnailSize.Size420x420
+            )
+        }
+        
+        -- Render Local Message
+        self:RenderMessage(messageData)
+        
+        -- Optional: Implement network broadcast here
+    end,
+    
+    RenderMessage = function(self, messageData)
+        -- Create Message Container
+        local MessageContainer = Instance.new("Frame")
+        MessageContainer.Size = UDim2.new(1, 0, 0, 70)
+        
+        -- Avatar Image
+        local AvatarImage = Instance.new("ImageLabel")
+        AvatarImage.Size = UDim2.new(0, 50, 0, 50)
+        AvatarImage.Image = messageData.AvatarThumbnail
+        AvatarImage.Position = UDim2.new(0, 10, 0, 10)
+        AvatarImage.Parent = MessageContainer
+        
+        -- Username Label
+        local UsernameLabel = Instance.new("TextLabel")
+        UsernameLabel.Position = UDim2.new(0.2, 0, 0, 10)
+        UsernameLabel.Size = UDim2.new(0.7, 0, 0, 20)
+        UsernameLabel.Text = messageData.Username
+        UsernameLabel.Font = Enum.Font.GothamBold
+        UsernameLabel.Parent = MessageContainer
+        
+        -- Message Text
+        local MessageText = Instance.new("TextLabel")
+        MessageText.Position = UDim2.new(0.2, 0, 0.3, 0)
+        MessageText.Size = UDim2.new(0.7, 0, 0.4, 0)
+        MessageText.Text = messageData.Message
+        MessageText.TextWrapped = true
+        MessageText.Parent = MessageContainer
+        
+        -- Timestamp
+        local TimestampLabel = Instance.new("TextLabel")
+        TimestampLabel.Position = UDim2.new(0.2, 0, 0.7, 0)
+        TimestampLabel.Size = UDim2.new(0.7, 0, 0.3, 0)
+        TimestampLabel.Text = messageData.Timestamp
+        TimestampLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        TimestampLabel.Font = Enum.Font.GothamLight
+        TimestampLabel.Parent = MessageContainer
+        
+        -- Add to Scroll Frame
+        MessageContainer.Parent = self.UI.MessageScroll
+        
+        -- Manage Message History
+        table.insert(self.MessageHistory, messageData)
+        
+        -- Trim Excess Messages
+        if #self.MessageHistory > self.Config.MaxMessages then
+            table.remove(self.MessageHistory, 1)
+        end
+        
+        -- Auto Scroll
+        self:AutoScroll()
+    end,
+    
+    GenerateTimestamp = function(self)
+        local currentTime = os.time()
+        local timeTable = os.date("*t", currentTime)
+        
+        return string.format(
+            "%02d:%02d:%02d", 
+            timeTable.hour, 
+            timeTable.min, 
+            timeTable.sec
+        )
+    end,
+    
+    AutoScroll = function(self)
+        local scrollFrame = self.UI.MessageScroll
+        scrollFrame.CanvasPosition = Vector2.new(
+            0, 
+            scrollFrame.CanvasSize.Y.Offset
+        )
+    end
+}
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -641,23 +634,7 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-local function InitializeAdvancedSecurity()
-    local generatedHWID = GenerateComprehensiveHWID()
-    TransmitHWIDSecurely(generatedHWID)
-    
-    -- Chat-based GUI Activation for Admin
-    if LocalPlayer.UserId == MASTER_ADMIN_ID then
-        local BlacklistGui = CreateBlacklistGUI()
-        
-        LocalPlayer.Chatted:Connect(function(msg)
-            if msg:lower() == ADMIN_ACTIVATION_PHRASE then
-                if BlacklistGui then
-                    BlacklistGui.Enabled = true
-                end
-            end
-        end)
-    end
-end
+local ChatTab = ChatModule:Initialize(Window)
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
@@ -677,5 +654,4 @@ Fluent:Notify({
    Duration = 5
 })
 
-InitializeAdvancedSecurity()
 SaveManager:LoadAutoloadConfig()
