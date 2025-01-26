@@ -405,153 +405,7 @@ AimButton.MouseButton1Click:Connect(function()
    end
 end)
 
-local ChatModule = {
-    MessageHistory = {},
-    Config = {
-        MaxMessages = 100,
-        MaxMessageLength = 200
-    },
-    
-    Initialize = function(self, Window)
-        -- Create Chat Tab in Fluent
-        local ChatTab = Window:AddTab({ 
-            Title = "Community Chat 💬", 
-            Icon = "message-circle" 
-        })
-        
-        -- Message Display Frame
-        local MessageFrame = ChatTab:AddFrame({
-            Title = "Chat Messages",
-            Size = UDim2.new(1, 0, 0.8, 0)
-        })
-        
-        -- Scrolling Frame for Messages
-        local MessageScroll = Instance.new("ScrollingFrame")
-        MessageScroll.Size = UDim2.new(1, 0, 1, 0)
-        MessageScroll.CanvasSize = UDim2.new(1, 0, 0, 0)
-        MessageScroll.ScrollBarThickness = 8
-        MessageScroll.Parent = MessageFrame
-        
-        -- Message Input
-        local MessageInput = ChatTab:AddInput({
-            Title = "Send Message",
-            Placeholder = "Type your message...",
-            Callback = function(text)
-                self:SendMessage(text)
-            end
-        })
-        
-        -- Store UI References
-        self.UI = {
-            MessageScroll = MessageScroll,
-            MessageInput = MessageInput
-        }
-        
-        return ChatTab
-    end,
-    
-    SendMessage = function(self, messageText)
-        -- Validate Message
-        if #messageText > self.Config.MaxMessageLength then
-            Fluent:Notify({
-                Title = "Message Error",
-                Content = "Message too long!",
-                Duration = 3
-            })
-            return
-        end
-        
-        -- Message Construction
-        local player = game.Players.LocalPlayer
-        local messageData = {
-            Username = player.Name,
-            Message = messageText,
-            Timestamp = self:GenerateTimestamp(),
-            AvatarThumbnail = Players:GetUserThumbnailAsync(
-                player.UserId, 
-                Enum.ThumbnailType.HeadShot, 
-                Enum.ThumbnailSize.Size420x420
-            )
-        }
-        
-        -- Render Local Message
-        self:RenderMessage(messageData)
-        
-        -- Optional: Implement network broadcast here
-    end,
-    
-    RenderMessage = function(self, messageData)
-        -- Create Message Container
-        local MessageContainer = Instance.new("Frame")
-        MessageContainer.Size = UDim2.new(1, 0, 0, 70)
-        
-        -- Avatar Image
-        local AvatarImage = Instance.new("ImageLabel")
-        AvatarImage.Size = UDim2.new(0, 50, 0, 50)
-        AvatarImage.Image = messageData.AvatarThumbnail
-        AvatarImage.Position = UDim2.new(0, 10, 0, 10)
-        AvatarImage.Parent = MessageContainer
-        
-        -- Username Label
-        local UsernameLabel = Instance.new("TextLabel")
-        UsernameLabel.Position = UDim2.new(0.2, 0, 0, 10)
-        UsernameLabel.Size = UDim2.new(0.7, 0, 0, 20)
-        UsernameLabel.Text = messageData.Username
-        UsernameLabel.Font = Enum.Font.GothamBold
-        UsernameLabel.Parent = MessageContainer
-        
-        -- Message Text
-        local MessageText = Instance.new("TextLabel")
-        MessageText.Position = UDim2.new(0.2, 0, 0.3, 0)
-        MessageText.Size = UDim2.new(0.7, 0, 0.4, 0)
-        MessageText.Text = messageData.Message
-        MessageText.TextWrapped = true
-        MessageText.Parent = MessageContainer
-        
-        -- Timestamp
-        local TimestampLabel = Instance.new("TextLabel")
-        TimestampLabel.Position = UDim2.new(0.2, 0, 0.7, 0)
-        TimestampLabel.Size = UDim2.new(0.7, 0, 0.3, 0)
-        TimestampLabel.Text = messageData.Timestamp
-        TimestampLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        TimestampLabel.Font = Enum.Font.GothamLight
-        TimestampLabel.Parent = MessageContainer
-        
-        -- Add to Scroll Frame
-        MessageContainer.Parent = self.UI.MessageScroll
-        
-        -- Manage Message History
-        table.insert(self.MessageHistory, messageData)
-        
-        -- Trim Excess Messages
-        if #self.MessageHistory > self.Config.MaxMessages then
-            table.remove(self.MessageHistory, 1)
-        end
-        
-        -- Auto Scroll
-        self:AutoScroll()
-    end,
-    
-    GenerateTimestamp = function(self)
-        local currentTime = os.time()
-        local timeTable = os.date("*t", currentTime)
-        
-        return string.format(
-            "%02d:%02d:%02d", 
-            timeTable.hour, 
-            timeTable.min, 
-            timeTable.sec
-        )
-    end,
-    
-    AutoScroll = function(self)
-        local scrollFrame = self.UI.MessageScroll
-        scrollFrame.CanvasPosition = Vector2.new(
-            0, 
-            scrollFrame.CanvasSize.Y.Offset
-        )
-    end
-}
+
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -634,7 +488,158 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-local ChatTab = ChatModule:Initialize(Window)
+local RoundTimerModule = {
+    Initialize = function(self, Window, Tabs)
+        -- Timer Toggle using Fluent
+        local TimerVisibilityToggle = Tabs.Main:AddToggle("TimerShow", {
+            Title = "Timer Show",
+            Default = true,
+            Callback = function(value)
+                if _G.TimerUI then  -- Use global variable for timer UI
+                    _G.TimerUI.Visible = value
+                end
+            end
+        })
+        
+        -- Create global timer UI
+        _G.TimerUI = Instance.new("TextLabel")
+        _G.TimerUI.Size = UDim2.new(0, 100, 0, 50)
+        _G.TimerUI.Position = UDim2.new(0.8, 0, 0.1, 0)
+        _G.TimerUI.BackgroundTransparency = 0.5
+        _G.TimerUI.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        _G.TimerUI.TextColor3 = Color3.fromRGB(255, 255, 255)
+        _G.TimerUI.Font = Enum.Font.GothamBold
+        _G.TimerUI.Parent = game.CoreGui
+        
+        -- Timer update function
+        _G.UpdateTimerUI = function()
+            local timeRemaining = z.Function(A.Remotes.Extras.GetTimer)
+
+            if timeRemaining < 1 then
+                _G.TimerUI.Visible = false
+            else
+                local minutes = math.floor(timeRemaining / 60)
+                local seconds = timeRemaining % 60
+
+                _G.TimerUI.Visible = TimerVisibilityToggle.Value
+                
+                if minutes > 0 then
+                    _G.TimerUI.Text = string.format("%dm %ds", minutes, seconds)
+                    _G.TimerUI.TextColor3 = Color3.fromRGB(255, 255, 255)
+                else
+                    _G.TimerUI.Text = string.format("%ds", seconds)
+                    _G.TimerUI.TextColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end
+        
+        -- Start update loop
+        spawn(function()
+            while true do
+                _G.UpdateTimerUI()
+                wait(1)
+            end
+        end)
+        
+        return TimerVisibilityToggle
+    end
+}
+
+local RoleInfoModule = {
+    Initialize = function(self, Window, Tabs)
+        -- Role Info Toggle
+        local RoleInfoToggle = Tabs.Main:AddToggle("ShowRoleInfo", {
+            Title = "Show Role Chance",
+            Default = true,
+            Callback = function(value)
+                -- Placeholder for toggle functionality
+                _G.ShowMurdererChance = value
+            end
+        })
+        
+        -- Create Role Info Display
+        _G.RoleInfoUI = Instance.new("TextLabel")
+        _G.RoleInfoUI.Size = UDim2.new(0, 200, 0, 100)
+        _G.RoleInfoUI.Position = UDim2.new(0.7, 0, 0.2, 0)
+        _G.RoleInfoUI.BackgroundTransparency = 0.5
+        _G.RoleInfoUI.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        _G.RoleInfoUI.TextColor3 = Color3.fromRGB(255, 255, 255)
+        _G.RoleInfoUI.Font = Enum.Font.GothamBold
+        _G.RoleInfoUI.Parent = game.CoreGui
+        _G.RoleInfoUI.Visible = false
+        _G.RoleInfoUI.RichText = true
+        
+        -- Role Info Update Function
+        _G.UpdateRoleInfo = function()
+            -- Placeholder variables to match original script
+            local F = _G.RoleInfoUI
+            local N = {ShowMurdererChance = RoleInfoToggle.Value}
+            
+            -- Check if the Murderer Chance display is enabled
+            F.Text = N.ShowMurdererChance 
+                and string.format(
+                    "%s\n<font size=\"25\">Murderer Chance: %s%%</font>", 
+                    R[g].Role, 
+                    z.Function(A.Remotes.Extras.GetChance)
+                ) 
+                or R[g].Role
+
+            F.TextColor3 = tK(v)
+            F.Visible = true
+            F.TextSize = 40
+
+            -- Disconnect and hide when the "You Are" text changes
+            local textChangedConnection
+            textChangedConnection = D.PlayerGui.MainGUI.Game.RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
+                if D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are" then
+                    textChangedConnection:Disconnect()
+                    F.Visible = false
+                end
+            end)
+
+            -- Find and notify roles (Murderer and Sheriff)
+            local q = {}
+            for playerIndex, playerData in pairs(R) do
+                if playerData.Role == "Murderer" or playerData.Role == "Sheriff" then
+                    q[playerData.Role] = playerIndex
+                end
+            end
+
+            task.wait(0.5)
+
+            -- Notify players of the roles
+            local murdererUserId = V(q.Murderer).UserId
+            local sheriffUserId = V(q.Sheriff).UserId
+
+            X("Murderer is: " .. q.Murderer, 5, string.format(
+                "https://web.roblox.com/Thumbs/Avatar.ashx?x=100&y=100&Format=Png&userid=%s", 
+                murdererUserId
+            ))
+            X("Sheriff is: " .. q.Sheriff, 5, string.format(
+                "https://web.roblox.com/Thumbs/Avatar.ashx?x=100&y=100&Format=Png&userid=%s", 
+                sheriffUserId
+            ))
+
+            -- Wait until the role selector is no longer visible
+            repeat
+                task.wait()
+            until D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are"
+
+            F.Visible = false
+        end
+        
+        -- Start role info trigger (adjust as needed)
+        spawn(function()
+            while true do
+                -- Call update function when appropriate
+                _G.UpdateRoleInfo()
+                wait(5)  -- Adjust timing as needed
+            end
+        end)
+        
+        return RoleInfoToggle
+    end
+}
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
