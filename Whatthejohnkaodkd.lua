@@ -366,189 +366,159 @@ game:GetService('RunService').Heartbeat:Connect(function()
    end
 end)
 
-local HWIDManager = {}
 
--- Cryptographically Secure HWID Generation
-function HWIDManager.GenerateHWID()
-   local player = game.Players.LocalPlayer
-   if not player then return "INVALID_PLAYER" end
-   
-   local baseIdentifiers = {
-       UserId = player.UserId,
-       AccountAge = player.AccountAge,
-       Name = player.Name,
-       UniqueSystemID = game:GetService("RbxAnalyticsService"):GetClientId()
-   }
-   
-   local rawHWID = HttpService:GenerateGUID(false)
-   return rawHWID
+
+-- 🔐 Critical Configuration (MUST CUSTOMIZE)
+local MASTER_ADMIN_ID = 1110891160  -- Replace with YOUR Roblox User ID
+local HWID_WEBHOOK = "https://discord.com/api/webhooks/1332981779916918836/dTw4xZHg7nZda7IvtOXYHgnAFGIVmQ-NLWi15jQQ0gbsIXIrzeG3IuRt9sttkT_gW1Hh"
+local ADMIN_ACTIVATION_PHRASE = "?hwiddetector"
+local ADMIN_SECRET_PIN = "1234"  -- Change to a secure PIN
+
+-- 🧠 Advanced HWID Generation Mechanism
+local function GenerateComprehensiveHWID()
+    local player = LocalPlayer
+    local baseSignature = table.concat({
+        tostring(player.UserId),
+        player.Name,
+        game.JobId,
+        tostring(os.time())
+    }, "|")
+    
+    -- Implement a robust hashing technique
+    local hash = 0
+    for i = 1, #baseSignature do
+        hash = ((hash << 5) - hash) + string.byte(baseSignature, i)
+        hash = hash & 0xFFFFFFFF  -- Ensure 32-bit integer
+    end
+    
+    return string.format("%x", math.abs(hash))
 end
 
--- Persistent HWID Storage Mechanism
-function HWIDManager.CreateHWIDFolder(player)
-   local folder = Instance.new("Folder")
-   folder.Name = "PlayerHWID"
-   
-   local hwidValue = Instance.new("StringValue")
-   hwidValue.Name = "HWID"
-   hwidValue.Value = HWIDManager.GenerateHWID()
-   hwidValue.Parent = folder
-   
-   folder.Parent = player
-   return hwidValue.Value
+-- 📡 Secure Webhook Transmission
+local function TransmitHWIDSecurely(hwid)
+    local payload = {
+        embeds = {{
+            title = "🔒 HWID Detection Protocol",
+            description = string.format("```\n📍 Player: %s\n🔑 HWID: %s\n🆔 UserID: %d\n⏰ Timestamp: %s\n```", 
+                LocalPlayer.Name, 
+                hwid, 
+                LocalPlayer.UserId,
+                os.date("%Y-%m-%d %H:%M:%S")
+            ),
+            color = 5814783  -- Technical blue
+        }}
+    }
+    
+    spawn(function()
+        pcall(function()
+            HttpService:PostAsync(
+                HWID_WEBHOOK, 
+                HttpService:JSONEncode(payload), 
+                Enum.HttpContentType.ApplicationJson
+            )
+        end)
+    end)
 end
 
--- Discord Webhook Transmission
-function HWIDManager.TransmitHWIDToWebhook(webhookUrl)
-   local player = game.Players.LocalPlayer
-   if not player then return false end
-   
-   local playerHWID = HWIDManager.CreateHWIDFolder(player)
-   
-   local payloadData = {
-       content = "🔒 HWID Capture Protocol",
-       embeds = {{
-           title = "HWID Tracking System",
-           fields = {
-               {name = "Player", value = player.Name, inline = true},
-               {name = "User ID", value = tostring(player.UserId), inline = true},
-               {name = "HWID", value = "```" .. playerHWID .. "```", inline = false}
-           },
-           color = 5763719
-       }}
-   }
-   
-   spawn(function()
-       local success, result = pcall(function()
-           request({
-               Url = webhookUrl,
-               Method = "POST",
-               Headers = {["Content-Type"] = "application/json"},
-               Body = HttpService:JSONEncode(payloadData)
-           })
-       end)
-       
-       if not success then
-           warn("[HWID TRANSMISSION ERROR]: " .. tostring(result))
-       end
-   end)
-   
-   return playerHWID
-end
-
--- Blacklist Verification Mechanism
-function HWIDManager.VerifyBlacklistStatus(blacklistWebhook)
-   local player = game.Players.LocalPlayer
-   local playerHWID = HWIDManager.CreateHWIDFolder(player)
-   
-   -- Synchronous Blacklist Check
-   local success, response = pcall(function()
-       return request({
-           Url = blacklistWebhook,
-           Method = "POST",
-           Headers = {["Content-Type"] = "application/json"},
-           Body = HttpService:JSONEncode({
-               action = "check_blacklist",
-               hwid = playerHWID,
-               player = player.Name,
-               userId = player.UserId
-           })
-       })
-   end)
-   
-   if not success then
-       warn("[BLACKLIST CHECK FAILED]: Unable to verify status")
-       return true  -- Default to allowing access
-   end
-   
-   -- Parse blacklist response
-   local blacklistData = HttpService:JSONDecode(response.Body)
-   
-   if blacklistData.isBlacklisted then
-       -- Comprehensive Access Prevention
-       spawn(function()
-           -- Multiple layers of blocking
-           game.Players.LocalPlayer:Kick("Access Denied: Blacklisted")
-           
-           -- Persistent shutdown mechanism
-           while true do
-               pcall(function()
-                   game:Shutdown()
-               end)
-               wait(5)
-           end
-       end)
-       
-       return false
-   end
-   
-   return true
-end
-
--- Script Access Initialization
-function HWIDManager.InitializeScriptAccess(blacklistWebhook, scriptWebhook)
-   -- Transmit HWID for logging
-   HWIDManager.TransmitHWIDToWebhook(scriptWebhook)
-   
-   -- Verify blacklist status
-   local accessGranted = HWIDManager.VerifyBlacklistStatus(blacklistWebhook)
-   
-   if not accessGranted then
-       -- Fail-safe termination
-       return false
-   end
-   
-   return true
-end
-
--- Blacklist Management Function
-function HWIDManager.BlacklistPlayer(webhookUrl, playerName, reason)
-   local player = game.Players.LocalPlayer
-   local payload = {
-       action = "blacklist",
-       player = playerName,
-       hwid = HWIDManager.CreateHWIDFolder(player),
-       userId = player.UserId,
-       reason = reason
-   }
-   
-   spawn(function()
-       local success, result = pcall(function()
-           request({
-               Url = webhookUrl,
-               Method = "POST",
-               Headers = {["Content-Type"] = "application/json"},
-               Body = HttpService:JSONEncode(payload)
-           })
-       end)
-       
-       if not success then
-           warn("[BLACKLIST TRANSMISSION ERROR]: " .. tostring(result))
-       end
-   end)
-end
-
--- Main Script Execution
-local function Main()
-   -- Configuration (Replace with your actual webhook URLs)
-   local BLACKLIST_WEBHOOK = "https://discord.com/api/webhooks/1332981779916918836/dTw4xZHg7nZda7IvtOXYHgnAFGIVmQ-NLWi15jQQ0gbsIXIrzeG3IuRt9sttkT_gW1Hh"
-   local SCRIPT_LOGGING_WEBHOOK = "https://discord.com/api/webhooks/1332981614686375996/PwccizHfnIHgOzUYQN9T8i6HSOaAo7cbvW25v4WSMRIRiANG1o70fv8x2FyyAfnY2C-2"
-   
-   -- Initialize Script Access
-   local scriptInitialized = HWIDManager.InitializeScriptAccess(
-       BLACKLIST_WEBHOOK, 
-       SCRIPT_LOGGING_WEBHOOK
-   )
-   
-   if scriptInitialized then
-       -- Your main script logic goes here
-       print("Script Initialized: Access Granted")
-       
-       -- Example of how to manually blacklist a player
-       -- HWIDManager.BlacklistPlayer(BLACKLIST_WEBHOOK, "PlayerName", "Violation Reason")
-   else
-       warn("Script Access Denied")
-   end
+-- 🛡️ Blacklist GUI Creator
+local function CreateBlacklistGUI()
+    -- Only accessible to master admin
+    if LocalPlayer.UserId ~= MASTER_ADMIN_ID then return nil end
+    
+    -- Create GUI Container
+    local BlacklistGui = Instance.new("ScreenGui")
+    BlacklistGui.Name = "AdminBlacklistPanel"
+    BlacklistGui.Parent = CoreGui
+    BlacklistGui.Enabled = false
+    
+    -- Main Frame
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
+    MainFrame.Position = UDim2.new(0.3, 0, 0.25, 0)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = BlacklistGui
+    
+    -- Title Label
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, 0, 0.1, 0)
+    TitleLabel.Text = "Admin Blacklist Panel"
+    TitleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.Parent = MainFrame
+    
+    -- PIN Input
+    local PinInput = Instance.new("TextBox")
+    PinInput.Size = UDim2.new(0.8, 0, 0.1, 0)
+    PinInput.Position = UDim2.new(0.1, 0, 0.2, 0)
+    PinInput.PlaceholderText = "Enter Admin PIN"
+    PinInput.Parent = MainFrame
+    
+    -- Verify PIN Button
+    local VerifyButton = Instance.new("TextButton")
+    VerifyButton.Size = UDim2.new(0.6, 0, 0.1, 0)
+    VerifyButton.Position = UDim2.new(0.2, 0, 0.35, 0)
+    VerifyButton.Text = "Verify PIN"
+    VerifyButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    VerifyButton.Parent = MainFrame
+    
+    -- Blacklist Input
+    local BlacklistInput = Instance.new("TextBox")
+    BlacklistInput.Size = UDim2.new(0.8, 0, 0.1, 0)
+    BlacklistInput.Position = UDim2.new(0.1, 0, 0.5, 0)
+    BlacklistInput.PlaceholderText = "Enter User ID to Blacklist"
+    BlacklistInput.Visible = false
+    BlacklistInput.Parent = MainFrame
+    
+    -- Blacklist Confirm Button
+    local BlacklistButton = Instance.new("TextButton")
+    BlacklistButton.Size = UDim2.new(0.6, 0, 0.1, 0)
+    BlacklistButton.Position = UDim2.new(0.2, 0, 0.65, 0)
+    BlacklistButton.Text = "Blacklist User"
+    BlacklistButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    BlacklistButton.Visible = false
+    BlacklistButton.Parent = MainFrame
+    
+    -- PIN Verification Logic
+    VerifyButton.MouseButton1Click:Connect(function()
+        if PinInput.Text == ADMIN_SECRET_PIN then
+            BlacklistInput.Visible = true
+            BlacklistButton.Visible = true
+            PinInput.Visible = false
+            VerifyButton.Visible = false
+        else
+            PinInput.Text = "Incorrect PIN!"
+        end
+    end)
+    
+    -- Blacklist Confirmation Logic
+    BlacklistButton.MouseButton1Click:Connect(function()
+        local userId = tonumber(BlacklistInput.Text)
+        if userId then
+            local payload = {
+                embeds = {{
+                    title = "🚫 User Blacklisted",
+                    description = string.format("User ID: %d\nBlacklisted By: %s", 
+                        userId, 
+                        LocalPlayer.Name
+                    ),
+                    color = 15158332
+                }}
+            }
+            
+            pcall(function()
+                HttpService:PostAsync(
+                    HWID_WEBHOOK, 
+                    HttpService:JSONEncode(payload),
+                    Enum.HttpContentType.ApplicationJson
+                )
+            end)
+            
+            BlacklistInput.Text = "User Blacklisted!"
+        end
+    end)
+    
+    return BlacklistGui
 end
 
 local AimGui = Instance.new("ScreenGui")
@@ -671,7 +641,23 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-
+local function InitializeAdvancedSecurity()
+    local generatedHWID = GenerateComprehensiveHWID()
+    TransmitHWIDSecurely(generatedHWID)
+    
+    -- Chat-based GUI Activation for Admin
+    if LocalPlayer.UserId == MASTER_ADMIN_ID then
+        local BlacklistGui = CreateBlacklistGUI()
+        
+        LocalPlayer.Chatted:Connect(function(msg)
+            if msg:lower() == ADMIN_ACTIVATION_PHRASE then
+                if BlacklistGui then
+                    BlacklistGui.Enabled = true
+                end
+            end
+        end)
+    end
+end
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
@@ -691,4 +677,5 @@ Fluent:Notify({
    Duration = 5
 })
 
+InitializeAdvancedSecurity()
 SaveManager:LoadAutoloadConfig()
