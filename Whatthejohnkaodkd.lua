@@ -29,6 +29,12 @@ local predictionState = {
    pingValue = 50
 }
 
+local KnifeAuraSettings = {
+    radius = 4.5,
+    checkRate = 0.1,
+    enabled = false
+}
+
 -- ESP System Setup
 local ESPFolder = Instance.new("Folder", CoreGui)
 ESPFolder.Name = "ESPElements"
@@ -405,7 +411,263 @@ AimButton.MouseButton1Click:Connect(function()
    end
 end)
 
+local SilentAimV2Gui = Instance.new("ScreenGui")
+local AimV2Button = Instance.new("ImageButton")
 
+SilentAimV2Gui.Parent = game.CoreGui
+AimV2Button.Parent = SilentAimV2Gui
+AimV2Button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)  -- Different color to distinguish from V1
+AimV2Button.BackgroundTransparency = 0.3
+AimV2Button.BorderColor3 = Color3.fromRGB(100, 100, 255)  -- Blue border for V2
+AimV2Button.BorderSizePixel = 2
+AimV2Button.Position = UDim2.new(0.897, 0, 0.5)  -- Positioned below V1 button
+AimV2Button.Size = UDim2.new(0.1, 0, 0.2)
+AimV2Button.Image = "rbxassetid://11162755592"
+AimV2Button.Draggable = true
+AimV2Button.Visible = false
+
+-- Add visual enhancement for V2 button
+local UIStrokeV2 = Instance.new("UIStroke", AimV2Button)
+UIStrokeV2.Color = Color3.fromRGB(100, 100, 255)
+UIStrokeV2.Thickness = 2
+UIStrokeV2.Transparency = 0.5
+
+-- Prediction algorithm implementation
+local function getSilentAimV2Position(target)
+    local character = target.Character
+    if not character then return nil end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not rootPart or not humanoid then return nil end
+
+    -- Position history tracking
+    if not target.RecentPositions then
+        target.RecentPositions = {}
+    end
+    
+    table.insert(target.RecentPositions, {
+        position = rootPart.Position,
+        timestamp = tick(),
+        velocity = rootPart.AssemblyLinearVelocity
+    })
+    
+    if #target.RecentPositions > 10 then
+        table.remove(target.RecentPositions, 1)
+    end
+
+    -- Trajectory metrics calculation
+    local function calculateTrajectoryMetrics()
+        if #target.RecentPositions < 2 then return nil end
+        
+        local currentData = target.RecentPositions[#target.RecentPositions]
+        local previousData = target.RecentPositions[#target.RecentPositions - 1]
+        
+        local timeDelta = currentData.timestamp - previousData.timestamp
+        local acceleration = (currentData.velocity - previousData.velocity) / timeDelta
+        
+        return {
+            acceleration = acceleration,
+            timeDelta = timeDelta,
+            averageSpeed = (currentData.velocity + previousData.velocity) / 2
+        }
+    end
+
+    -- Prediction settings
+    local PREDICTION_SETTINGS = {
+        BASE_WINDOW = 0.15,
+        MAX_SPEED = 16.2001,
+        JUMP_POWER = 50,
+        GRAVITY = 196.2,
+        AIR_RESISTANCE = 0.85,
+        TURN_RATE = 0.8
+    }
+
+    local metrics = calculateTrajectoryMetrics()
+    local currentPosition = rootPart.Position
+    local currentVelocity = rootPart.AssemblyLinearVelocity
+    local moveDirection = humanoid.MoveDirection
+
+    -- Trajectory prediction
+    local function predictTrajectory()
+        local predictedPosition = currentPosition
+        local predictedVelocity = currentVelocity
+        
+        if metrics then
+            predictedVelocity = predictedVelocity + metrics.acceleration * PREDICTION_SETTINGS.BASE_WINDOW
+        end
+
+        local movementComplexity = math.clamp(
+            (currentVelocity.Magnitude / PREDICTION_SETTINGS.MAX_SPEED) + 
+            (humanoid.Jump and 0.3 or 0) +
+            (moveDirection.Magnitude * 0.2),
+            0.5, 2
+        )
+        
+        local adaptiveWindow = PREDICTION_SETTINGS.BASE_WINDOW * movementComplexity
+        predictedPosition = predictedPosition + (predictedVelocity * adaptiveWindow)
+        predictedVelocity = predictedVelocity * PREDICTION_SETTINGS.AIR_RESISTANCE
+
+        local directionInfluence = moveDirection * (PREDICTION_SETTINGS.MAX_SPEED * adaptiveWindow)
+        local turnFactor = Vector3.new(
+            math.sign(directionInfluence.X) * math.min(math.abs(directionInfluence.X), PREDICTION_SETTINGS.TURN_RATE),
+            0,
+            math.sign(directionInfluence.Z) * math.min(math.abs(directionInfluence.Z), PREDICTION_SETTINGS.TURN_RATE)
+        )
+        
+        predictedPosition = predictedPosition + turnFactor
+        return predictedPosition, predictedVelocity
+    end
+
+    -- Jump trajectory prediction
+    local function predictJumpTrajectory(basePosition, baseVelocity)
+        if not humanoid.Jump and baseVelocity.Y <= 0 then
+            return basePosition + Vector3.new(
+                0,
+                -PREDICTION_SETTINGS.GRAVITY * PREDICTION_SETTINGS.BASE_WINDOW^2 * 0.5,
+                0
+            )
+        end
+
+        local jumpPrediction = basePosition
+        local jumpVelocity = math.max(baseVelocity.Y, 0)
+        local jumpTime = PREDICTION_SETTINGS.BASE_WINDOW
+        
+        jumpPrediction = jumpPrediction + Vector3.new(
+            0,
+            jumpVelocity * jumpTime - 0.5 * PREDICTION_SETTINGS.GRAVITY * jumpTime^2,
+            0
+        )
+
+        return jumpPrediction
+    end
+
+    -- Final position calculation
+    local basePosition, predictedVelocity = predictTrajectory()
+    local finalPosition = predictJumpTrajectory(basePosition, predictedVelocity)
+
+    -- Collision detection
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {character}
+
+    local groundRay = workspace:Raycast(
+        finalPosition,
+        Vector3.new(0, -5, 0),
+        rayParams
+    )
+
+    if groundRay then
+        finalPosition = Vector3.new(
+            finalPosition.X,
+            groundRay.Position.Y + 3,
+            finalPosition.Z
+        )
+    end
+
+    -- Historical accuracy adjustment
+    if #target.RecentPositions >= 3 then
+        local historicalOffset = target.RecentPositions[#target.RecentPositions].position -
+                               target.RecentPositions[#target.RecentPositions - 2].position
+        finalPosition = finalPosition + (historicalOffset * 0.15)
+    end
+
+    return finalPosition
+end
+
+-- Button click handler
+AimV2Button.MouseButton1Click:Connect(function()
+    local localPlayer = Players.LocalPlayer
+    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
+    
+    if not gun then return end
+    
+    local murderer = GetMurderer()
+    if not murderer then return end
+    
+    localPlayer.Character.Humanoid:EquipTool(gun)
+    
+    local predictedPos = getSilentAimV2Position(murderer)
+    if predictedPos then
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
+    end
+end)
+
+local function createKnifeAura()
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = Players.LocalPlayer
+    
+    local function isValidTarget(player)
+        return player ~= LocalPlayer 
+            and player.Character 
+            and player.Character:FindFirstChild("HumanoidRootPart")
+            and player.Character:FindFirstChild("Humanoid")
+            and player.Character.Humanoid.Health > 0
+    end
+    
+    local function updateKnifeAura()
+        if not KnifeAuraSettings.enabled then return end
+        
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        local knife = character:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
+        if not knife then return end
+        
+        if knife.Parent == LocalPlayer.Backpack then
+            character.Humanoid:EquipTool(knife)
+        end
+        
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if isValidTarget(player) then
+                local targetRoot = player.Character.HumanoidRootPart
+                local distance = (targetRoot.Position - rootPart.Position).Magnitude
+                
+                if distance <= KnifeAuraSettings.radius then
+                    local knifeRemote = knife:FindFirstChild("KnifeServer", true) or 
+                                      knife:FindFirstChild("KnifeRemote", true)
+                    
+                    if knifeRemote then
+                        knifeRemote:FireServer(player.Character)
+                    end
+                end
+            end
+        end
+    end
+    
+    local connection
+    local function startAura()
+        if connection then connection:Disconnect() end
+        connection = RunService.Heartbeat:Connect(function()
+            task.wait(KnifeAuraSettings.checkRate)
+            updateKnifeAura()
+        end)
+    end
+    
+    local function stopAura()
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+    end
+    
+    local function toggleKnifeAura(enabled)
+        KnifeAuraSettings.enabled = enabled
+        if enabled then
+            startAura()
+        else
+            stopAura()
+        end
+    end
+    
+    LocalPlayer.CharacterRemoving:Connect(stopAura)
+    
+    return toggleKnifeAura
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -452,6 +714,20 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
    end
 })
 
+local SilentAimV2Toggle = Tabs.Main:AddToggle("SilentAimV2Toggle", {
+    Title = "Silent Aim V2",
+    Default = false,
+    Callback = function(toggle)
+        AimV2Button.Visible = toggle
+    end
+})
+
+local KnifeAuraToggle = Tabs.Main:AddToggle("KnifeAuraToggle", {
+    Title = "Knife Aura",
+    Default = false,
+    Callback = createKnifeAura()
+})
+
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
@@ -488,158 +764,7 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-local RoundTimerModule = {
-    Initialize = function(self, Window, Tabs)
-        -- Timer Toggle using Fluent
-        local TimerVisibilityToggle = Tabs.Main:AddToggle("TimerShow", {
-            Title = "Timer Show",
-            Default = true,
-            Callback = function(value)
-                if _G.TimerUI then  -- Use global variable for timer UI
-                    _G.TimerUI.Visible = value
-                end
-            end
-        })
-        
-        -- Create global timer UI
-        _G.TimerUI = Instance.new("TextLabel")
-        _G.TimerUI.Size = UDim2.new(0, 100, 0, 50)
-        _G.TimerUI.Position = UDim2.new(0.8, 0, 0.1, 0)
-        _G.TimerUI.BackgroundTransparency = 0.5
-        _G.TimerUI.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        _G.TimerUI.TextColor3 = Color3.fromRGB(255, 255, 255)
-        _G.TimerUI.Font = Enum.Font.GothamBold
-        _G.TimerUI.Parent = game.CoreGui
-        
-        -- Timer update function
-        _G.UpdateTimerUI = function()
-            local timeRemaining = z.Function(A.Remotes.Extras.GetTimer)
 
-            if timeRemaining < 1 then
-                _G.TimerUI.Visible = false
-            else
-                local minutes = math.floor(timeRemaining / 60)
-                local seconds = timeRemaining % 60
-
-                _G.TimerUI.Visible = TimerVisibilityToggle.Value
-                
-                if minutes > 0 then
-                    _G.TimerUI.Text = string.format("%dm %ds", minutes, seconds)
-                    _G.TimerUI.TextColor3 = Color3.fromRGB(255, 255, 255)
-                else
-                    _G.TimerUI.Text = string.format("%ds", seconds)
-                    _G.TimerUI.TextColor3 = Color3.fromRGB(255, 0, 0)
-                end
-            end
-        end
-        
-        -- Start update loop
-        spawn(function()
-            while true do
-                _G.UpdateTimerUI()
-                wait(1)
-            end
-        end)
-        
-        return TimerVisibilityToggle
-    end
-}
-
-local RoleInfoModule = {
-    Initialize = function(self, Window, Tabs)
-        -- Role Info Toggle
-        local RoleInfoToggle = Tabs.Main:AddToggle("ShowRoleInfo", {
-            Title = "Show Role Chance",
-            Default = true,
-            Callback = function(value)
-                -- Placeholder for toggle functionality
-                _G.ShowMurdererChance = value
-            end
-        })
-        
-        -- Create Role Info Display
-        _G.RoleInfoUI = Instance.new("TextLabel")
-        _G.RoleInfoUI.Size = UDim2.new(0, 200, 0, 100)
-        _G.RoleInfoUI.Position = UDim2.new(0.7, 0, 0.2, 0)
-        _G.RoleInfoUI.BackgroundTransparency = 0.5
-        _G.RoleInfoUI.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        _G.RoleInfoUI.TextColor3 = Color3.fromRGB(255, 255, 255)
-        _G.RoleInfoUI.Font = Enum.Font.GothamBold
-        _G.RoleInfoUI.Parent = game.CoreGui
-        _G.RoleInfoUI.Visible = false
-        _G.RoleInfoUI.RichText = true
-        
-        -- Role Info Update Function
-        _G.UpdateRoleInfo = function()
-            -- Placeholder variables to match original script
-            local F = _G.RoleInfoUI
-            local N = {ShowMurdererChance = RoleInfoToggle.Value}
-            
-            -- Check if the Murderer Chance display is enabled
-            F.Text = N.ShowMurdererChance 
-                and string.format(
-                    "%s\n<font size=\"25\">Murderer Chance: %s%%</font>", 
-                    R[g].Role, 
-                    z.Function(A.Remotes.Extras.GetChance)
-                ) 
-                or R[g].Role
-
-            F.TextColor3 = tK(v)
-            F.Visible = true
-            F.TextSize = 40
-
-            -- Disconnect and hide when the "You Are" text changes
-            local textChangedConnection
-            textChangedConnection = D.PlayerGui.MainGUI.Game.RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
-                if D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are" then
-                    textChangedConnection:Disconnect()
-                    F.Visible = false
-                end
-            end)
-
-            -- Find and notify roles (Murderer and Sheriff)
-            local q = {}
-            for playerIndex, playerData in pairs(R) do
-                if playerData.Role == "Murderer" or playerData.Role == "Sheriff" then
-                    q[playerData.Role] = playerIndex
-                end
-            end
-
-            task.wait(0.5)
-
-            -- Notify players of the roles
-            local murdererUserId = V(q.Murderer).UserId
-            local sheriffUserId = V(q.Sheriff).UserId
-
-            X("Murderer is: " .. q.Murderer, 5, string.format(
-                "https://web.roblox.com/Thumbs/Avatar.ashx?x=100&y=100&Format=Png&userid=%s", 
-                murdererUserId
-            ))
-            X("Sheriff is: " .. q.Sheriff, 5, string.format(
-                "https://web.roblox.com/Thumbs/Avatar.ashx?x=100&y=100&Format=Png&userid=%s", 
-                sheriffUserId
-            ))
-
-            -- Wait until the role selector is no longer visible
-            repeat
-                task.wait()
-            until D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are"
-
-            F.Visible = false
-        end
-        
-        -- Start role info trigger (adjust as needed)
-        spawn(function()
-            while true do
-                -- Call update function when appropriate
-                _G.UpdateRoleInfo()
-                wait(5)  -- Adjust timing as needed
-            end
-        end)
-        
-        return RoleInfoToggle
-    end
-}
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
