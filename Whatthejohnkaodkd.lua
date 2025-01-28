@@ -29,12 +29,6 @@ local predictionState = {
    pingValue = 50
 }
 
-local KnifeAuraSettings = {
-    radius = 4.5,
-    checkRate = 0.1,
-    enabled = false
-}
-
 -- ESP System Setup
 local ESPFolder = Instance.new("Folder", CoreGui)
 ESPFolder.Name = "ESPElements"
@@ -411,263 +405,225 @@ AimButton.MouseButton1Click:Connect(function()
    end
 end)
 
-local SilentAimV2Gui = Instance.new("ScreenGui")
-local AimV2Button = Instance.new("ImageButton")
+local PREDICTION_FACTOR = 1.2 -- Adjust for smoother prediction
+local GRAVITY = 196.2
+local FRICTION = 10
+local JUMP_VELOCITY = 50
+local AIR_CONTROL = 0.35
+local GROUND_ANGLE_SLIDE = 35
+local SPRINT_MULTIPLIER = 1.25
 
-SilentAimV2Gui.Parent = game.CoreGui
-AimV2Button.Parent = SilentAimV2Gui
-AimV2Button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)  -- Different color to distinguish from V1
-AimV2Button.BackgroundTransparency = 0.3
-AimV2Button.BorderColor3 = Color3.fromRGB(100, 100, 255)  -- Blue border for V2
-AimV2Button.BorderSizePixel = 2
-AimV2Button.Position = UDim2.new(0.897, 0, 0.5)  -- Positioned below V1 button
-AimV2Button.Size = UDim2.new(0.1, 0, 0.2)
-AimV2Button.Image = "rbxassetid://11162755592"
-AimV2Button.Draggable = true
-AimV2Button.Visible = false
+-- GUI Setup
+local AimGui = Instance.new("ScreenGui")
+AimGui.Name = "SilentAimV2"
+AimGui.Parent = game.CoreGui
 
--- Add visual enhancement for V2 button
-local UIStrokeV2 = Instance.new("UIStroke", AimV2Button)
-UIStrokeV2.Color = Color3.fromRGB(100, 100, 255)
-UIStrokeV2.Thickness = 2
-UIStrokeV2.Transparency = 0.5
+local AimButton = Instance.new("ImageButton")
+AimButton.Name = "AimButton"
+AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimButton.BackgroundTransparency = 0.3
+AimButton.BorderColor3 = Color3.fromRGB(255, 100, 0)
+AimButton.BorderSizePixel = 2
+AimButton.Position = UDim2.new(0.897, 0, 0.3)
+AimButton.Size = UDim2.new(0.1, 0, 0.2)
+AimButton.Image = "rbxassetid://11162755592"
+AimButton.Draggable = true
+AimButton.Visible = false
+AimButton.Parent = AimGui
 
--- Prediction algorithm implementation
-local function getSilentAimV2Position(target)
-    local character = target.Character
+local UIStroke = Instance.new("UIStroke", AimButton)
+UIStroke.Color = Color3.fromRGB(255, 100, 0)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.5
+
+-- Enhanced Prediction Algorithm V2
+local function getPredictedPositionV2(character)
     if not character then return nil end
-    
+
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     local humanoid = character:FindFirstChild("Humanoid")
     if not rootPart or not humanoid then return nil end
 
-    -- Position history tracking
-    if not target.RecentPositions then
-        target.RecentPositions = {}
-    end
-    
-    table.insert(target.RecentPositions, {
-        position = rootPart.Position,
-        timestamp = tick(),
-        velocity = rootPart.AssemblyLinearVelocity
-    })
-    
-    if #target.RecentPositions > 10 then
-        table.remove(target.RecentPositions, 1)
-    end
+    -- Physics Constants
+    local FRAME_TIME = 0.016666666666666666 -- 60 FPS
+    local PREDICTION_STEPS = math.clamp(math.round(PREDICTION_FACTOR * 25), 15, 40)
+    local SUB_STEPS = 3
+    local capsuleHeight = 5.0
+    local capsuleRadius = 2.0
+    local skinWidth = 0.08
 
-    -- Trajectory metrics calculation
-    local function calculateTrajectoryMetrics()
-        if #target.RecentPositions < 2 then return nil end
-        
-        local currentData = target.RecentPositions[#target.RecentPositions]
-        local previousData = target.RecentPositions[#target.RecentPositions - 1]
-        
-        local timeDelta = currentData.timestamp - previousData.timestamp
-        local acceleration = (currentData.velocity - previousData.velocity) / timeDelta
-        
-        return {
-            acceleration = acceleration,
-            timeDelta = timeDelta,
-            averageSpeed = (currentData.velocity + previousData.velocity) / 2
-        }
-    end
+    -- State Tracking
+    local currentPos = rootPart.Position
+    local currentVel = rootPart.AssemblyLinearVelocity
+    local moveDir = humanoid.MoveDirection
+    local isGrounded = humanoid.FloorMaterial ~= Enum.Material.Air
+    local isSprinting = humanoid.WalkSpeed > 16
+    local jumpState = humanoid:GetState()
 
-    -- Prediction settings
-    local PREDICTION_SETTINGS = {
-        BASE_WINDOW = 0.15,
-        MAX_SPEED = 16.2001,
-        JUMP_POWER = 50,
-        GRAVITY = 196.2,
-        AIR_RESISTANCE = 0.85,
-        TURN_RATE = 0.8
-    }
+    -- Movement Parameters
+    local baseSpeed = humanoid.WalkSpeed * (isSprinting and SPRINT_MULTIPLIER or 1)
+    local acceleration = isGrounded and 50 or 20
+    local deceleration = isGrounded and 40 or 5
+    local currentJumpPower = JUMP_VELOCITY
+    local effectiveGravity = GRAVITY * (currentVel.Y > 0 and 1.0 or 1.2)
 
-    local metrics = calculateTrajectoryMetrics()
-    local currentPosition = rootPart.Position
-    local currentVelocity = rootPart.AssemblyLinearVelocity
-    local moveDirection = humanoid.MoveDirection
+    -- Prediction Core
+    for _ = 1, PREDICTION_STEPS do
+        -- Sub-stepping for better accuracy
+        for __ = 1, SUB_STEPS do
+            -- Horizontal Movement Simulation
+            local horizontalVel = Vector3.new(currentVel.X, 0, currentVel.Z)
+            local horizontalSpeed = horizontalVel.Magnitude
+            local horizontalDir = horizontalSpeed > 0 and horizontalVel.Unit or Vector3.new()
 
-    -- Trajectory prediction
-    local function predictTrajectory()
-        local predictedPosition = currentPosition
-        local predictedVelocity = currentVelocity
-        
-        if metrics then
-            predictedVelocity = predictedVelocity + metrics.acceleration * PREDICTION_SETTINGS.BASE_WINDOW
-        end
+            -- Ground Movement Physics
+            if isGrounded then
+                -- Acceleration/Deceleration
+                local targetSpeed = moveDir.Magnitude > 0 and baseSpeed or 0
+                local speedDiff = targetSpeed - horizontalSpeed
+                local accelRate = math.abs(speedDiff) > 0.01 and acceleration or deceleration
+                
+                -- Apply movement force
+                horizontalSpeed = horizontalSpeed + speedDiff * accelRate * FRAME_TIME
+                horizontalSpeed = math.clamp(horizontalSpeed, -baseSpeed, baseSpeed)
+                
+                -- Ground friction
+                horizontalSpeed = horizontalSpeed * (1 - math.clamp(FRICTION * FRAME_TIME, 0, 1))
+                
+                -- Slope handling
+                local groundNormal = humanoid.FloorNormal
+                local slopeAngle = math.deg(math.acos(groundNormal:Dot(Vector3.new(0, 1, 0))))
+                if slopeAngle > GROUND_ANGLE_SLIDE then
+                    local slideDir = Vector3.new(groundNormal.X, 0, groundNormal.Z).Unit
+                    horizontalSpeed = horizontalSpeed + slideDir.Y * GRAVITY * math.sin(math.rad(slopeAngle)) * FRAME_TIME
+                end
+            else
+                -- Air Control Physics
+                if moveDir.Magnitude > 0 then
+                    local airAccel = acceleration * AIR_CONTROL
+                    local wishDir = (moveDir * baseSpeed - horizontalVel).Unit
+                    horizontalVel = horizontalVel + wishDir * airAccel * FRAME_TIME
+                    horizontalSpeed = horizontalVel.Magnitude
+                end
+            end
 
-        local movementComplexity = math.clamp(
-            (currentVelocity.Magnitude / PREDICTION_SETTINGS.MAX_SPEED) + 
-            (humanoid.Jump and 0.3 or 0) +
-            (moveDirection.Magnitude * 0.2),
-            0.5, 2
-        )
-        
-        local adaptiveWindow = PREDICTION_SETTINGS.BASE_WINDOW * movementComplexity
-        predictedPosition = predictedPosition + (predictedVelocity * adaptiveWindow)
-        predictedVelocity = predictedVelocity * PREDICTION_SETTINGS.AIR_RESISTANCE
+            -- Vertical Movement Simulation
+            local verticalVel = currentVel.Y
+            if jumpState == Enum.HumanoidStateType.Jumping then
+                verticalVel = currentJumpPower
+                isGrounded = false
+                currentJumpPower = JUMP_VELOCITY * 0.5 -- Jump power reduction
+            else
+                verticalVel = verticalVel - effectiveGravity * FRAME_TIME
+            end
 
-        local directionInfluence = moveDirection * (PREDICTION_SETTINGS.MAX_SPEED * adaptiveWindow)
-        local turnFactor = Vector3.new(
-            math.sign(directionInfluence.X) * math.min(math.abs(directionInfluence.X), PREDICTION_SETTINGS.TURN_RATE),
-            0,
-            math.sign(directionInfluence.Z) * math.min(math.abs(directionInfluence.Z), PREDICTION_SETTINGS.TURN_RATE)
-        )
-        
-        predictedPosition = predictedPosition + turnFactor
-        return predictedPosition, predictedVelocity
-    end
+            -- Combine movement vectors
+            local newVel = Vector3.new(
+                horizontalDir.X * horizontalSpeed,
+                verticalVel,
+                horizontalDir.Z * horizontalSpeed
+            )
+            
+            -- Collision Detection System
+            local movementVector = newVel * FRAME_TIME
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {character}
+            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+            
+            -- Capsule cast for body collision
+            local capsuleCast = workspace:CapsuleCast(
+                currentPos + Vector3.new(0, capsuleHeight/2, 0),
+                currentPos - Vector3.new(0, capsuleHeight/2, 0),
+                capsuleRadius,
+                movementVector,
+                rayParams
+            )
 
-    -- Jump trajectory prediction
-    local function predictJumpTrajectory(basePosition, baseVelocity)
-        if not humanoid.Jump and baseVelocity.Y <= 0 then
-            return basePosition + Vector3.new(
-                0,
-                -PREDICTION_SETTINGS.GRAVITY * PREDICTION_SETTINGS.BASE_WINDOW^2 * 0.5,
-                0
+            if capsuleCast then
+                -- Collision resolution
+                local hitNormal = capsuleCast.Normal
+                local slideVector = movementVector - hitNormal * movementVector:Dot(hitNormal)
+                
+                -- Handle different collision types
+                if hitNormal.Y > 0.7 then -- Floor
+                    isGrounded = true
+                    verticalVel = math.max(verticalVel, 0)
+                    currentPos = capsuleCast.Position + Vector3.new(0, skinWidth, 0)
+                elseif hitNormal.Y < -0.7 then -- Ceiling
+                    verticalVel = math.min(verticalVel, 0)
+                    currentPos = capsuleCast.Position - Vector3.new(0, skinWidth, 0)
+                else -- Wall
+                    newVel = newVel - hitNormal * newVel:Dot(hitNormal)
+                    movementVector = slideVector * (1 - capsuleCast.Distance / movementVector.Magnitude)
+                end
+            end
+
+            -- Update position and velocity
+            currentPos = currentPos + movementVector
+            currentVel = newVel
+
+            -- Jump buffering and coyote time simulation
+            if isGrounded and jumpState == Enum.HumanoidStateType.Jumping then
+                verticalVel = JUMP_VELOCITY
+                isGrounded = false
+            end
+
+            -- Update ground state
+            local groundCheck = workspace:Raycast(
+                currentPos,
+                Vector3.new(0, -capsuleHeight/2 - skinWidth, 0),
+                rayParams
+            )
+            isGrounded = groundCheck and groundCheck.Normal.Y > 0.7
+
+            -- Velocity clamping
+            currentVel = Vector3.new(
+                math.clamp(currentVel.X, -baseSpeed * 2, baseSpeed * 2),
+                math.clamp(currentVel.Y, -GRAVITY, JUMP_VELOCITY * 1.5),
+                math.clamp(currentVel.Z, -baseSpeed * 2, baseSpeed * 2)
             )
         end
-
-        local jumpPrediction = basePosition
-        local jumpVelocity = math.max(baseVelocity.Y, 0)
-        local jumpTime = PREDICTION_SETTINGS.BASE_WINDOW
-        
-        jumpPrediction = jumpPrediction + Vector3.new(
-            0,
-            jumpVelocity * jumpTime - 0.5 * PREDICTION_SETTINGS.GRAVITY * jumpTime^2,
-            0
-        )
-
-        return jumpPrediction
     end
 
-    -- Final position calculation
-    local basePosition, predictedVelocity = predictTrajectory()
-    local finalPosition = predictJumpTrajectory(basePosition, predictedVelocity)
-
-    -- Collision detection
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.FilterDescendantsInstances = {character}
-
-    local groundRay = workspace:Raycast(
-        finalPosition,
-        Vector3.new(0, -5, 0),
-        rayParams
-    )
-
-    if groundRay then
-        finalPosition = Vector3.new(
-            finalPosition.X,
-            groundRay.Position.Y + 3,
-            finalPosition.Z
-        )
+    -- Final position adjustment
+    local finalRay = workspace:Raycast(currentPos, Vector3.new(0, -10, 0), rayParams)
+    if finalRay then
+        currentPos = finalRay.Position + Vector3.new(0, 2.5, 0)
     end
 
-    -- Historical accuracy adjustment
-    if #target.RecentPositions >= 3 then
-        local historicalOffset = target.RecentPositions[#target.RecentPositions].position -
-                               target.RecentPositions[#target.RecentPositions - 2].position
-        finalPosition = finalPosition + (historicalOffset * 0.15)
-    end
-
-    return finalPosition
+    return currentPos
 end
 
--- Button click handler
-AimV2Button.MouseButton1Click:Connect(function()
+-- Detect Murderer Function (Improved)
+local function DetectMurderer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer and player.Character then
+            local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+            if knife then
+                return player.Character
+            end
+        end
+    end
+    return nil
+end
+
+-- Aim Button Functionality
+AimButton.MouseButton1Click:Connect(function()
     local localPlayer = Players.LocalPlayer
     local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
-    
+
     if not gun then return end
-    
-    local murderer = GetMurderer()
+
+    local murderer = DetectMurderer()
     if not murderer then return end
-    
+
     localPlayer.Character.Humanoid:EquipTool(gun)
-    
-    local predictedPos = getSilentAimV2Position(murderer)
+
+    local predictedPos = getPredictedPositionV2(murderer)
     if predictedPos then
         gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
-
-local function createKnifeAura()
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local LocalPlayer = Players.LocalPlayer
-    
-    local function isValidTarget(player)
-        return player ~= LocalPlayer 
-            and player.Character 
-            and player.Character:FindFirstChild("HumanoidRootPart")
-            and player.Character:FindFirstChild("Humanoid")
-            and player.Character.Humanoid.Health > 0
-    end
-    
-    local function updateKnifeAura()
-        if not KnifeAuraSettings.enabled then return end
-        
-        local character = LocalPlayer.Character
-        if not character then return end
-        
-        local knife = character:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
-        if not knife then return end
-        
-        if knife.Parent == LocalPlayer.Backpack then
-            character.Humanoid:EquipTool(knife)
-        end
-        
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        
-        for _, player in ipairs(Players:GetPlayers()) do
-            if isValidTarget(player) then
-                local targetRoot = player.Character.HumanoidRootPart
-                local distance = (targetRoot.Position - rootPart.Position).Magnitude
-                
-                if distance <= KnifeAuraSettings.radius then
-                    local knifeRemote = knife:FindFirstChild("KnifeServer", true) or 
-                                      knife:FindFirstChild("KnifeRemote", true)
-                    
-                    if knifeRemote then
-                        knifeRemote:FireServer(player.Character)
-                    end
-                end
-            end
-        end
-    end
-    
-    local connection
-    local function startAura()
-        if connection then connection:Disconnect() end
-        connection = RunService.Heartbeat:Connect(function()
-            task.wait(KnifeAuraSettings.checkRate)
-            updateKnifeAura()
-        end)
-    end
-    
-    local function stopAura()
-        if connection then
-            connection:Disconnect()
-            connection = nil
-        end
-    end
-    
-    local function toggleKnifeAura(enabled)
-        KnifeAuraSettings.enabled = enabled
-        if enabled then
-            startAura()
-        else
-            stopAura()
-        end
-    end
-    
-    LocalPlayer.CharacterRemoving:Connect(stopAura)
-    
-    return toggleKnifeAura
-end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -714,18 +670,12 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
    end
 })
 
-local SilentAimV2Toggle = Tabs.Main:AddToggle("SilentAimV2Toggle", {
+local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     Title = "Silent Aim V2",
     Default = false,
     Callback = function(toggle)
-        AimV2Button.Visible = toggle
+        AimButton.Visible = toggle
     end
-})
-
-local KnifeAuraToggle = Tabs.Main:AddToggle("KnifeAuraToggle", {
-    Title = "Knife Aura",
-    Default = false,
-    Callback = createKnifeAura()
 })
 
 -- Prediction Ping Toggle
