@@ -405,201 +405,110 @@ AimButton.MouseButton1Click:Connect(function()
    end
 end)
 
-local PREDICTION_FACTOR = 1.2 -- Adjust for smoother prediction
+local PREDICTION_FACTOR = 1.2
 local GRAVITY = 196.2
-local FRICTION = 10
+local FRICTION = 12
 local JUMP_VELOCITY = 50
-local AIR_CONTROL = 0.35
-local GROUND_ANGLE_SLIDE = 35
-local SPRINT_MULTIPLIER = 1.25
+local AIR_CONTROL = 0.3
 
--- GUI Setup
-local AimGui = Instance.new("ScreenGui")
-AimGui.Name = "SilentAimV2"
-AimGui.Parent = game.CoreGui
+-- Unique GUI System
+local SilentAimV2Gui = Instance.new("ScreenGui")
+SilentAimV2Gui.Name = "SilentAimV2_System"
+SilentAimV2Gui.Parent = game.CoreGui
 
-local AimButton = Instance.new("ImageButton")
-AimButton.Name = "AimButton"
-AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-AimButton.BackgroundTransparency = 0.3
-AimButton.BorderColor3 = Color3.fromRGB(255, 100, 0)
-AimButton.BorderSizePixel = 2
-AimButton.Position = UDim2.new(0.897, 0, 0.3)
-AimButton.Size = UDim2.new(0.1, 0, 0.2)
-AimButton.Image = "rbxassetid://11162755592"
-AimButton.Draggable = true
-AimButton.Visible = false
-AimButton.Parent = AimGui
+local AimButtonV2 = Instance.new("ImageButton")
+AimButtonV2.Name = "SilentAimV2_Button"
+AimButtonV2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+AimButtonV2.BackgroundTransparency = 0.25
+AimButtonV2.BorderColor3 = Color3.fromRGB(0, 255, 150)
+AimButtonV2.BorderSizePixel = 2
+AimButtonV2.Position = UDim2.new(0.85, 0, 0.25)
+AimButtonV2.Size = UDim2.new(0.12, 0, 0.18)
+AimButtonV2.Image = "rbxassetid://11162755592"
+AimButtonV2.Visible = false
+AimButtonV2.Parent = SilentAimV2Gui
 
-local UIStroke = Instance.new("UIStroke", AimButton)
-UIStroke.Color = Color3.fromRGB(255, 100, 0)
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.5
+local V2UIStroke = Instance.new("UIStroke", AimButtonV2)
+V2UIStroke.Color = Color3.fromRGB(0, 255, 150)
+V2UIStroke.Thickness = 1.5
+V2UIStroke.Transparency = 0.4
 
--- Enhanced Prediction Algorithm V2
-local function getPredictedPositionV2(character)
-    if not character then return nil end
+-- Enhanced Prediction Algorithm
+local function V2_PredictPosition(target)
+    if not target then return nil end
+    local root = target:FindFirstChild("HumanoidRootPart")
+    local humanoid = target:FindFirstChild("Humanoid")
+    if not root or not humanoid then return nil end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
-
-    -- Physics Constants
-    local FRAME_TIME = 0.016666666666666666 -- 60 FPS
-    local PREDICTION_STEPS = math.clamp(math.round(PREDICTION_FACTOR * 25), 15, 40)
-    local SUB_STEPS = 3
-    local capsuleHeight = 5.0
-    local capsuleRadius = 2.0
-    local skinWidth = 0.08
-
-    -- State Tracking
-    local currentPos = rootPart.Position
-    local currentVel = rootPart.AssemblyLinearVelocity
+    -- Prediction parameters
+    local frameTime = 0.016
+    local steps = math.clamp(PREDICTION_FACTOR * 30, 15, 40)
+    local currentPos = root.Position
+    local currentVel = root.AssemblyLinearVelocity
     local moveDir = humanoid.MoveDirection
     local isGrounded = humanoid.FloorMaterial ~= Enum.Material.Air
-    local isSprinting = humanoid.WalkSpeed > 16
-    local jumpState = humanoid:GetState()
 
-    -- Movement Parameters
-    local baseSpeed = humanoid.WalkSpeed * (isSprinting and SPRINT_MULTIPLIER or 1)
-    local acceleration = isGrounded and 50 or 20
-    local deceleration = isGrounded and 40 or 5
-    local currentJumpPower = JUMP_VELOCITY
-    local effectiveGravity = GRAVITY * (currentVel.Y > 0 and 1.0 or 1.2)
-
-    -- Prediction Core
-    for _ = 1, PREDICTION_STEPS do
-        -- Sub-stepping for better accuracy
-        for __ = 1, SUB_STEPS do
-            -- Horizontal Movement Simulation
-            local horizontalVel = Vector3.new(currentVel.X, 0, currentVel.Z)
-            local horizontalSpeed = horizontalVel.Magnitude
-            local horizontalDir = horizontalSpeed > 0 and horizontalVel.Unit or Vector3.new()
-
-            -- Ground Movement Physics
-            if isGrounded then
-                -- Acceleration/Deceleration
-                local targetSpeed = moveDir.Magnitude > 0 and baseSpeed or 0
-                local speedDiff = targetSpeed - horizontalSpeed
-                local accelRate = math.abs(speedDiff) > 0.01 and acceleration or deceleration
-                
-                -- Apply movement force
-                horizontalSpeed = horizontalSpeed + speedDiff * accelRate * FRAME_TIME
-                horizontalSpeed = math.clamp(horizontalSpeed, -baseSpeed, baseSpeed)
-                
-                -- Ground friction
-                horizontalSpeed = horizontalSpeed * (1 - math.clamp(FRICTION * FRAME_TIME, 0, 1))
-                
-                -- Slope handling
-                local groundNormal = humanoid.FloorNormal
-                local slopeAngle = math.deg(math.acos(groundNormal:Dot(Vector3.new(0, 1, 0))))
-                if slopeAngle > GROUND_ANGLE_SLIDE then
-                    local slideDir = Vector3.new(groundNormal.X, 0, groundNormal.Z).Unit
-                    horizontalSpeed = horizontalSpeed + slideDir.Y * GRAVITY * math.sin(math.rad(slopeAngle)) * FRAME_TIME
-                end
-            else
-                -- Air Control Physics
-                if moveDir.Magnitude > 0 then
-                    local airAccel = acceleration * AIR_CONTROL
-                    local wishDir = (moveDir * baseSpeed - horizontalVel).Unit
-                    horizontalVel = horizontalVel + wishDir * airAccel * FRAME_TIME
-                    horizontalSpeed = horizontalVel.Magnitude
-                end
+    for _ = 1, steps do
+        -- Horizontal movement
+        local horizontalVel = Vector3.new(currentVel.X, 0, currentVel.Z)
+        local hSpeed = horizontalVel.Magnitude
+        local hDir = hSpeed > 0 and horizontalVel.Unit or Vector3.new()
+        
+        -- Ground movement
+        if isGrounded then
+            hSpeed = math.max(hSpeed - FRICTION * frameTime, 0)
+            if moveDir.Magnitude > 0 then
+                hSpeed = math.min(hSpeed + humanoid.WalkSpeed * 0.5 * frameTime, humanoid.WalkSpeed)
+                hDir = moveDir
             end
-
-            -- Vertical Movement Simulation
-            local verticalVel = currentVel.Y
-            if jumpState == Enum.HumanoidStateType.Jumping then
-                verticalVel = currentJumpPower
-                isGrounded = false
-                currentJumpPower = JUMP_VELOCITY * 0.5 -- Jump power reduction
-            else
-                verticalVel = verticalVel - effectiveGravity * FRAME_TIME
+        else -- Air movement
+            hSpeed = hSpeed * (1 - AIR_CONTROL * frameTime)
+            if moveDir.Magnitude > 0 then
+                hDir = (hDir * hSpeed + moveDir * 25 * frameTime).Unit
+                hSpeed = math.min(hSpeed + 15 * frameTime, humanoid.WalkSpeed * 1.2)
             end
-
-            -- Combine movement vectors
-            local newVel = Vector3.new(
-                horizontalDir.X * horizontalSpeed,
-                verticalVel,
-                horizontalDir.Z * horizontalSpeed
-            )
-            
-            -- Collision Detection System
-            local movementVector = newVel * FRAME_TIME
-            local rayParams = RaycastParams.new()
-            rayParams.FilterDescendantsInstances = {character}
-            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-            
-            -- Capsule cast for body collision
-            local capsuleCast = workspace:CapsuleCast(
-                currentPos + Vector3.new(0, capsuleHeight/2, 0),
-                currentPos - Vector3.new(0, capsuleHeight/2, 0),
-                capsuleRadius,
-                movementVector,
-                rayParams
-            )
-
-            if capsuleCast then
-                -- Collision resolution
-                local hitNormal = capsuleCast.Normal
-                local slideVector = movementVector - hitNormal * movementVector:Dot(hitNormal)
-                
-                -- Handle different collision types
-                if hitNormal.Y > 0.7 then -- Floor
-                    isGrounded = true
-                    verticalVel = math.max(verticalVel, 0)
-                    currentPos = capsuleCast.Position + Vector3.new(0, skinWidth, 0)
-                elseif hitNormal.Y < -0.7 then -- Ceiling
-                    verticalVel = math.min(verticalVel, 0)
-                    currentPos = capsuleCast.Position - Vector3.new(0, skinWidth, 0)
-                else -- Wall
-                    newVel = newVel - hitNormal * newVel:Dot(hitNormal)
-                    movementVector = slideVector * (1 - capsuleCast.Distance / movementVector.Magnitude)
-                end
-            end
-
-            -- Update position and velocity
-            currentPos = currentPos + movementVector
-            currentVel = newVel
-
-            -- Jump buffering and coyote time simulation
-            if isGrounded and jumpState == Enum.HumanoidStateType.Jumping then
-                verticalVel = JUMP_VELOCITY
-                isGrounded = false
-            end
-
-            -- Update ground state
-            local groundCheck = workspace:Raycast(
-                currentPos,
-                Vector3.new(0, -capsuleHeight/2 - skinWidth, 0),
-                rayParams
-            )
-            isGrounded = groundCheck and groundCheck.Normal.Y > 0.7
-
-            -- Velocity clamping
-            currentVel = Vector3.new(
-                math.clamp(currentVel.X, -baseSpeed * 2, baseSpeed * 2),
-                math.clamp(currentVel.Y, -GRAVITY, JUMP_VELOCITY * 1.5),
-                math.clamp(currentVel.Z, -baseSpeed * 2, baseSpeed * 2)
-            )
         end
-    end
 
-    -- Final position adjustment
-    local finalRay = workspace:Raycast(currentPos, Vector3.new(0, -10, 0), rayParams)
-    if finalRay then
-        currentPos = finalRay.Position + Vector3.new(0, 2.5, 0)
+        -- Vertical movement
+        local verticalVel = currentVel.Y
+        if humanoid:GetState() == Enum.HumanoidStateType.Jumping then
+            verticalVel = JUMP_VELOCITY
+        else
+            verticalVel = verticalVel - GRAVITY * frameTime
+        end
+
+        -- Update position
+        currentVel = Vector3.new(
+            hDir.X * hSpeed,
+            verticalVel,
+            hDir.Z * hSpeed
+        )
+        currentPos += currentVel * frameTime
+
+        -- Collision checks
+        local rayParams = RaycastParams.new()
+        rayParams.FilterDescendantsInstances = {target}
+        
+        -- Floor detection
+        local floorRay = workspace:Raycast(currentPos, Vector3.new(0, -5, 0), rayParams)
+        if floorRay then
+            currentPos = floorRay.Position + Vector3.new(0, 2.5, 0)
+            verticalVel = math.max(verticalVel, 0)
+            isGrounded = true
+        else
+            isGrounded = false
+        end
     end
 
     return currentPos
 end
 
--- Detect Murderer Function (Improved)
-local function DetectMurderer()
-    for _, player in pairs(Players:GetPlayers()) do
+-- Target Detection System
+local function V2_FindTarget()
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= Players.LocalPlayer and player.Character then
-            local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-            if knife then
+            local tool = player.Character:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
+            if tool and tool.Name:lower():find("knife") then
                 return player.Character
             end
         end
@@ -607,21 +516,26 @@ local function DetectMurderer()
     return nil
 end
 
--- Aim Button Functionality
-AimButton.MouseButton1Click:Connect(function()
+-- Aim Functionality
+AimButtonV2.MouseButton1Click:Connect(function()
     local localPlayer = Players.LocalPlayer
-    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
+    local char = localPlayer.Character
+    if not char then return end
 
-    if not gun then return end
+    local weapon = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
+    if not weapon or weapon.Name:lower():find("gun") == nil then return end
 
-    local murderer = DetectMurderer()
-    if not murderer then return end
+    local target = V2_FindTarget()
+    if not target then return end
 
-    localPlayer.Character.Humanoid:EquipTool(gun)
-
-    local predictedPos = getPredictedPositionV2(murderer)
+    char.Humanoid:EquipTool(weapon)
+    local predictedPos = V2_PredictPosition(target)
+    
     if predictedPos then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
+        weapon.RemoteEvent:FireServer("Fire", {
+            Hit = predictedPos,
+            Timestamp = os.clock()
+        })
     end
 end)
 
@@ -670,11 +584,12 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
    end
 })
 
-local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
+local V2Toggle = Tabs.Main:AddToggle("V2AimToggle", {
     Title = "Silent Aim V2",
     Default = false,
-    Callback = function(toggle)
-        AimButton.Visible = toggle
+    Callback = function(state)
+        AimButtonV2.Visible = state
+        V2UIStroke.Color = state and Color3.new(0, 1, 0.5) or Color3.new(1, 0.2, 0.2)
     end
 })
 
