@@ -282,17 +282,70 @@ local CoinFound = false
 local TweenSpeed = 0.08
 
 local part = Instance.new("Part")
-local position = Vector3.new(0,10000,0)
+local position = Vector3.new(0, 10000, 0)
 part.Name = "AutoCoinPart"
-part.Color = Color3.new(0,0,0)
+part.Color = Color3.new(0, 0, 0)
 part.Material = Enum.Material.Plastic
 part.Transparency = 1
 part.Position = position
-part.Size = Vector3.new(1,0.5,1)
+part.Size = Vector3.new(1, 0.5, 1)
 part.CastShadow = true
 part.Anchored = true
 part.CanCollide = false
 part.Parent = workspace
+
+-- Function to set Auto Farm Gyro (Lying Down)
+local function AutoFarmGyro(enable)
+    local player = game.Players.LocalPlayer
+    if not player or not player.Character or not player.Character:FindFirstChild("Head") then
+        return
+    end
+    
+    local char = player.Character
+    local head = char.Head
+
+    if enable then
+        if head:FindFirstChild("Auto Farm Gyro") or head:FindFirstChild("Auto Farm Velocity") then return end
+        
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        -- Set CFrame to make the player LIE DOWN
+        local newCFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
+
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                local gyro = Instance.new("BodyGyro")
+                local velocity = Instance.new("BodyVelocity")
+
+                gyro.Name = "Auto Farm Gyro"
+                gyro.Parent = part
+                gyro.P = 90000
+                gyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
+                gyro.CFrame = newCFrame  -- Makes player lie down
+
+                velocity.Name = "Auto Farm Velocity"
+                velocity.Parent = part
+                velocity.Velocity = Vector3.new(0, 0, 0)
+                velocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
+            end
+        end
+
+        root.CFrame = newCFrame
+        player.Character.Humanoid.PlatformStand = true
+    else
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                for _, child in pairs(part:GetChildren()) do
+                    if child.Name == "Auto Farm Velocity" or child.Name == "Auto Farm Gyro" then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+        player.Character.Humanoid.PlatformStand = false
+    end
+end
 
 game:GetService('RunService').Heartbeat:Connect(function()
    if AutoCoin == true and AutoCoinOperator == false then
@@ -300,7 +353,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
        local player = game.Players.LocalPlayer
        workspace:FindFirstChild("AutoCoinPart").CFrame = player.Character.HumanoidRootPart.CFrame
        
-       for i,v in pairs(workspace:GetDescendants()) do
+       for i, v in pairs(workspace:GetDescendants()) do
            if v.Name == "Coin_Server" or v.Name == "SnowToken" then
                if CurrentTarget then
                    if (player.Character.HumanoidRootPart.Position - CurrentTarget.Position).Magnitude > (player.Character.HumanoidRootPart.Position - v.Position).Magnitude then
@@ -315,10 +368,10 @@ game:GetService('RunService').Heartbeat:Connect(function()
        if CurrentTarget then
            local coin = CurrentTarget
            local character = player.Character
-           local gyroCFrame = character.HumanoidRootPart.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
+           local gyroCFrame = character.HumanoidRootPart.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90)) -- Lying down
 
            for _, part in pairs(character:GetChildren()) do
-               if part:IsA("BasePart") and (part.Name == "Head" or string.match(part.Name, "Torso")) then
+               if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
                    local bodyGyro = Instance.new("BodyGyro")
                    bodyGyro.Name = "Auto Farm Gyro"
                    bodyGyro.P = 90000
@@ -365,6 +418,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").AutoCoinPart.CFrame
    end
 end)
+
 
 
 
