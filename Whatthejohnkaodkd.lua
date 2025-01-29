@@ -274,18 +274,18 @@ local function GetMurderer()
    return nil
 end
 
+local CurrentTarget = nil
 local AutoCoin = false
 local AutoCoinOperator = false
-local CurrentTarget = nil
 local CoinFound = false
 local TweenSpeed = 0.08
 
--- Create the invisible farming part under the map
 local part = Instance.new("Part")
 part.Name = "AutoCoinPart"
 part.Color = Color3.new(0, 0, 0)
 part.Material = Enum.Material.Plastic
 part.Transparency = 1
+part.Position = Vector3.new(0, 10000, 0)
 part.Size = Vector3.new(1, 0.5, 1)
 part.CastShadow = true
 part.Anchored = true
@@ -293,16 +293,33 @@ part.CanCollide = false
 part.Parent = workspace
 
 game:GetService('RunService').Heartbeat:Connect(function()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local root = character.HumanoidRootPart
+
+    -- Stop Farming if AutoCoin is toggled off
+    if not AutoCoin then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                for _, child in pairs(part:GetChildren()) do
+                    if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+        character.Humanoid.PlatformStand = false
+        CoinFound = false
+        AutoCoinOperator = false
+        return
+    end
+
+    -- Farming logic
     if AutoCoin and not AutoCoinOperator then
         AutoCoinOperator = true
-        local player = game.Players.LocalPlayer
-        local character = player.Character
-        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-        local root = character.HumanoidRootPart
+        workspace:FindFirstChild("AutoCoinPart").CFrame = root.CFrame
         
-        -- Move the farming part under the map
-        part.Position = Vector3.new(root.Position.X, -10000, root.Position.Z)
-
         -- Find the closest coin
         for _, v in pairs(workspace:GetDescendants()) do
             if v.Name == "Coin_Server" or v.Name == "SnowToken" then
@@ -316,16 +333,16 @@ game:GetService('RunService').Heartbeat:Connect(function()
             end
         end
 
-        -- Only apply Gyro and Velocity when a coin is found
         if CurrentTarget then
             CoinFound = true
             local coin = CurrentTarget
-
-            -- Set player to lie down
-            local gyroCFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(90), 0, math.rad(90))
+            
+            -- Adjust player position to lie down
+            local gyroCFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
 
             for _, part in pairs(character:GetChildren()) do
                 if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                    -- Create BodyGyro to make the player lie down
                     if not part:FindFirstChild("Auto Farm Gyro") then
                         local bodyGyro = Instance.new("BodyGyro")
                         bodyGyro.Name = "Auto Farm Gyro"
@@ -335,6 +352,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
                         bodyGyro.Parent = part
                     end
 
+                    -- Create BodyVelocity to move towards the coin
                     if not part:FindFirstChild("Auto Farm Velocity") then
                         local bodyVelocity = Instance.new("BodyVelocity")
                         bodyVelocity.Name = "Auto Farm Velocity"
@@ -348,48 +366,38 @@ game:GetService('RunService').Heartbeat:Connect(function()
             character.Humanoid.PlatformStand = true
 
             -- Adjust speed based on distance
-            TweenSpeed = (root.Position - coin.Position).Magnitude / 23
-            if TweenSpeed < 0.08 then TweenSpeed = 0.08 end
-
-            -- Move under the coin
+            if (root.Position - coin.Position).Magnitude >= 80 then
+                TweenSpeed = 4
+            else
+                TweenSpeed = (root.Position - coin.Position).Magnitude / 23
+            end
+            
+            -- Move to the coin using Tween
             local tweenService = game:GetService("TweenService")
             local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear)
-            local tween = tweenService:Create(part, tweenInfo, {CFrame = CFrame.new(coin.Position.X, -10000, coin.Position.Z)})
+            local tween = tweenService:Create(workspace:FindFirstChild("AutoCoinPart"), tweenInfo, {CFrame = coin.CFrame})
             tween:Play()
             wait(TweenSpeed)
-
+            
             -- Remove the coin once collected
             if CurrentTarget then
                 CurrentTarget.Parent = nil
             end
-
-            -- Reset after collecting
+            
+            -- Reset values after collecting
+            TweenSpeed = 0.08
             CurrentTarget = nil
             CoinFound = false
-        else
-            -- If no coins, remove BodyGyro & BodyVelocity
-            for _, part in pairs(character:GetChildren()) do
-                if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                    for _, child in pairs(part:GetChildren()) do
-                        if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
-                            child:Destroy()
-                        end
-                    end
-                end
-            end
-            character.Humanoid.PlatformStand = false
         end
-        
+
         AutoCoinOperator = false
     end
 
-    -- Keep moving the player under the coin location
+    -- Move player to the coin location
     if AutoCoin and CoinFound then
-        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = part.CFrame
+        root.CFrame = workspace:FindFirstChild("AutoCoinPart").CFrame
     end
 end)
-
-
 
 
 
@@ -655,6 +663,22 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   Default = false,
   Callback = function(toggle)
       AutoCoin = toggle
+      if not toggle then
+          -- Stop farming immediately
+          local character = game.Players.LocalPlayer.Character
+          if character then
+              for _, part in pairs(character:GetChildren()) do
+                  if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                      for _, child in pairs(part:GetChildren()) do
+                          if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
+                              child:Destroy()
+                          end
+                      end
+                  end
+              end
+              character.Humanoid.PlatformStand = false
+          end
+      end
   end
 })
 
