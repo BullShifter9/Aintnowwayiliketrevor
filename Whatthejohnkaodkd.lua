@@ -582,6 +582,53 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
+local AutoMurderer = false
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local RemoteEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Gameplay"):WaitForChild("GetCurrentPlayerData")
+
+-- Function to detect the Murderer Perk
+local function detectMurdererPerk()
+    if not AutoMurderer then return end  -- Stop if the toggle is off
+
+    local success, data = pcall(function()
+        return RemoteEvent:InvokeServer()
+    end)
+
+    if not success then
+        warn("Failed to fetch player data.")
+        return
+    end
+
+    if data then
+        for _, playerData in pairs(data) do
+            if playerData.Role == "Murderer" then
+                local murderer = Players:FindFirstChild(playerData.Name)
+                if murderer then
+                    local murdererPerk = playerData.Perk or "None"
+                    game.StarterGui:SetCore("SendNotification", {
+                        Title = "⚠️ Murderer Detected!",
+                        Text = murderer.Name .. " has " .. murdererPerk .. " perk!",
+                        Duration = 5
+                    })
+                    return
+                end
+            end
+        end
+    else
+        warn("No data returned from the server.")
+    end
+end
+
+-- Run the function on heartbeat if AutoMurderer is true
+game:GetService('RunService').Heartbeat:Connect(function()
+    if AutoMurderer then
+        detectMurdererPerk()
+    end
+end)
+
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -645,40 +692,6 @@ local AutoMurdererToggle = Tabs.Main:AddToggle("AutoMurdererToggle", {
         end
     end
 })
-
-local AutoMurderer = false
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local RemoteEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GetCurrentPlayerData")
-
--- Function to detect the Murderer Perk
-local function detectMurdererPerk()
-    if not AutoMurderer then return end  -- Stop if the toggle is off
-
-    local data = RemoteEvent:InvokeServer()
-    for _, playerData in pairs(data) do
-        if playerData.Role == "Murderer" then
-            local murderer = Players:FindFirstChild(playerData.Name)
-            if murderer then
-                local murdererPerk = playerData.Perk or "None"
-                game.StarterGui:SetCore("SendNotification", {
-                    Title = "⚠️ Murderer Detected!",
-                    Text = murderer.Name .. " has " .. murdererPerk .. " perk!",
-                    Duration = 5
-                })
-                return
-            end
-        end
-    end
-end
-
--- Run the function on heartbeat if AutoMurderer is true
-game:GetService('RunService').Heartbeat:Connect(function()
-    if AutoMurderer then
-        detectMurdererPerk()
-    end
-end)
 
 
 -- Prediction Ping Toggle
