@@ -582,53 +582,6 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
-local AutoMurderer = false
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local RemoteEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Gameplay"):WaitForChild("GetCurrentPlayerData")
-
--- Function to detect the Murderer Perk
-local function detectMurdererPerk()
-    if not AutoMurderer then return end  -- Stop if the toggle is off
-
-    local success, data = pcall(function()
-        return RemoteEvent:InvokeServer()
-    end)
-
-    if not success then
-        warn("Failed to fetch player data.")
-        return
-    end
-
-    if data then
-        for _, playerData in pairs(data) do
-            if playerData.Role == "Murderer" then
-                local murderer = Players:FindFirstChild(playerData.Name)
-                if murderer then
-                    local murdererPerk = playerData.Perk or "None"
-                    game.StarterGui:SetCore("SendNotification", {
-                        Title = "⚠️ Murderer Detected!",
-                        Text = murderer.Name .. " has " .. murdererPerk .. " perk!",
-                        Duration = 5
-                    })
-                    return
-                end
-            end
-        end
-    else
-        warn("No data returned from the server.")
-    end
-end
-
--- Run the function on heartbeat if AutoMurderer is true
-game:GetService('RunService').Heartbeat:Connect(function()
-    if AutoMurderer then
-        detectMurdererPerk()
-    end
-end)
-
-
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -675,24 +628,12 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
-    Title = "Silent Aim2",
+    Title = "Silent Aim",
     Default = false,
     Callback = function(toggle)
         SilentAimButtonV2.Visible = toggle
     end
 })
-
-local AutoMurdererToggle = Tabs.Main:AddToggle("AutoMurdererToggle", {
-    Title = "Detect Murderer Perk",
-    Default = false,
-    Callback = function(toggle)
-        AutoMurderer = toggle
-        if AutoMurderer then
-            detectMurdererPerk()  -- Calls the function immediately when enabled
-        end
-    end
-})
-
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
