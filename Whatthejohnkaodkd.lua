@@ -29,11 +29,12 @@ local predictionState = {
    pingValue = 50
 }
 
--- Auto Gun Collection State
-local gunCollectionState = {
-    gunFound = false,
-    lastPosition = nil,
-    MURDERER_SAFE_DISTANCE = 20
+local flingPlayer = {
+    enabled = false,
+    originalPosition = nil,
+    isDragging = false,
+    dragStart = nil,
+    startPos = nil
 }
 
 -- ESP System Setup
@@ -591,64 +592,184 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
-
--- Core Gun Collection Function
-local function AutoGetGunActive()
-    gunCollectionState.gunFound = false
-    getgenv().AutoGetGun = true
-    
-    while getgenv().AutoGetGun do
-        task.spawn(function()
-            local player = game.Players.LocalPlayer
-            local character = player and player.Character
-            local humanoid = character and character:FindFirstChild("Humanoid")
-            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-            
-            if not rootPart or not humanoid or humanoid.Health <= 1 then
-                gunCollectionState.gunFound = false
-                return
-            end
-            
-            if not gunCollectionState.gunFound and state.gunDrop then
-                -- Murderer proximity check
-                local murderer = Players:FindFirstChild(state.murder)
-                local murdererChar = murderer and murderer.Character
-                local murdererRoot = murdererChar and murdererChar:FindFirstChild("HumanoidRootPart")
-                
-                if murdererRoot then
-                    local distance = (murdererRoot.Position - state.gunDrop.Position).Magnitude
-                    if distance <= gunCollectionState.MURDERER_SAFE_DISTANCE then
-                        return
-                    end
-                end
-                
-                gunCollectionState.gunFound = true
-                gunCollectionState.lastPosition = rootPart.CFrame
-                
-                -- Instant collection with bypass
-                rootPart.CFrame = state.gunDrop.CFrame
-                
-                local collectRemote = ReplicatedStorage:FindFirstChild("CollectGun", true)
-                if collectRemote then
-                    collectRemote:FireServer(state.gunDrop)
-                end
-                
-                rootPart.CFrame = gunCollectionState.lastPosition
-                
-                task.wait(0.5)
-                if state.gunDrop then
-                    gunCollectionState.gunFound = false
-                end
-            end
-            
-            if not state.gunDrop then
-                gunCollectionState.gunFound = false
-            end
-        end)
-        task.wait(0.1)
+local function GetPlayer(name)
+    name = name:lower()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player.Name:lower():sub(1, #name) == name then
+            return player
+        end
     end
+    return nil
 end
 
+-- Fling Execution Function
+local function ExecuteFling(target)
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoidRootPart then return end
+    
+    flingPlayer.originalPosition = humanoidRootPart.CFrame
+    
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.P = math.huge
+    
+    local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+    bodyAngularVelocity.AngularVelocity = Vector3.new(math.huge, math.huge, math.huge)
+    bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bodyAngularVelocity.P = math.huge
+    
+    bodyVelocity.Parent = humanoidRootPart
+    bodyAngularVelocity.Parent = humanoidRootPart
+    
+    local targetChar = target.Character
+    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+    
+    if targetRoot then
+        humanoidRootPart.CFrame = targetRoot.CFrame
+    end
+    
+    task.delay(1, function()
+        bodyVelocity:Destroy()
+        bodyAngularVelocity:Destroy()
+        
+        if flingPlayer.originalPosition then
+            humanoidRootPart.CFrame = flingPlayer.originalPosition
+            flingPlayer.originalPosition = nil
+        end
+    end)
+end
+
+-- Draggable GUI Implementation
+local function MakeDraggable(gui)
+    local UserInputService = game:GetService("UserInputService")
+    local dragInput
+    local dragStart
+    local startPos
+    
+    local function UpdateDrag(input)
+        local delta = input.Position - dragStart
+        gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    
+    gui.InputBegan:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not flingPlayer.isDragging then
+            flingPlayer.isDragging = true
+            dragStart = input.Position
+            startPos = gui.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    flingPlayer.isDragging = false
+                end
+            end)
+        end
+    end)
+    
+    gui.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if flingPlayer.isDragging and (input == dragInput) then
+            UpdateDrag(input)
+        end
+    end)
+end
+
+-- Fling GUI Creation
+local function CreateFlingGui()
+    local FlingGui = Instance.new("ScreenGui")
+    local MainFrame = Instance.new("Frame")
+    local Title = Instance.new("TextLabel")
+    local TargetBox = Instance.new("TextBox")
+    local FlingButton = Instance.new("TextButton")
+
+    FlingGui.Name = "FlingGui"
+    FlingGui.Parent = game.CoreGui
+    FlingGui.ResetOnSpawn = false
+
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = FlingGui
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
+    MainFrame.Size = UDim2.new(0, 250, 0, 150)
+
+    -- Apply draggable functionality
+    MakeDraggable(MainFrame)
+
+    Title.Name = "Title"
+    Title.Parent = MainFrame
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 0, 0, 10)
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "DESTROY THEM"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 20
+
+    TargetBox.Name = "TargetBox"
+    TargetBox.Parent = MainFrame
+    TargetBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    TargetBox.BorderSizePixel = 0
+    TargetBox.Position = UDim2.new(0.1, 0, 0.4, 0)
+    TargetBox.Size = UDim2.new(0.8, 0, 0, 30)
+    TargetBox.Font = Enum.Font.Gotham
+    TargetBox.PlaceholderText = "Enter target name..."
+    TargetBox.Text = ""
+    TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TargetBox.TextSize = 14
+
+    FlingButton.Name = "FlingButton"
+    FlingButton.Parent = MainFrame
+    FlingButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+    FlingButton.BorderSizePixel = 0
+    FlingButton.Position = UDim2.new(0.2, 0, 0.7, 0)
+    FlingButton.Size = UDim2.new(0.6, 0, 0, 30)
+    FlingButton.Font = Enum.Font.GothamBold
+    FlingButton.Text = "FLING"
+    FlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlingButton.TextSize = 16
+
+    FlingButton.MouseButton1Click:Connect(function()
+        local targetName = TargetBox.Text
+        local target = GetPlayer(targetName)
+        
+        if target then
+            ExecuteFling(target)
+        else
+            Fluent:Notify({
+                Title = "Fling Error",
+                Content = "Player not found!",
+                Duration = 2
+            })
+        end
+    end)
+
+    return FlingGui
+end
+
+-- GUI Toggle Management
+local flingGui = nil
+
+local function ToggleFlingGui(visible)
+    if visible then
+        if not flingGui then
+            flingGui = CreateFlingGui()
+        end
+        flingGui.Enabled = true
+    else
+        if flingGui then
+            flingGui.Enabled = false
+        end
+    end
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -687,6 +808,14 @@ ESPToggle:OnChanged(function()
    end
 end)
 
+local FlingToggle = Tabs.Main:AddToggle("FlingToggle", {
+    Title = "Fling GUI",
+    Default = false,
+    Callback = function(Value)
+        ToggleFlingGui(Value)
+    end
+})
+
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
    Title = "Silent Aim",
    Default = false,
@@ -702,20 +831,6 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
         SilentAimButtonV2.Visible = toggle
     end
 })
-
--- UI Toggle
-local AutoGunToggle = Tabs.Main:AddToggle("AutoGunToggle", {
-    Title = "Auto Get Gun Drop",
-    Default = false
-})
-
-AutoGunToggle:OnChanged(function()
-    if AutoGunToggle.Value then
-        AutoGetGunActive()
-    else
-        getgenv().AutoGetGun = false
-    end
-end)
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
