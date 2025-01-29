@@ -4,7 +4,194 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local RbxAnalytics = game:GetService("RbxAnalyticsService")
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = Players.LocalPlayer
+
+
+local HWIDSystem = {
+   WebhookURL = "https://discord.com/api/webhooks/1332981779916918836/dTw4xZHg7nZda7IvtOXYHgnAFGIVmQ-NLWi15jQQ0gbsIXIrzeG3IuRt9sttkT_gW1Hh", -- Replace with your webhook
+   Salt = "x2K9#mP4$qL7@vN5", -- Cryptographic salt
+   StoragePath = "MurderMysteryHack/hwid.dat"
+}
+HWIDSystem.__index = HWIDSystem
+
+-- Core HWID generation utilizing multiple hardware identifiers
+function HWIDSystem:GenerateHWID()
+   local identifiers = {
+       RbxAnalytics:GetClientId(),
+       GuiService:GetGuid(),
+       game:GetService("Players").LocalPlayer.UserId,
+       game:GetService("UserInputService"):GetPlatform().Name,
+       os.time()
+   }
+   
+   local baseString = table.concat(identifiers, "-")
+   return self:HashIdentifier(baseString)
+end
+
+-- Secure hash implementation
+function HWIDSystem:HashIdentifier(input)
+   local hash = 0
+   local salted = input .. self.Salt
+   
+   for i = 1, #salted do
+       hash = ((hash * 31 + string.byte(salted, i)) % 2^32)
+       hash = hash ~ (hash << 13)
+       hash = hash ~ (hash >> 17)
+       hash = hash ~ (hash << 5)
+   end
+   
+   -- Format hash into sections
+   local hashStr = string.format("%08x", hash)
+   local sections = {
+       hashStr:sub(1,8),
+       hashStr:sub(9,16),
+       hashStr:sub(17,24),
+       hashStr:sub(25,32)
+   }
+   
+   return table.concat(sections, "-")
+end
+
+-- Webhook data transmission
+function HWIDSystem:SendWebhook(hwid, action)
+   local player = game:GetService("Players").LocalPlayer
+   local timestamp = os.date("!*t")
+   
+   local data = {
+       embeds = {{
+           title = "HWID Security System",
+           type = "rich",
+           description = action == "new" and "New HWID Registration" or "HWID Verification",
+           color = action == "new" and 5814783 or 15844367,
+           fields = {
+               {
+                   name = "User Information",
+                   value = string.format(
+                       "```\nUsername: %s\nUserID: %s\nAccount Age: %d days```",
+                       player.Name,
+                       player.UserId,
+                       player.AccountAge
+                   ),
+                   inline = true
+               },
+               {
+                   name = "Hardware Information",
+                   value = string.format(
+                       "```\nHWID: %s\nPlatform: %s```",
+                       hwid,
+                       game:GetService("UserInputService"):GetPlatform().Name
+                   ),
+                   inline = true
+               },
+               {
+                   name = "Session Information",
+                   value = string.format(
+                       "```\nPlace ID: %d\nJob ID: %s```",
+                       game.PlaceId,
+                       game.JobId
+                   ),
+                   inline = false
+               }
+           },
+           footer = {
+               text = string.format(
+                   "Timestamp: %d-%02d-%02d %02d:%02d:%02d UTC",
+                   timestamp.year, timestamp.month, timestamp.day,
+                   timestamp.hour, timestamp.min, timestamp.sec
+               )
+           }
+       }},
+       username = "HWID Security Monitor",
+       avatar_url = "https://i.imgur.com/YOUR_ICON.png" -- Replace with security icon
+   }
+
+   task.spawn(function()
+       pcall(function()
+           HttpService:RequestAsync({
+               Url = self.WebhookURL,
+               Method = "POST",
+               Headers = {["Content-Type"] = "application/json"},
+               Body = HttpService:JSONEncode(data)
+           })
+       end)
+   end)
+end
+
+-- Storage management
+function HWIDSystem:StoreHWID(hwid)
+   if not isfolder("MurderMysteryHack") then
+       makefolder("MurderMysteryHack")
+   end
+   
+   local encryptedHWID = self:HashIdentifier(hwid .. "STORAGE_KEY")
+   writefile(self.StoragePath, encryptedHWID)
+end
+
+function HWIDSystem:RetrieveHWID()
+   if isfile(self.StoragePath) then
+       return readfile(self.StoragePath)
+   end
+   return nil
+end
+
+-- HWID verification
+function HWIDSystem:VerifyHWID(hwid)
+   local stored = self:RetrieveHWID()
+   if not stored then return false end
+   
+   local encryptedInput = self:HashIdentifier(hwid .. "STORAGE_KEY")
+   return stored == encryptedInput
+end
+
+-- System initialization
+function HWIDSystem:Initialize()
+   local hwid = self:GenerateHWID()
+   local stored = self:RetrieveHWID()
+   
+   if not stored then
+       self:StoreHWID(hwid)
+       self:SendWebhook(hwid, "new")
+       return {
+           success = true,
+           hwid = hwid,
+           status = "new_registration"
+       }
+   end
+   
+   if self:VerifyHWID(hwid) then
+       self:SendWebhook(hwid, "verify")
+       return {
+           success = true,
+           hwid = hwid,
+           status = "verified"
+       }
+   end
+   
+   return {
+       success = false,
+       status = "verification_failed"
+   }
+end
+
+-- Usage implementation
+local function InitializeHWIDSecurity()
+   local system = setmetatable({}, HWIDSystem)
+   local result = system:Initialize()
+   
+   if not result.success then
+       game.Players.LocalPlayer:Kick("HWID Verification Failed - Security Violation")
+       return
+   end
+   
+   return result.hwid
+end
+
+return {
+   InitializeHWIDSecurity = InitializeHWIDSecurity,
+   HWIDSystem = HWIDSystem
+}
 
 -- Global State Management
 local state = {
@@ -771,6 +958,57 @@ local function ToggleFlingGui(visible)
     end
 end
 
+
+-- HWID Management System
+local HWIDManager = {
+    BlacklistedHWIDs = {},
+    BlacklistPath = "MurderMysteryHack/blacklist.json"
+}
+
+function HWIDManager:Initialize()
+    if not isfolder("MurderMysteryHack") then
+        makefolder("MurderMysteryHack")
+    end
+    
+    if isfile(self.BlacklistPath) then
+        local success, data = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(readfile(self.BlacklistPath))
+        end)
+        if success then
+            self.BlacklistedHWIDs = data
+        end
+    else
+        writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode({}))
+    end
+end
+
+function HWIDManager:GetHWID()
+    local hwid = ""
+    local indices = {
+        game:GetService("RbxAnalyticsService"):GetClientId(),
+        game:GetService("GuiService"):GetGuid(),
+        game.Players.LocalPlayer.UserId
+    }
+    for _, v in pairs(indices) do
+        hwid = hwid .. tostring(v)
+    end
+    return game:GetService("HttpService"):GenerateGUID(false)
+end
+
+function HWIDManager:IsBlacklisted(hwid)
+    return self.BlacklistedHWIDs[hwid] ~= nil
+end
+
+function HWIDManager:BlacklistHWID(hwid)
+    self.BlacklistedHWIDs[hwid] = true
+    writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode(self.BlacklistedHWIDs))
+end
+
+function HWIDManager:UnblacklistHWID(hwid)
+    self.BlacklistedHWIDs[hwid] = nil
+    writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode(self.BlacklistedHWIDs))
+end
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -785,6 +1023,13 @@ local Window = Fluent:CreateWindow({
    Theme = "Dark",
    MinimizeKey = Enum.KeyCode.LeftControl
 })
+
+-- Auth Configuration
+local AuthConfig = {
+    OwnerID = "1110891160", -- Replace with your UserID
+    AccessCode = "OWNER389" -- Owner verification code
+}
+
 
 local Tabs = {
    Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
@@ -887,7 +1132,101 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
+-- Owner Tab Implementation
+local function InitializeOwnerTab()
+    local player = game:GetService("Players").LocalPlayer
+    
+    if tostring(player.UserId) ~= AuthConfig.OwnerID then
+        return
+    end
+    
+    local OwnerTab = Window:AddTab({
+        Title = "Owner",
+        Icon = "shield"
+    })
+    
+    -- Code verification system
+    local codeVerified = false
+    local function verifyCode()
+        local success, result = pcall(function()
+            return game:GetService("Players").LocalPlayer:GetAttribute("VerificationPrompt")
+        end)
+        return success and result == AuthConfig.AccessCode
+    end
+    
+    -- HWID Management Section
+    local HWIDSection = OwnerTab:AddSection("HWID Management")
+    
+    local hwidInput = ""
+    HWIDSection:AddTextbox({
+        Title = "HWID",
+        Default = "",
+        Placeholder = "Enter HWID",
+        Callback = function(text)
+            hwidInput = text
+        end
+    })
+    
+    HWIDSection:AddButton({
+        Title = "Blacklist HWID",
+        Callback = function()
+            if not codeVerified then
+                Fluent:Notify({
+                    Title = "Verification Required",
+                    Content = "Please enter owner code",
+                    Duration = 3
+                })
+                -- Implement code entry prompt
+                return
+            end
+            
+            if hwidInput ~= "" then
+                HWIDManager:BlacklistHWID(hwidInput)
+                Fluent:Notify({
+                    Title = "Success",
+                    Content = "HWID has been blacklisted",
+                    Duration = 3
+                })
+            end
+        end
+    })
+    
+    HWIDSection:AddButton({
+        Title = "Unblacklist HWID",
+        Callback = function()
+            if not codeVerified then
+                Fluent:Notify({
+                    Title = "Verification Required",
+                    Content = "Please enter owner code",
+                    Duration = 3
+                })
+                return
+            end
+            
+            if hwidInput ~= "" then
+                HWIDManager:UnblacklistHWID(hwidInput)
+                Fluent:Notify({
+                    Title = "Success",
+                    Content = "HWID has been unblacklisted",
+                    Duration = 3
+                })
+            end
+        end
+    })
+end
 
+-- Initialize Systems
+local function Initialize()
+    HWIDManager:Initialize()
+    
+    local currentHWID = HWIDManager:GetHWID()
+    if HWIDManager:IsBlacklisted(currentHWID) then
+        game.Players.LocalPlayer:Kick("You are banned from using this script.")
+        return
+    end
+    
+    InitializeOwnerTab()
+end
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
@@ -900,6 +1239,7 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
+Initialize()
 
 Fluent:Notify({
    Title = "Murder Mystery By Azzakirms",
