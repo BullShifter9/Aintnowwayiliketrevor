@@ -648,19 +648,7 @@ local function AutoGetGunActive()
     end
 end
 
--- UI Toggle
-local AutoGunToggle = Tabs.Main:AddToggle("AutoGunToggle", {
-    Title = "Auto Get Gun Drop",
-    Default = false
-})
 
-AutoGunToggle:OnChanged(function()
-    if AutoGunToggle.Value then
-        AutoGetGunActive()
-    else
-        getgenv().AutoGetGun = false
-    end
-end)
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -714,6 +702,20 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
         SilentAimButtonV2.Visible = toggle
     end
 })
+
+-- UI Toggle
+local AutoGunToggle = Tabs.Main:AddToggle("AutoGunToggle", {
+    Title = "Auto Get Gun Drop",
+    Default = false
+})
+
+AutoGunToggle:OnChanged(function()
+    if AutoGunToggle.Value then
+        AutoGetGunActive()
+    else
+        getgenv().AutoGetGun = false
+    end
+end)
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
