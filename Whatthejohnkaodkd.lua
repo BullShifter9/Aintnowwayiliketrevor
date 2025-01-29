@@ -29,6 +29,13 @@ local predictionState = {
    pingValue = 50
 }
 
+-- Auto Gun Collection State
+local gunCollectionState = {
+    gunFound = false,
+    lastPosition = nil,
+    MURDERER_SAFE_DISTANCE = 20
+}
+
 -- ESP System Setup
 local ESPFolder = Instance.new("Folder", CoreGui)
 ESPFolder.Name = "ESPElements"
@@ -584,12 +591,6 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
--- Auto Gun Collection State
-local gunCollectionState = {
-    gunFound = false,
-    lastPosition = nil,
-    MURDERER_SAFE_DISTANCE = 20
-}
 
 -- Core Gun Collection Function
 local function AutoGetGunActive()
@@ -647,7 +648,6 @@ local function AutoGetGunActive()
         task.wait(0.1)
     end
 end
-
 
 
 -- Fluent UI Integration
