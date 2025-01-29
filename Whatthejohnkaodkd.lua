@@ -297,9 +297,12 @@ game:GetService('RunService').Heartbeat:Connect(function()
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
     local root = character.HumanoidRootPart
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
 
     -- Stop Farming if AutoCoin is toggled off
     if not AutoCoin then
+        -- Remove BodyGyro & BodyVelocity
         for _, part in pairs(character:GetChildren()) do
             if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
                 for _, child in pairs(part:GetChildren()) do
@@ -309,7 +312,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
                 end
             end
         end
-        character.Humanoid.PlatformStand = false
+        humanoid.PlatformStand = false -- Reset to standing
         CoinFound = false
         AutoCoinOperator = false
         return
@@ -319,7 +322,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
     if AutoCoin and not AutoCoinOperator then
         AutoCoinOperator = true
         workspace:FindFirstChild("AutoCoinPart").CFrame = root.CFrame
-        
+
         -- Find the closest coin
         for _, v in pairs(workspace:GetDescendants()) do
             if v.Name == "Coin_Server" or v.Name == "SnowToken" then
@@ -336,7 +339,7 @@ game:GetService('RunService').Heartbeat:Connect(function()
         if CurrentTarget then
             CoinFound = true
             local coin = CurrentTarget
-            
+
             -- Adjust player position to lie down
             local gyroCFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
 
@@ -362,8 +365,9 @@ game:GetService('RunService').Heartbeat:Connect(function()
                     end
                 end
             end
-            
-            character.Humanoid.PlatformStand = true
+
+            -- **Ensure Player Stays Lying Down**
+            humanoid.PlatformStand = true
 
             -- Adjust speed based on distance
             if (root.Position - coin.Position).Magnitude >= 80 then
@@ -371,19 +375,19 @@ game:GetService('RunService').Heartbeat:Connect(function()
             else
                 TweenSpeed = (root.Position - coin.Position).Magnitude / 23
             end
-            
+
             -- Move to the coin using Tween
             local tweenService = game:GetService("TweenService")
             local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear)
             local tween = tweenService:Create(workspace:FindFirstChild("AutoCoinPart"), tweenInfo, {CFrame = coin.CFrame})
             tween:Play()
             wait(TweenSpeed)
-            
+
             -- Remove the coin once collected
             if CurrentTarget then
                 CurrentTarget.Parent = nil
             end
-            
+
             -- Reset values after collecting
             TweenSpeed = 0.08
             CurrentTarget = nil
@@ -393,9 +397,10 @@ game:GetService('RunService').Heartbeat:Connect(function()
         AutoCoinOperator = false
     end
 
-    -- Move player to the coin location
+    -- Move player to the coin location & ensure lying down
     if AutoCoin and CoinFound then
         root.CFrame = workspace:FindFirstChild("AutoCoinPart").CFrame
+        humanoid.PlatformStand = true -- Keep enforcing lying down
     end
 end)
 
@@ -623,12 +628,58 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
-    Title = "Silent Aim",
+    Title = "Silent Aim2",
     Default = false,
     Callback = function(toggle)
         SilentAimButtonV2.Visible = toggle
     end
 })
+
+local AutoMurdererToggle = Tabs.Main:AddToggle("AutoMurdererToggle", {
+    Title = "Detect Murderer Perk",
+    Default = false,
+    Callback = function(toggle)
+        AutoMurderer = toggle
+        if AutoMurderer then
+            detectMurdererPerk()  -- Calls the function immediately when enabled
+        end
+    end
+})
+
+local AutoMurderer = false
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local RemoteEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GetCurrentPlayerData")
+
+-- Function to detect the Murderer Perk
+local function detectMurdererPerk()
+    if not AutoMurderer then return end  -- Stop if the toggle is off
+
+    local data = RemoteEvent:InvokeServer()
+    for _, playerData in pairs(data) do
+        if playerData.Role == "Murderer" then
+            local murderer = Players:FindFirstChild(playerData.Name)
+            if murderer then
+                local murdererPerk = playerData.Perk or "None"
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "⚠️ Murderer Detected!",
+                    Text = murderer.Name .. " has " .. murdererPerk .. " perk!",
+                    Duration = 5
+                })
+                return
+            end
+        end
+    end
+end
+
+-- Run the function on heartbeat if AutoMurderer is true
+game:GetService('RunService').Heartbeat:Connect(function()
+    if AutoMurderer then
+        detectMurdererPerk()
+    end
+end)
+
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
@@ -676,7 +727,10 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
                       end
                   end
               end
-              character.Humanoid.PlatformStand = false
+              local humanoid = character:FindFirstChildOfClass("Humanoid")
+              if humanoid then
+                  humanoid.PlatformStand = false -- Reset to standing when stopping
+              end
           end
       end
   end
