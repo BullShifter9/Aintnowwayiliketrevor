@@ -275,148 +275,122 @@ local function GetMurderer()
 end
 
 local CurrentTarget = nil
-local target = nil
 local AutoCoin = false
 local AutoCoinOperator = false
 local CoinFound = false
 local TweenSpeed = 0.08
 
 local part = Instance.new("Part")
-local position = Vector3.new(0, 10000, 0)
 part.Name = "AutoCoinPart"
 part.Color = Color3.new(0, 0, 0)
 part.Material = Enum.Material.Plastic
 part.Transparency = 1
-part.Position = position
+part.Position = Vector3.new(0, 10000, 0)
 part.Size = Vector3.new(1, 0.5, 1)
 part.CastShadow = true
 part.Anchored = true
 part.CanCollide = false
 part.Parent = workspace
 
--- Function to set Auto Farm Gyro (Lying Down)
-local function AutoFarmGyro(enable)
-    local player = game.Players.LocalPlayer
-    if not player or not player.Character or not player.Character:FindFirstChild("Head") then
-        return
-    end
-    
-    local char = player.Character
-    local head = char.Head
-
-    if enable then
-        if head:FindFirstChild("Auto Farm Gyro") or head:FindFirstChild("Auto Farm Velocity") then return end
+game:GetService('RunService').Heartbeat:Connect(function()
+    if AutoCoin and not AutoCoinOperator then
+        AutoCoinOperator = true
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local root = character.HumanoidRootPart
+        workspace:FindFirstChild("AutoCoinPart").CFrame = root.CFrame
         
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        -- Set CFrame to make the player LIE DOWN
-        local newCFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
-
-        for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                local gyro = Instance.new("BodyGyro")
-                local velocity = Instance.new("BodyVelocity")
-
-                gyro.Name = "Auto Farm Gyro"
-                gyro.Parent = part
-                gyro.P = 90000
-                gyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
-                gyro.CFrame = newCFrame  -- Makes player lie down
-
-                velocity.Name = "Auto Farm Velocity"
-                velocity.Parent = part
-                velocity.Velocity = Vector3.new(0, 0, 0)
-                velocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
-            end
-        end
-
-        root.CFrame = newCFrame
-        player.Character.Humanoid.PlatformStand = true
-    else
-        for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                for _, child in pairs(part:GetChildren()) do
-                    if child.Name == "Auto Farm Velocity" or child.Name == "Auto Farm Gyro" then
-                        child:Destroy()
+        -- Find the closest coin
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == "Coin_Server" or v.Name == "SnowToken" then
+                if CurrentTarget then
+                    if (root.Position - CurrentTarget.Position).Magnitude > (root.Position - v.Position).Magnitude then
+                        CurrentTarget = v
                     end
+                else
+                    CurrentTarget = v
                 end
             end
         end
-        player.Character.Humanoid.PlatformStand = false
+        
+        -- Only apply Gyro and Velocity when a coin is found
+        if CurrentTarget then
+            CoinFound = true
+            local coin = CurrentTarget
+            
+            -- Adjust player position to lie down
+            local gyroCFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90))
+
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                    -- Create BodyGyro to make the player lie down
+                    if not part:FindFirstChild("Auto Farm Gyro") then
+                        local bodyGyro = Instance.new("BodyGyro")
+                        bodyGyro.Name = "Auto Farm Gyro"
+                        bodyGyro.P = 90000
+                        bodyGyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
+                        bodyGyro.CFrame = gyroCFrame
+                        bodyGyro.Parent = part
+                    end
+
+                    -- Create BodyVelocity to move towards the coin
+                    if not part:FindFirstChild("Auto Farm Velocity") then
+                        local bodyVelocity = Instance.new("BodyVelocity")
+                        bodyVelocity.Name = "Auto Farm Velocity"
+                        bodyVelocity.Velocity = (coin.Position - root.Position).Unit * 50
+                        bodyVelocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
+                        bodyVelocity.Parent = part
+                    end
+                end
+            end
+            
+            character.Humanoid.PlatformStand = true
+
+            -- Adjust speed based on distance
+            if (root.Position - coin.Position).Magnitude >= 80 then
+                TweenSpeed = 4
+            else
+                TweenSpeed = (root.Position - coin.Position).Magnitude / 23
+            end
+            
+            -- Move to the coin using Tween
+            local tweenService = game:GetService("TweenService")
+            local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear)
+            local tween = tweenService:Create(workspace:FindFirstChild("AutoCoinPart"), tweenInfo, {CFrame = coin.CFrame})
+            tween:Play()
+            wait(TweenSpeed)
+            
+            -- Remove the coin once collected
+            if CurrentTarget then
+                CurrentTarget.Parent = nil
+            end
+            
+            -- Reset values after collecting
+            TweenSpeed = 0.08
+            CurrentTarget = nil
+            CoinFound = false
+        else
+            -- If no coin found, remove BodyGyro and BodyVelocity
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                    for _, child in pairs(part:GetChildren()) do
+                        if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
+                            child:Destroy()
+                        end
+                    end
+                end
+            end
+            character.Humanoid.PlatformStand = false
+        end
+        
+        AutoCoinOperator = false
     end
-end
 
-game:GetService('RunService').Heartbeat:Connect(function()
-   if AutoCoin == true and AutoCoinOperator == false then
-       AutoCoinOperator = true
-       local player = game.Players.LocalPlayer
-       workspace:FindFirstChild("AutoCoinPart").CFrame = player.Character.HumanoidRootPart.CFrame
-       
-       for i, v in pairs(workspace:GetDescendants()) do
-           if v.Name == "Coin_Server" or v.Name == "SnowToken" then
-               if CurrentTarget then
-                   if (player.Character.HumanoidRootPart.Position - CurrentTarget.Position).Magnitude > (player.Character.HumanoidRootPart.Position - v.Position).Magnitude then
-                       CurrentTarget = v
-                   end
-               else
-                   CurrentTarget = v
-               end
-           end
-       end
-       
-       if CurrentTarget then
-           local coin = CurrentTarget
-           local character = player.Character
-           local gyroCFrame = character.HumanoidRootPart.CFrame * CFrame.Angles(math.rad(90), 0, math.rad(90)) -- Lying down
-
-           for _, part in pairs(character:GetChildren()) do
-               if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                   local bodyGyro = Instance.new("BodyGyro")
-                   bodyGyro.Name = "Auto Farm Gyro"
-                   bodyGyro.P = 90000
-                   bodyGyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
-                   bodyGyro.CFrame = gyroCFrame
-                   bodyGyro.Parent = part
-
-                   local bodyVelocity = Instance.new("BodyVelocity")
-                   bodyVelocity.Name = "Auto Farm Velocity"
-                   bodyVelocity.Velocity = (coin.CFrame.Position - character.HumanoidRootPart.Position).Unit * 50
-                   bodyVelocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
-                   bodyVelocity.Parent = part
-               end
-           end
-
-           character.Humanoid.PlatformStand = true
-           
-           CoinFound = true
-           if math.floor((character.HumanoidRootPart.Position - CurrentTarget.Position).magnitude) >= 80 then
-               TweenSpeed = 4
-           else
-               TweenSpeed = math.floor((character.HumanoidRootPart.Position - CurrentTarget.Position).magnitude) / 23
-           end
-           
-           local tweenService = game:GetService("TweenService")
-           local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear)
-           local tween = tweenService:Create(workspace:FindFirstChild("AutoCoinPart"), tweenInfo, {CFrame = CurrentTarget.CFrame})
-           tween:Play()
-           wait(TweenSpeed)
-           
-           if CurrentTarget then
-               CurrentTarget.Parent = nil
-           end
-           
-           TweenSpeed = 0.08
-           target = nil
-           CurrentTarget = nil
-           CoinFound = false
-           AutoCoinOperator = false
-       end
-   end
-   
-   if AutoCoin == true and CoinFound == true then
-       game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").AutoCoinPart.CFrame
-   end
+    -- Move player to the coin location
+    if AutoCoin and CoinFound then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").AutoCoinPart.CFrame
+    end
 end)
 
 
