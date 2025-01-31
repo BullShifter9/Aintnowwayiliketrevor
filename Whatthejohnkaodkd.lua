@@ -4,195 +4,11 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
-local RbxAnalytics = game:GetService("RbxAnalyticsService")
-local GuiService = game:GetService("GuiService")
 local LocalPlayer = Players.LocalPlayer
 
-
-local HWIDSystem = {
-   WebhookURL = "https://discord.com/api/webhooks/1332981779916918836/dTw4xZHg7nZda7IvtOXYHgnAFGIVmQ-NLWi15jQQ0gbsIXIrzeG3IuRt9sttkT_gW1Hh", -- Replace with your webhook
-   Salt = "x2K9#mP4$qL7@vN5", -- Cryptographic salt
-   StoragePath = "MurderMysteryHack/hwid.dat"
-}
-HWIDSystem.__index = HWIDSystem
-
--- Core HWID generation utilizing multiple hardware identifiers
-function HWIDSystem:GenerateHWID()
-   local identifiers = {
-       RbxAnalytics:GetClientId(),
-       GuiService:GetGuid(),
-       game:GetService("Players").LocalPlayer.UserId,
-       game:GetService("UserInputService"):GetPlatform().Name,
-       os.time()
-   }
-   
-   local baseString = table.concat(identifiers, "-")
-   return self:HashIdentifier(baseString)
-end
-
--- Secure hash implementation
-function HWIDSystem:HashIdentifier(input)
-   local hash = 0
-   local salted = input .. self.Salt
-   
-   for i = 1, #salted do
-       hash = ((hash * 31 + string.byte(salted, i)) % 2^32)
-       hash = hash ~ (hash << 13)
-       hash = hash ~ (hash >> 17)
-       hash = hash ~ (hash << 5)
-   end
-   
-   -- Format hash into sections
-   local hashStr = string.format("%08x", hash)
-   local sections = {
-       hashStr:sub(1,8),
-       hashStr:sub(9,16),
-       hashStr:sub(17,24),
-       hashStr:sub(25,32)
-   }
-   
-   return table.concat(sections, "-")
-end
-
--- Webhook data transmission
-function HWIDSystem:SendWebhook(hwid, action)
-   local player = game:GetService("Players").LocalPlayer
-   local timestamp = os.date("!*t")
-   
-   local data = {
-       embeds = {{
-           title = "HWID Security System",
-           type = "rich",
-           description = action == "new" and "New HWID Registration" or "HWID Verification",
-           color = action == "new" and 5814783 or 15844367,
-           fields = {
-               {
-                   name = "User Information",
-                   value = string.format(
-                       "```\nUsername: %s\nUserID: %s\nAccount Age: %d days```",
-                       player.Name,
-                       player.UserId,
-                       player.AccountAge
-                   ),
-                   inline = true
-               },
-               {
-                   name = "Hardware Information",
-                   value = string.format(
-                       "```\nHWID: %s\nPlatform: %s```",
-                       hwid,
-                       game:GetService("UserInputService"):GetPlatform().Name
-                   ),
-                   inline = true
-               },
-               {
-                   name = "Session Information",
-                   value = string.format(
-                       "```\nPlace ID: %d\nJob ID: %s```",
-                       game.PlaceId,
-                       game.JobId
-                   ),
-                   inline = false
-               }
-           },
-           footer = {
-               text = string.format(
-                   "Timestamp: %d-%02d-%02d %02d:%02d:%02d UTC",
-                   timestamp.year, timestamp.month, timestamp.day,
-                   timestamp.hour, timestamp.min, timestamp.sec
-               )
-           }
-       }},
-       username = "HWID Security Monitor",
-       avatar_url = "https://i.imgur.com/YOUR_ICON.png" -- Replace with security icon
-   }
-
-   task.spawn(function()
-       pcall(function()
-           HttpService:RequestAsync({
-               Url = self.WebhookURL,
-               Method = "POST",
-               Headers = {["Content-Type"] = "application/json"},
-               Body = HttpService:JSONEncode(data)
-           })
-       end)
-   end)
-end
-
--- Storage management
-function HWIDSystem:StoreHWID(hwid)
-   if not isfolder("MurderMysteryHack") then
-       makefolder("MurderMysteryHack")
-   end
-   
-   local encryptedHWID = self:HashIdentifier(hwid .. "STORAGE_KEY")
-   writefile(self.StoragePath, encryptedHWID)
-end
-
-function HWIDSystem:RetrieveHWID()
-   if isfile(self.StoragePath) then
-       return readfile(self.StoragePath)
-   end
-   return nil
-end
-
--- HWID verification
-function HWIDSystem:VerifyHWID(hwid)
-   local stored = self:RetrieveHWID()
-   if not stored then return false end
-   
-   local encryptedInput = self:HashIdentifier(hwid .. "STORAGE_KEY")
-   return stored == encryptedInput
-end
-
--- System initialization
-function HWIDSystem:Initialize()
-   local hwid = self:GenerateHWID()
-   local stored = self:RetrieveHWID()
-   
-   if not stored then
-       self:StoreHWID(hwid)
-       self:SendWebhook(hwid, "new")
-       return {
-           success = true,
-           hwid = hwid,
-           status = "new_registration"
-       }
-   end
-   
-   if self:VerifyHWID(hwid) then
-       self:SendWebhook(hwid, "verify")
-       return {
-           success = true,
-           hwid = hwid,
-           status = "verified"
-       }
-   end
-   
-   return {
-       success = false,
-       status = "verification_failed"
-   }
-end
-
--- Usage implementation
-local function InitializeHWIDSecurity()
-   local system = setmetatable({}, HWIDSystem)
-   local result = system:Initialize()
-   
-   if not result.success then
-       game.Players.LocalPlayer:Kick("HWID Verification Failed - Security Violation")
-       return
-   end
-   
-   return result.hwid
-end
-
-return {
-   InitializeHWIDSecurity = InitializeHWIDSecurity,
-   HWIDSystem = HWIDSystem
-}
-
+local COLLECT_RADIUS = 50
+local TELEPORT_OFFSET = Vector3.new(0, 2, 0)
+local NETWORKING_DELAY = 0.15
 -- Global State Management
 local state = {
    espEnabled = false,
@@ -779,235 +595,6 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
-local function GetPlayer(name)
-    name = name:lower()
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        if player.Name:lower():sub(1, #name) == name then
-            return player
-        end
-    end
-    return nil
-end
-
--- Fling Execution Function
-local function ExecuteFling(target)
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoidRootPart then return end
-    
-    flingPlayer.originalPosition = humanoidRootPart.CFrame
-    
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Velocity = Vector3.new(math.huge, math.huge, math.huge)
-    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bodyVelocity.P = math.huge
-    
-    local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
-    bodyAngularVelocity.AngularVelocity = Vector3.new(math.huge, math.huge, math.huge)
-    bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bodyAngularVelocity.P = math.huge
-    
-    bodyVelocity.Parent = humanoidRootPart
-    bodyAngularVelocity.Parent = humanoidRootPart
-    
-    local targetChar = target.Character
-    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-    
-    if targetRoot then
-        humanoidRootPart.CFrame = targetRoot.CFrame
-    end
-    
-    task.delay(1, function()
-        bodyVelocity:Destroy()
-        bodyAngularVelocity:Destroy()
-        
-        if flingPlayer.originalPosition then
-            humanoidRootPart.CFrame = flingPlayer.originalPosition
-            flingPlayer.originalPosition = nil
-        end
-    end)
-end
-
--- Draggable GUI Implementation
-local function MakeDraggable(gui)
-    local UserInputService = game:GetService("UserInputService")
-    local dragInput
-    local dragStart
-    local startPos
-    
-    local function UpdateDrag(input)
-        local delta = input.Position - dragStart
-        gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-    
-    gui.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not flingPlayer.isDragging then
-            flingPlayer.isDragging = true
-            dragStart = input.Position
-            startPos = gui.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    flingPlayer.isDragging = false
-                end
-            end)
-        end
-    end)
-    
-    gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if flingPlayer.isDragging and (input == dragInput) then
-            UpdateDrag(input)
-        end
-    end)
-end
-
--- Fling GUI Creation
-local function CreateFlingGui()
-    local FlingGui = Instance.new("ScreenGui")
-    local MainFrame = Instance.new("Frame")
-    local Title = Instance.new("TextLabel")
-    local TargetBox = Instance.new("TextBox")
-    local FlingButton = Instance.new("TextButton")
-
-    FlingGui.Name = "FlingGui"
-    FlingGui.Parent = game.CoreGui
-    FlingGui.ResetOnSpawn = false
-
-    MainFrame.Name = "MainFrame"
-    MainFrame.Parent = FlingGui
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
-    MainFrame.Size = UDim2.new(0, 250, 0, 150)
-
-    -- Apply draggable functionality
-    MakeDraggable(MainFrame)
-
-    Title.Name = "Title"
-    Title.Parent = MainFrame
-    Title.BackgroundTransparency = 1
-    Title.Position = UDim2.new(0, 0, 0, 10)
-    Title.Size = UDim2.new(1, 0, 0, 30)
-    Title.Font = Enum.Font.GothamBold
-    Title.Text = "DESTROY THEM"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 20
-
-    TargetBox.Name = "TargetBox"
-    TargetBox.Parent = MainFrame
-    TargetBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    TargetBox.BorderSizePixel = 0
-    TargetBox.Position = UDim2.new(0.1, 0, 0.4, 0)
-    TargetBox.Size = UDim2.new(0.8, 0, 0, 30)
-    TargetBox.Font = Enum.Font.Gotham
-    TargetBox.PlaceholderText = "Enter target name..."
-    TargetBox.Text = ""
-    TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TargetBox.TextSize = 14
-
-    FlingButton.Name = "FlingButton"
-    FlingButton.Parent = MainFrame
-    FlingButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-    FlingButton.BorderSizePixel = 0
-    FlingButton.Position = UDim2.new(0.2, 0, 0.7, 0)
-    FlingButton.Size = UDim2.new(0.6, 0, 0, 30)
-    FlingButton.Font = Enum.Font.GothamBold
-    FlingButton.Text = "FLING"
-    FlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FlingButton.TextSize = 16
-
-    FlingButton.MouseButton1Click:Connect(function()
-        local targetName = TargetBox.Text
-        local target = GetPlayer(targetName)
-        
-        if target then
-            ExecuteFling(target)
-        else
-            Fluent:Notify({
-                Title = "Fling Error",
-                Content = "Player not found!",
-                Duration = 2
-            })
-        end
-    end)
-
-    return FlingGui
-end
-
--- GUI Toggle Management
-local flingGui = nil
-
-local function ToggleFlingGui(visible)
-    if visible then
-        if not flingGui then
-            flingGui = CreateFlingGui()
-        end
-        flingGui.Enabled = true
-    else
-        if flingGui then
-            flingGui.Enabled = false
-        end
-    end
-end
-
-
--- HWID Management System
-local HWIDManager = {
-    BlacklistedHWIDs = {},
-    BlacklistPath = "MurderMysteryHack/blacklist.json"
-}
-
-function HWIDManager:Initialize()
-    if not isfolder("MurderMysteryHack") then
-        makefolder("MurderMysteryHack")
-    end
-    
-    if isfile(self.BlacklistPath) then
-        local success, data = pcall(function()
-            return game:GetService("HttpService"):JSONDecode(readfile(self.BlacklistPath))
-        end)
-        if success then
-            self.BlacklistedHWIDs = data
-        end
-    else
-        writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode({}))
-    end
-end
-
-function HWIDManager:GetHWID()
-    local hwid = ""
-    local indices = {
-        game:GetService("RbxAnalyticsService"):GetClientId(),
-        game:GetService("GuiService"):GetGuid(),
-        game.Players.LocalPlayer.UserId
-    }
-    for _, v in pairs(indices) do
-        hwid = hwid .. tostring(v)
-    end
-    return game:GetService("HttpService"):GenerateGUID(false)
-end
-
-function HWIDManager:IsBlacklisted(hwid)
-    return self.BlacklistedHWIDs[hwid] ~= nil
-end
-
-function HWIDManager:BlacklistHWID(hwid)
-    self.BlacklistedHWIDs[hwid] = true
-    writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode(self.BlacklistedHWIDs))
-end
-
-function HWIDManager:UnblacklistHWID(hwid)
-    self.BlacklistedHWIDs[hwid] = nil
-    writefile(self.BlacklistPath, game:GetService("HttpService"):JSONEncode(self.BlacklistedHWIDs))
-end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -1023,13 +610,6 @@ local Window = Fluent:CreateWindow({
    Theme = "Dark",
    MinimizeKey = Enum.KeyCode.LeftControl
 })
-
--- Auth Configuration
-local AuthConfig = {
-    OwnerID = "1110891160", -- Replace with your UserID
-    AccessCode = "OWNER389" -- Owner verification code
-}
-
 
 local Tabs = {
    Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
@@ -1052,14 +632,6 @@ ESPToggle:OnChanged(function()
        ESPSystem.active = {}
    end
 end)
-
-local FlingToggle = Tabs.Main:AddToggle("FlingToggle", {
-    Title = "Fling GUI",
-    Default = false,
-    Callback = function(Value)
-        ToggleFlingGui(Value)
-    end
-})
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
    Title = "Silent Aim",
@@ -1132,101 +704,85 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
--- Owner Tab Implementation
-local function InitializeOwnerTab()
-    local player = game:GetService("Players").LocalPlayer
-    
-    if tostring(player.UserId) ~= AuthConfig.OwnerID then
-        return
-    end
-    
-    local OwnerTab = Window:AddTab({
-        Title = "Owner",
-        Icon = "shield"
-    })
-    
-    -- Code verification system
-    local codeVerified = false
-    local function verifyCode()
-        local success, result = pcall(function()
-            return game:GetService("Players").LocalPlayer:GetAttribute("VerificationPrompt")
+local GrabGunButton = Tabs.Main:AddButton({
+    Title = "🔫 Enhanced Gun Grab",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Character = LocalPlayer.Character
+        local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+        
+        if not Character or not HumanoidRootPart then return end
+        
+        -- Store reference positions
+        local OriginalCFrame = HumanoidRootPart.CFrame
+        local GunDrop = workspace:FindFirstChild("GunDrop")
+        
+        if not GunDrop then
+            return Notify("Error", "Gun not detected in workspace", 2.5)
+        end
+        
+        -- Method 1: Direct Collection Bypass
+        local function directCollect()
+            -- Simulate proximity trigger without physical movement
+            local gunPos = GunDrop.Position
+            local characterPos = HumanoidRootPart.Position
+            
+            -- Optimize collection radius check
+            if (gunPos - characterPos).Magnitude <= COLLECT_RADIUS then
+                firetouchinterest(HumanoidRootPart, GunDrop, 0)
+                task.wait()
+                firetouchinterest(HumanoidRootPart, GunDrop, 1)
+            end
+        end
+        
+        -- Method 2: Network Bypass Collection
+        local function networkBypass()
+            -- Manipulate network ownership
+            local function setNetworkOwner()
+                local success, result = pcall(function()
+                    GunDrop:SetNetworkOwner(LocalPlayer)
+                end)
+                return success
+            end
+            
+            if setNetworkOwner() then
+                -- Execute optimized collection sequence
+                HumanoidRootPart.CFrame = GunDrop.CFrame * CFrame.new(TELEPORT_OFFSET)
+                task.wait(NETWORKING_DELAY)
+                HumanoidRootPart.CFrame = OriginalCFrame
+            end
+        end
+        
+        -- Method 3: Instant Collection
+        local function instantCollect()
+            -- Bypass standard collection mechanics
+            local CollectionService = game:GetService("CollectionService")
+            
+            if GunDrop:IsA("BasePart") then
+                -- Force collision and collection state
+                GunDrop.CanCollide = false
+                GunDrop.Anchored = false
+                
+                -- Execute optimized collection sequence
+                local targetCFrame = GunDrop.CFrame
+                HumanoidRootPart.CFrame = targetCFrame
+                task.wait()
+                HumanoidRootPart.CFrame = OriginalCFrame
+            end
+        end
+        
+        -- Execute collection methods with error handling
+        pcall(function()
+            -- Try each method sequentially until successful
+            if not pcall(directCollect) then
+                if not pcall(networkBypass) then
+                    instantCollect()
+                end
+            end
         end)
-        return success and result == AuthConfig.AccessCode
     end
-    
-    -- HWID Management Section
-    local HWIDSection = OwnerTab:AddSection("HWID Management")
-    
-    local hwidInput = ""
-    HWIDSection:AddTextbox({
-        Title = "HWID",
-        Default = "",
-        Placeholder = "Enter HWID",
-        Callback = function(text)
-            hwidInput = text
-        end
-    })
-    
-    HWIDSection:AddButton({
-        Title = "Blacklist HWID",
-        Callback = function()
-            if not codeVerified then
-                Fluent:Notify({
-                    Title = "Verification Required",
-                    Content = "Please enter owner code",
-                    Duration = 3
-                })
-                -- Implement code entry prompt
-                return
-            end
-            
-            if hwidInput ~= "" then
-                HWIDManager:BlacklistHWID(hwidInput)
-                Fluent:Notify({
-                    Title = "Success",
-                    Content = "HWID has been blacklisted",
-                    Duration = 3
-                })
-            end
-        end
-    })
-    
-    HWIDSection:AddButton({
-        Title = "Unblacklist HWID",
-        Callback = function()
-            if not codeVerified then
-                Fluent:Notify({
-                    Title = "Verification Required",
-                    Content = "Please enter owner code",
-                    Duration = 3
-                })
-                return
-            end
-            
-            if hwidInput ~= "" then
-                HWIDManager:UnblacklistHWID(hwidInput)
-                Fluent:Notify({
-                    Title = "Success",
-                    Content = "HWID has been unblacklisted",
-                    Duration = 3
-                })
-            end
-        end
-    })
-end
-
--- Initialize Systems
-local function Initialize()
-    HWIDManager:Initialize()
-    
-    local currentHWID = HWIDManager:GetHWID()
-    if HWIDManager:IsBlacklisted(currentHWID) then
-        game.Players.LocalPlayer:Kick("You are banned from using this script.")
-        return
-    end
-    
-    InitializeOwnerTab()
-end
+})
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
@@ -1239,7 +795,6 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
-Initialize()
 
 Fluent:Notify({
    Title = "Murder Mystery By Azzakirms",
