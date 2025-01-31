@@ -4,11 +4,11 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true)
+local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
-local COLLECT_RADIUS = 50
-local TELEPORT_OFFSET = Vector3.new(0, 2, 0)
-local NETWORKING_DELAY = 0.15
+
 -- Global State Management
 local state = {
    espEnabled = false,
@@ -595,6 +595,32 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Notification function with role data parsing
+local function notifyMurdererPerks()
+    local success, playerData = pcall(function()
+        return GetPlayerData:InvokeServer()
+    end)
+    
+    if not success or not playerData then return end
+    
+    -- Direct murderer detection
+    for playerName, roleData in pairs(playerData) do
+        if roleData.Role == "Murderer" then
+            -- Extract perk data and format notification
+            local perks = roleData.Perks or {}
+            
+            StarterGui:SetCore("SendNotification", {
+                Title = "Murderer Info",
+                Text = string.format("%s\nPerks: %s", 
+                    playerName,
+                    #perks > 0 and table.concat(perks, ", ") or "None"
+                ),
+                Duration = 3
+            })
+            break -- Exit after finding murderer
+        end
+    end
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -642,11 +668,16 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
-    Title = "Silent Aim",
+    Title = "Silent Aim2",
     Default = false,
     Callback = function(toggle)
         SilentAimButtonV2.Visible = toggle
     end
+})
+
+local CheckMurdererButton = Tabs.Main:AddButton({
+    Title = "🔪 Check Murderer",
+    Callback = notifyMurdererPerks
 })
 
 -- Prediction Ping Toggle
@@ -704,85 +735,6 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-local GrabGunButton = Tabs.Main:AddButton({
-    Title = "🔫 Enhanced Gun Grab",
-    Callback = function()
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-        local Character = LocalPlayer.Character
-        local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-        
-        if not Character or not HumanoidRootPart then return end
-        
-        -- Store reference positions
-        local OriginalCFrame = HumanoidRootPart.CFrame
-        local GunDrop = workspace:FindFirstChild("GunDrop")
-        
-        if not GunDrop then
-            return Notify("Error", "Gun not detected in workspace", 2.5)
-        end
-        
-        -- Method 1: Direct Collection Bypass
-        local function directCollect()
-            -- Simulate proximity trigger without physical movement
-            local gunPos = GunDrop.Position
-            local characterPos = HumanoidRootPart.Position
-            
-            -- Optimize collection radius check
-            if (gunPos - characterPos).Magnitude <= COLLECT_RADIUS then
-                firetouchinterest(HumanoidRootPart, GunDrop, 0)
-                task.wait()
-                firetouchinterest(HumanoidRootPart, GunDrop, 1)
-            end
-        end
-        
-        -- Method 2: Network Bypass Collection
-        local function networkBypass()
-            -- Manipulate network ownership
-            local function setNetworkOwner()
-                local success, result = pcall(function()
-                    GunDrop:SetNetworkOwner(LocalPlayer)
-                end)
-                return success
-            end
-            
-            if setNetworkOwner() then
-                -- Execute optimized collection sequence
-                HumanoidRootPart.CFrame = GunDrop.CFrame * CFrame.new(TELEPORT_OFFSET)
-                task.wait(NETWORKING_DELAY)
-                HumanoidRootPart.CFrame = OriginalCFrame
-            end
-        end
-        
-        -- Method 3: Instant Collection
-        local function instantCollect()
-            -- Bypass standard collection mechanics
-            local CollectionService = game:GetService("CollectionService")
-            
-            if GunDrop:IsA("BasePart") then
-                -- Force collision and collection state
-                GunDrop.CanCollide = false
-                GunDrop.Anchored = false
-                
-                -- Execute optimized collection sequence
-                local targetCFrame = GunDrop.CFrame
-                HumanoidRootPart.CFrame = targetCFrame
-                task.wait()
-                HumanoidRootPart.CFrame = OriginalCFrame
-            end
-        end
-        
-        -- Execute collection methods with error handling
-        pcall(function()
-            -- Try each method sequentially until successful
-            if not pcall(directCollect) then
-                if not pcall(networkBypass) then
-                    instantCollect()
-                end
-            end
-        end)
-    end
-})
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
