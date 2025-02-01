@@ -632,53 +632,81 @@ roleText.Parent = roleFrame
 -- Track toggle state
 local isEnabled = false
 
+-- Function to get player data
+local function getPlayerData()
+    local success, playerData = pcall(function()
+        return GetPlayerData:InvokeServer()
+    end)
+    if not success or not playerData then
+        warn("Failed to get player data:", playerData)
+        return nil
+    end
+    return playerData
+end
+
 -- Function to notify roles
 local function notifyRoles()
     if not isEnabled then return end
     
-    local success, playerData = pcall(function()
-        return GetPlayerData:InvokeServer()
-    end)
+    local playerData = getPlayerData()
+    if not playerData then return end
     
-    if not success or not playerData then return end
+    local g = LocalPlayer.Name
+    local R = playerData
+    local F = roleText
+    local q = {}
     
-    local roles = {
-        Murderer = "",
-        Sheriff = ""
-    }
-    
-    for playerName, data in pairs(playerData) do
-        if roles[data.Role] ~= nil then
-            roles[data.Role] = playerName
+    if R[g] then
+        local role = R[g].Role
+        
+        -- Set text with murderer chance if applicable
+        F.Text = N.ShowMurdererChance and role .. ("\n<font size=\"16\">Murderer Chance: " .. (z.Function(A.Remotes.Extras.GetChance) .. "%</font>") or role
+        F.TextColor3 = tK(v) -- Assuming tK(v) is a function to set the text color
+        F.Visible = true
+        F.RichText = true
+        F.TextSize = 40
+        
+        -- Disconnect previous connection if exists
+        if F.connection then
+            F.connection:Disconnect()
         end
         
-        if playerName == LocalPlayer.Name then
-            roleFrame.Visible = true
-            roleText.Text = "Your Role: " .. data.Role
-            roleFrame.BackgroundColor3 = 
-                data.Role == "Murderer" and Color3.fromRGB(255, 0, 0) or
-                data.Role == "Sheriff" and Color3.fromRGB(0, 0, 255) or
-                Color3.fromRGB(0, 255, 0)
-            
-            -- Make the GUI disappear after 5 seconds
-            task.delay(5, function()
-                roleFrame.Visible = false
-            end)
-        end
-    end
-    
-    for role, playerName in pairs(roles) do
-        if playerName ~= "" then
-            local player = Players:FindFirstChild(playerName)
-            if player then
-                StarterGui:SetCore("SendNotification", {
-                    Title = "",
-                    Text = role .. " is: " .. playerName,
-                    Icon = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100",
-                    Duration = 5
-                })
+        -- Connect to the RoleSelector Title property changed signal
+        F.connection = D.PlayerGui.MainGUI.Game.RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
+            if D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are" then
+                F.connection:Disconnect()
+                F.Visible = false
+            end
+        end)
+        
+        -- Collect roles for notifications
+        for playerName, data in pairs(R) do
+            if data.Role == "Murderer" or data.Role == "Sheriff" then
+                q[data.Role] = playerName
             end
         end
+        
+        task.wait(0.5)
+        
+        -- Send notifications for Murderer and Sheriff
+        for role, playerName in pairs(q) do
+            if playerName then
+                local player = Players:FindFirstChild(playerName)
+                if player then
+                    StarterGui:SetCore("SendNotification", {
+                        Title = "",
+                        Text = role .. " is: " .. playerName,
+                        Icon = "https://web.roblox.com/Thumbs/Avatar.ashx?x=180&y=180&Format=Png&userid=" .. player.UserId,
+                        Duration = 5
+                    })
+                end
+            end
+        end
+        
+        -- Make the GUI disappear after 5 seconds
+        task.delay(5, function()
+            F.Visible = false
+        end)
     end
 end
 
@@ -746,20 +774,24 @@ local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
             notifyRoles() -- Call notifyRoles immediately when toggled on
         else
             roleFrame.Visible = false -- Hide the frame when toggled off
+            if roleText.connection then
+                roleText.connection:Disconnect()
+            end
         end
     end
 })
 
--- Listen for round start event
-local function onRoundStart()
-    if isEnabled then
+-- Optional: Handle RoleSelector Title change to re-trigger notifyRoles
+local function onRoleSelectorTitleChanged()
+    local roleSelectorTitle = D.PlayerGui.MainGUI.Game.RoleSelector.Title
+    if roleSelectorTitle.Text == "You Are" then
         notifyRoles()
     end
 end
 
-local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
-
-roundStartedEvent.OnClientEvent:Connect(onRoundStart)
+-- Connect to the PropertyChangedSignal of the RoleSelector Title
+local roleSelectorTitle = D.PlayerGui.MainGUI.Game.RoleSelector.Title
+roleSelectorTitle:GetPropertyChangedSignal("Text"):Connect(onRoleSelectorTitleChanged)
 
 
 -- Prediction Ping Toggle
