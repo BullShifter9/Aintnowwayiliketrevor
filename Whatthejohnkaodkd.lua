@@ -589,7 +589,6 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
 end)
 
 
--- Define the list of functions to monitor
 local functions = {
     rconsoleprint,
     print,
@@ -600,6 +599,13 @@ local functions = {
     error
 }
 
+-- Whitelisted URLs (add your trusted URLs here)
+local whitelistedURLs = {
+    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua",
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"
+}
+
 -- Function to detect and block unauthorized behavior
 local function secureEnvironment()
     -- Hook all functions to monitor their usage
@@ -607,16 +613,31 @@ local function secureEnvironment()
         local old = hookfunction(v, function(...)
             local args = {...}
             for _, arg in next, args do
-                -- Check if any argument contains "https://"
-                if tostring(arg):find("https://") then
-                    game.Players.LocalPlayer:Kick("HttpSpy Detected!")
+                -- Convert argument to string
+                local strArg = tostring(arg)
+
+                -- Check if the argument contains "https://"
+                if strArg:find("https://") then
+                    -- Check if the URL is whitelisted
+                    local isWhitelisted = false
+                    for _, url in ipairs(whitelistedURLs) do
+                        if strArg:find(url) then
+                            isWhitelisted = true
+                            break
+                        end
+                    end
+
+                    -- If not whitelisted, kick the player
+                    if not isWhitelisted then
+                        game.Players.LocalPlayer:Kick("HttpSpy Detected!")
+                    end
                 end
             end
             return old(...)
         end)
     end
 
-    -- Anti-Dex detection
+    -- Anti-Dex and Anti-SimpleSpy Detection
     local mt = getrawmetatable(game)
     local oldIndex = mt.__index
     local oldNewIndex = mt.__newindex
