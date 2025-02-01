@@ -32,13 +32,6 @@ local predictionState = {
    pingValue = 50
 }
 
-local flingPlayer = {
-    enabled = false,
-    originalPosition = nil,
-    isDragging = false,
-    dragStart = nil,
-    startPos = nil
-}
 
 -- ESP System Setup
 local ESPFolder = Instance.new("Folder", CoreGui)
@@ -596,46 +589,56 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
 end)
 
 -- Notification function with role data parsing
-local function notifyMurdererPerks()
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
+local RoleSelector = MainGUI.Game.RoleSelector
+
+local function notifyRoles()
     local success, playerData = pcall(function()
         return GetPlayerData:InvokeServer()
     end)
     
     if not success or not playerData then return end
     
-    -- Access the Perks database
-    local perksDatabase = ReplicatedStorage.Database.Sync.Perks
+    local roles = {
+        Murderer = "",
+        Sheriff = ""
+    }
     
-    for playerName, roleData in pairs(playerData) do
-        if roleData.Role == "Murderer" then
-            -- Fetch active perks from database
-            local activePerks = {}
-            
-            -- Check if player has perks assigned
-            if roleData.EquippedPerks then
-                for perkId, isEquipped in pairs(roleData.EquippedPerks) do
-                    if isEquipped then
-                        local perkData = perksDatabase:FindFirstChild(tostring(perkId))
-                        if perkData then
-                            table.insert(activePerks, perkData.Name)
-                        end
-                    end
-                end
+    -- Detect key roles
+    for playerName, data in pairs(playerData) do
+        if roles[data.Role] ~= nil then
+            roles[data.Role] = playerName
+        end
+    end
+    
+    -- Monitor role selection completion
+    local connection = RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
+        if RoleSelector.Title.Text ~= "You Are" then
+            connection:Disconnect()
+        end
+    end)
+    
+    -- Display role notifications
+    task.wait(0.5)
+    for role, playerName in pairs(roles) do
+        if playerName ~= "" then
+            local player = Players:FindFirstChild(playerName)
+            if player then
+                StarterGui:SetCore("SendNotification", {
+                    Title = role .. " Detected",
+                    Text = playerName,
+                    Icon = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100",
+                    Duration = 5
+                })
             end
-            
-            -- Display notification with perks
-            StarterGui:SetCore("SendNotification", {
-                Title = "Murderer Info",
-                Text = string.format("%s\nPerks: %s", 
-                    playerName,
-                    #activePerks > 0 and table.concat(activePerks, ", ") or "None"
-                ),
-                Duration = 3
-            })
-            break
         end
     end
 end
+
+
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -690,9 +693,14 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
-local CheckMurdererButton = Tabs.Main:AddButton({
-    Title = "🔪 Check Murderer",
-    Callback = notifyMurdererPerks
+local RoleNotifyButton = Tabs.Main:AddToggle({
+    Title = "Role Notify",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            notifyRoles()
+        end
+    end
 })
 
 -- Prediction Ping Toggle
