@@ -596,7 +596,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-   Title = "Another Random Script😍",
+   Title = "OmniHub Script By Azzakirms",
    SubTitle = "NiggaTron",
    TabWidth = 160,
    Size = UDim2.fromOffset(580, 460),
@@ -605,10 +605,50 @@ local Window = Fluent:CreateWindow({
    MinimizeKey = Enum.KeyCode.LeftControl
 })
 
+-- Add Discord Tab
 local Tabs = {
-   Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
-   Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+    Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
+    Discord = Window:AddTab({ Title = "Join Discord", Icon = "message-square" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
+
+-- Discord Section Configuration
+local DiscordSection = Tabs.Discord:AddSection("Discord Community")
+
+-- Add informational label with improved grammar
+Tabs.Discord:AddParagraph(
+    "Join Our Community",
+    "Join our Discord server and help us improve by suggesting new features for our script!"
+)
+
+-- Discord invite button with enhanced functionality
+local DiscordButton = Tabs.Discord:AddButton({
+    Title = "Click to Copy Discord Invite",
+    Callback = function()
+        -- Replace DISCORD_INVITE_LINK with your actual Discord invite link
+        local discordLink = "https://discord.gg/3DR8b2pA2z"
+        
+        -- Attempt to copy to clipboard with error handling
+        local success, err = pcall(function()
+            setclipboard(discordLink)
+        end)
+        
+        -- Provide appropriate feedback to user
+        if success then
+            Fluent:Notify({
+                Title = "Success!",
+                Content = "Discord invite link copied to clipboard.",
+                Duration = 3
+            })
+        else
+            Fluent:Notify({
+                Title = "Error",
+                Content = "Failed to copy invite link. Please try again.",
+                Duration = 3
+            })
+        end
+    end
+})
 
 -- ESP Toggle
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
@@ -706,8 +746,8 @@ SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("MurderMysteryHack")
-SaveManager:SetFolder("MurderMysteryHack")
+InterfaceManager:SetFolder("Imnotgayyounigger")
+SaveManager:SetFolder("notasingleshitcomingfromyourmouth")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
@@ -715,7 +755,7 @@ Window:SelectTab(1)
 
 Fluent:Notify({
    Title = "Murder Mystery By Azzakirms",
-   Content = "ESP Initialized!",
+   Content = "Script Initialized",
    Duration = 5
 })
 
