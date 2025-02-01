@@ -595,6 +595,31 @@ local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
+local roleGui = Instance.new("ScreenGui")
+local roleFrame = Instance.new("Frame")
+local roleText = Instance.new("TextLabel")
+
+roleGui.Name = "RoleNotifyGui"
+roleGui.Parent = LocalPlayer.PlayerGui
+
+roleFrame.Name = "RoleFrame"
+roleFrame.Size = UDim2.new(0, 200, 0, 50)
+roleFrame.Position = UDim2.new(0.5, -100, 0, 10)
+roleFrame.BackgroundTransparency = 0.3
+roleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+roleFrame.Parent = roleGui
+roleFrame.Visible = false
+
+roleText.Name = "RoleText"
+roleText.Size = UDim2.new(1, 0, 1, 0)
+roleText.BackgroundTransparency = 1
+roleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+roleText.TextSize = 18
+roleText.Font = Enum.Font.GothamBold
+roleText.Text = ""
+roleText.Parent = roleFrame
+
+-- Core role notification function
 local function notifyRoles()
     local success, playerData = pcall(function()
         return GetPlayerData:InvokeServer()
@@ -607,29 +632,28 @@ local function notifyRoles()
         Sheriff = ""
     }
     
-    -- Detect key roles
     for playerName, data in pairs(playerData) do
         if roles[data.Role] ~= nil then
             roles[data.Role] = playerName
         end
+        
+        if playerName == LocalPlayer.Name then
+            roleFrame.Visible = true
+            roleText.Text = "Your Role: " .. data.Role
+            roleFrame.BackgroundColor3 = 
+                data.Role == "Murderer" and Color3.fromRGB(255, 0, 0) or
+                data.Role == "Sheriff" and Color3.fromRGB(0, 0, 255) or
+                Color3.fromRGB(0, 255, 0)
+        end
     end
     
-    -- Monitor role selection completion
-    local connection = RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
-        if RoleSelector.Title.Text ~= "You Are" then
-            connection:Disconnect()
-        end
-    end)
-    
-    -- Display role notifications
-    task.wait(0.5)
     for role, playerName in pairs(roles) do
         if playerName ~= "" then
             local player = Players:FindFirstChild(playerName)
             if player then
                 StarterGui:SetCore("SendNotification", {
-                    Title = role .. " Detected",
-                    Text = playerName,
+                    Title = "",
+                    Text = role .. " is: " .. playerName,
                     Icon = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100",
                     Duration = 5
                 })
@@ -637,6 +661,15 @@ local function notifyRoles()
         end
     end
 end
+
+-- Auto notification setup
+RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
+    if RoleSelector.Title.Text == "" then
+        notifyRoles()
+    elseif RoleSelector.Title.Text ~= "You Are" then
+        roleFrame.Visible = false
+    end
+end)
 
 
 
@@ -694,11 +727,13 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
-    Title = "Notify",
+    Title = "auto role notify",
     Default = false,
     Callback = function(Value)
         if Value then
             notifyRoles()
+        else
+            roleFrame.Visible = false
         end
     end
 })
