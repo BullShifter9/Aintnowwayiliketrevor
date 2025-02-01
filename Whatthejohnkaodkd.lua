@@ -603,21 +603,36 @@ local function notifyMurdererPerks()
     
     if not success or not playerData then return end
     
-    -- Direct murderer detection
+    -- Access the Perks database
+    local perksDatabase = ReplicatedStorage.Database.Sync.Perks
+    
     for playerName, roleData in pairs(playerData) do
         if roleData.Role == "Murderer" then
-            -- Extract perk data and format notification
-            local perks = roleData.Perks or {}
+            -- Fetch active perks from database
+            local activePerks = {}
             
+            -- Check if player has perks assigned
+            if roleData.EquippedPerks then
+                for perkId, isEquipped in pairs(roleData.EquippedPerks) do
+                    if isEquipped then
+                        local perkData = perksDatabase:FindFirstChild(tostring(perkId))
+                        if perkData then
+                            table.insert(activePerks, perkData.Name)
+                        end
+                    end
+                end
+            end
+            
+            -- Display notification with perks
             StarterGui:SetCore("SendNotification", {
                 Title = "Murderer Info",
                 Text = string.format("%s\nPerks: %s", 
                     playerName,
-                    #perks > 0 and table.concat(perks, ", ") or "None"
+                    #activePerks > 0 and table.concat(activePerks, ", ") or "None"
                 ),
                 Duration = 3
             })
-            break -- Exit after finding murderer
+            break
         end
     end
 end
