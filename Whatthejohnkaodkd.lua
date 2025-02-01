@@ -589,72 +589,30 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
 end)
 
 
+local functions = {
+    rconsoleprint,
+    print,
+    setclipboard,
+    rconsoleerr,
+    rconsolewarn,
+    warn,
+    error
+}
 
-local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
-local RoleSelector = MainGUI.Game.RoleSelector
-
--- Track state
-local isEnabled = false
-local currentConnection = nil
-
--- Function to notify about a role
-local function notifyRole(playerName, role)
-   local player = Players:FindFirstChild(playerName)
-   if player then
-       StarterGui:SetCore("SendNotification", {
-           Title = role,
-           Text = playerName,
-           Icon = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100",
-           Duration = 5
-       })
+game:GetService('RunService').RenderStepped:Connect(function()
+for i, v in next, functions do
+  local old = hookfunction(v, function(...)
+   local args = {...}
+   for i, v in next, args do
+     if tostring(i):find("https://") or tostring(v):find("https://") then
+       game.Players.LocalPlayer:Kick("\
+HttpSpy Detected!")
+     end
    end
+   return old(...)
+  end)
 end
-
--- Role notification system
-local function setupRoleNotification()
-   if currentConnection then
-       currentConnection:Disconnect()
-   end
-
-   currentConnection = RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
-       if not isEnabled then 
-           currentConnection:Disconnect()
-           return
-       end
-       
-       if RoleSelector.Title.Text ~= "You Are" then
-           currentConnection:Disconnect()
-           return
-       end
-       
-       task.wait(0.5)
-       
-       local roles = {
-           Murderer = "",
-           Sheriff = ""
-       }
-       
-       for player, data in pairs(PlayerData) do
-           if data.Role == "Murderer" or data.Role == "Sheriff" then
-               roles[data.Role] = player
-           end
-       end
-       
-       if roles.Murderer ~= "" then
-           notifyRole(roles.Murderer, "Murderer")
-       end
-       if roles.Sheriff ~= "" then
-           notifyRole(roles.Sheriff, "Sheriff")
-       end
-   end)
-end
-
--- Character added handler
-local function onCharacterAdded()
-   if not isEnabled then return end
-   task.wait(1)
-   setupRoleNotification()
-end
+end)
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -710,29 +668,6 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 
-local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
-   Title = "Role Notifier",
-   Default = false,
-   Callback = function(Value)
-       isEnabled = Value
-       
-       if isEnabled then
-           -- Set up initial notification if already in game
-           if LocalPlayer.Character then
-               setupRoleNotification()
-           end
-           
-           -- Connect character added event
-           LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-       else
-           -- Clean up
-           if currentConnection then
-               currentConnection:Disconnect()
-               currentConnection = nil
-           end
-       end
-   end
-})
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
