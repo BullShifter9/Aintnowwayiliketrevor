@@ -588,7 +588,139 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
+local function predictMurderV3(murderer, algorithmType)
+    local character = murderer.Character
+    if not character then return nil end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not rootPart or not humanoid then return nil end
 
+    -- Constants for prediction
+    local Interval = 0.1 -- Fixed interval for prediction
+    local Gravity = 196.2
+    local FrictionDeceleration = 10
+    local ProbabilityFactor = 0.7 -- Probability-like factor for directional consistency
+
+    -- Simulate position and velocity
+    local SimulatedPosition = rootPart.Position
+    local SimulatedVelocity = rootPart.AssemblyLinearVelocity
+    local MoveDirection = humanoid.MoveDirection
+
+    -- Algorithm-specific adjustments
+    if algorithmType == "Algorithm" then
+        -- Apply probability-based adjustments to movement direction (deterministic approach)
+        local DirectionFactor = 1
+        if humanoid.Jump or SimulatedVelocity.Magnitude > 50 then
+            DirectionFactor = -1 -- Reverse direction if jumping or moving fast
+        end
+
+        -- Predict movement with refined acceleration handling
+        SimulatedPosition = SimulatedPosition + Vector3.new(
+            SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2 * DirectionFactor,
+            SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+            SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2 * DirectionFactor
+        )
+
+        -- Adjust velocity based on movement direction with better deceleration
+        local Axes = {"X", "Z"}
+        for _, Axis in ipairs(Axes) do
+            local Goal = MoveDirection[Axis] * 16.2001
+            local CurrentVelocity = SimulatedVelocity[Axis]
+            if math.abs(CurrentVelocity) > math.abs(Goal) then
+                SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                    Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0, -- Reduced friction for smoother deceleration
+                    0,
+                    Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0
+                )
+            elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                    Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0, -- Reduced friction for smoother acceleration
+                    0,
+                    Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0
+                )
+            end
+        end
+
+        -- Apply gravity with slight dampening for realism
+        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
+
+    elseif algorithmType == "Jet" then
+        -- Jet mode is an aggressive version of Algorithm with faster speeds and sharper changes
+        local JetFactor = 2.5 -- Multiplier for jet-like movement
+        local JetHeightFactor = humanoid.Jump and 8 or 0 -- Higher jump height for jet-like behavior
+
+        -- Predict movement with enhanced speed and vertical adjustment
+        SimulatedPosition = SimulatedPosition + Vector3.new(
+            SimulatedVelocity.X * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
+            JetHeightFactor + SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+            SimulatedVelocity.Z * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
+        )
+
+        -- Adjust velocity with higher friction for sharp stops/starts
+        local Axes = {"X", "Z"}
+        for _, Axis in ipairs(Axes) do
+            local Goal = MoveDirection[Axis] * 25 -- Higher goal speed for jet mode
+            local CurrentVelocity = SimulatedVelocity[Axis]
+            if math.abs(CurrentVelocity) > math.abs(Goal) then
+                SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                    Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0, -- Increased friction for sharper deceleration
+                    0,
+                    Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0
+                )
+            elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                    Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0, -- Increased friction for sharper acceleration
+                    0,
+                    Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0
+                )
+            end
+        end
+
+        -- Apply gravity with reduced dampening for faster falls
+        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
+    end
+
+    -- Raycast to check for floor or ceiling
+    local RaycastParams = RaycastParams.new()
+    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    RaycastParams.FilterDescendantsInstances = {character}
+    local FloorCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, -3, 0), RaycastParams)
+    local CeilingCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, 3, 0), RaycastParams)
+
+    -- Adjust position based on raycast results
+    if FloorCheck then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, FloorCheck.Position.Y + 3, SimulatedPosition.Z)
+    elseif CeilingCheck then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, CeilingCheck.Position.Y - 2, SimulatedPosition.Z)
+    end
+
+    -- Predict jump with refined height adjustment
+    if humanoid.Jump then
+        SimulatedPosition = SimulatedPosition + Vector3.new(0, 6, 0) -- Increased jump height
+    end
+
+    return SimulatedPosition
+end
+
+-- Silent Aim V3 GUI Button
+local SilentAimGuiV3 = Instance.new("ScreenGui")
+local SilentAimButtonV3 = Instance.new("ImageButton")
+SilentAimGuiV3.Parent = game.CoreGui
+SilentAimButtonV3.Parent = SilentAimGuiV3
+SilentAimButtonV3.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SilentAimButtonV3.BackgroundTransparency = 0.3
+SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
+SilentAimButtonV3.BorderSizePixel = 2
+SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5)
+SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2)
+SilentAimButtonV3.Image = "rbxassetid://11162755592"
+SilentAimButtonV3.Draggable = true
+SilentAimButtonV3.Visible = false
+
+local UIStroke = Instance.new("UIStroke", SilentAimButtonV3)
+UIStroke.Color = Color3.fromRGB(255, 100, 0)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.5
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -646,7 +778,39 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
+local SilentAimToggleV3 = Tabs.Main:AddToggle("SilentAimToggleV3", {
+    Title = "Silent Aim 3",
+    Default = false,
+    Callback = function(toggle)
+        SilentAimButtonV3.Visible = toggle
+    end
+})
 
+local SelectedAlgorithm = "Algorithm" -- Default algorithm
+local SilentAimChoice = Tabs.Main:AddDropdown("SilentAimChoice", {
+    Title = "Algorithm Type",
+    Values = {"Algorithm", "Jet"},
+    Default = "Algorithm",
+    Callback = function(choice)
+        SelectedAlgorithm = choice
+    end
+})
+
+-- Silent Aim V3 Button Click Event
+SilentAimButtonV3.MouseButton1Click:Connect(function()
+    local localPlayer = game.Players.LocalPlayer
+    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
+    if not gun then return end
+    local murderer = GetMurderer() -- Assume this function exists and returns the murderer
+    if not murderer then return end
+    localPlayer.Character.Humanoid:EquipTool(gun)
+
+    -- Use the selected algorithm type
+    local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
+    if predictedPos then
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH3")
+    end
+end)
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
