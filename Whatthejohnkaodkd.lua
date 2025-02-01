@@ -595,24 +595,6 @@ local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
-local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
-if roundStartedEvent then
-    roundStartedEvent.OnClientEvent:Connect(onRoundStart)
-else
-    warn("RoundStart event not found in ReplicatedStorage.Remotes.Gameplay.")
-end
--- Listen for round start event
-local function onRoundStart()
-    if isEnabled then
-        notifyRoles()
-    end
-end
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-local LocalPlayer = Players.LocalPlayer
-
 -- Create the GUI elements
 local roleGui = Instance.new("ScreenGui")
 local roleFrame = Instance.new("Frame")
@@ -761,6 +743,31 @@ local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
         end
     end
 })
+
+-- Listen for round start event
+local function onRoundStart()
+    if isEnabled then
+        notifyRoles()
+    end
+end
+
+-- Connect to the RoundStart event
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
+
+roundStartedEvent.OnClientEvent:Connect(onRoundStart)
+
+-- Listen for round end fade event
+local function onRoundEndFade()
+    -- Optionally, you can add any cleanup or additional logic here if needed
+    -- For now, we just ensure the GUI is hidden when the round ends
+    roleFrame.Visible = false
+end
+
+-- Connect to the RoundEndFade event
+local roundEndFadeEvent = ReplicatedStorage.Remotes.Gameplay.RoundEndFade
+
+roundEndFadeEvent.OnClientEvent:Connect(onRoundEndFade)
 
 
 
