@@ -596,8 +596,17 @@ local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
 local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
-
-roundStartedEvent.OnClientEvent:Connect(onRoundStart)
+if roundStartedEvent then
+    roundStartedEvent.OnClientEvent:Connect(onRoundStart)
+else
+    warn("RoundStart event not found in ReplicatedStorage.Remotes.Gameplay.")
+end
+-- Listen for round start event
+local function onRoundStart()
+    if isEnabled then
+        notifyRoles()
+    end
+end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -753,12 +762,7 @@ local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
     end
 })
 
--- Listen for round start event
-local function onRoundStart()
-    if isEnabled then
-        notifyRoles()
-    end
-end
+
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
