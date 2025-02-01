@@ -589,6 +589,7 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
 end)
 
 
+-- Define the list of functions to monitor
 local functions = {
     rconsoleprint,
     print,
@@ -599,19 +600,59 @@ local functions = {
     error
 }
 
-game:GetService('RunService').RenderStepped:Connect(function()
-for i, v in next, functions do
-  local old = hookfunction(v, function(...)
-   local args = {...}
-   for i, v in next, args do
-     if tostring(i):find("https://") or tostring(v):find("https://") then
-       game.Players.LocalPlayer:Kick("\
-HttpSpy Detected!")
-     end
-   end
-   return old(...)
-  end)
+-- Function to detect and block unauthorized behavior
+local function secureEnvironment()
+    -- Hook all functions to monitor their usage
+    for i, v in next, functions do
+        local old = hookfunction(v, function(...)
+            local args = {...}
+            for _, arg in next, args do
+                -- Check if any argument contains "https://"
+                if tostring(arg):find("https://") then
+                    game.Players.LocalPlayer:Kick("HttpSpy Detected!")
+                end
+            end
+            return old(...)
+        end)
+    end
+
+    -- Anti-Dex detection
+    local mt = getrawmetatable(game)
+    local oldIndex = mt.__index
+    local oldNewIndex = mt.__newindex
+
+    setreadonly(mt, false)
+
+    -- Detect unauthorized access to metatables
+    mt.__index = newcclosure(function(t, k)
+        if tostring(k):lower():find("dex") or tostring(k):lower():find("spy") then
+            game.Players.LocalPlayer:Kick("Anti-Dex/SimpleSpy Detected!")
+        end
+        return oldIndex(t, k)
+    end)
+
+    mt.__newindex = newcclosure(function(t, k, v)
+        if tostring(k):lower():find("dex") or tostring(k):lower():find("spy") then
+            game.Players.LocalPlayer:Kick("Anti-Dex/SimpleSpy Detected!")
+        end
+        return oldNewIndex(t, k, v)
+    end)
+
+    setreadonly(mt, true)
+
+    -- Anti-SimpleSpy detection via environment tampering
+    local oldRequire = require
+    require = newcclosure(function(module)
+        if tostring(module):lower():find("simplespy") or tostring(module):lower():find("dex") then
+            game.Players.LocalPlayer:Kick("Anti-Dex/SimpleSpy Detected!")
+        end
+        return oldRequire(module)
+    end)
 end
+
+-- Run the security measures on every frame
+game:GetService('RunService').RenderStepped:Connect(function()
+    secureEnvironment()
 end)
 
 -- Fluent UI Integration
