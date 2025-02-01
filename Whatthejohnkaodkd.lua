@@ -612,43 +612,6 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- Discord Section Configuration
-local DiscordSection = Tabs.Discord:AddSection("Discord Community")
-
--- Add informational label with improved grammar
-Tabs.Discord:AddParagraph("CommunityInfo", {
-    Title = "Join Our Small Community!",
-    Content = "Join our Discord server and help us improve by suggesting new features for our script!"
-})
-
--- Discord invite button with enhanced functionality
-local DiscordButton = Tabs.Discord:AddButton("JoinDiscordButton", {
-    Title = "Click to Copy Discord Invite",
-    Callback = function()
-        -- Replace DISCORD_INVITE_LINK with your actual Discord invite link
-        local discordLink = "https://discord.gg/3DR8b2pA2z"
-        
-        -- Attempt to copy to clipboard with error handling
-        local success, err = pcall(function()
-            setclipboard(discordLink)
-        end)
-        
-        -- Provide appropriate feedback to user
-        if success then
-            Fluent:Notify({
-                Title = "Success!",
-                Content = "Discord invite link copied to clipboard.",
-                Duration = 3
-            })
-        else
-            Fluent:Notify({
-                Title = "Error",
-                Content = "Failed to copy invite link. Please try again.",
-                Duration = 3
-            })
-        end
-    end
-})
 
 -- ESP Toggle
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
@@ -740,6 +703,42 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
+-- Discord Section Configuration
+local DiscordSection = Tabs.Discord:AddSection("Discord Community")
+
+Tabs.Discord:AddParagraph({
+   Title = "Join Our Community",
+   Content = "Join our Discord server and help us improve by suggesting new features for our script!"
+})
+
+-- Discord invite button with enhanced functionality
+local DiscordButton = Tabs.Discord:AddButton("JoinDiscordButton", {
+    Title = "Click to Copy Discord Invite",
+    Callback = function()
+        -- Replace DISCORD_INVITE_LINK with your actual Discord invite link
+        local discordLink = "https://discord.gg/3DR8b2pA2z"
+        
+        -- Attempt to copy to clipboard with error handling
+        local success, err = pcall(function()
+            setclipboard(discordLink)
+        end)
+        
+        -- Provide appropriate feedback to user
+        if success then
+            Fluent:Notify({
+                Title = "Success!",
+                Content = "Discord invite link copied to clipboard.",
+                Duration = 3
+            })
+        else
+            Fluent:Notify({
+                Title = "Error",
+                Content = "Failed to copy invite link. Please try again.",
+                Duration = 3
+            })
+        end
+    end
+})
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
