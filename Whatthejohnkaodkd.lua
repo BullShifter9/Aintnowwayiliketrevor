@@ -616,10 +616,10 @@ local Tabs = {
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
 
 -- Add informational label with improved grammar
-Tabs.Discord:AddParagraph(
-    "Join Our Community",
-    "Join our Discord server and help us improve by suggesting new features for our script!"
-)
+Tabs.Discord:AddParagraph("CommunityInfo", {
+    Title = "Join Our Small Community!",
+    Content = "Join our Discord server and help us improve by suggesting new features for our script!"
+})
 
 -- Discord invite button with enhanced functionality
 local DiscordButton = Tabs.Discord:AddButton("JoinDiscordButton", {
