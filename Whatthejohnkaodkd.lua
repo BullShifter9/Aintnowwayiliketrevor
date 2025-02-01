@@ -808,7 +808,7 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
     -- Use the selected algorithm type
     local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
     if predictedPos then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH3")
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
 
