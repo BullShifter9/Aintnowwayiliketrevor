@@ -622,7 +622,7 @@ Tabs.Discord:AddParagraph(
 )
 
 -- Discord invite button with enhanced functionality
-local DiscordButton = Tabs.Discord:AddButton({
+local DiscordButton = Tabs.Discord:AddButton("JoinDiscordButton", {
     Title = "Click to Copy Discord Invite",
     Callback = function()
         -- Replace DISCORD_INVITE_LINK with your actual Discord invite link
