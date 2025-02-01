@@ -711,19 +711,16 @@ Tabs.Discord:AddParagraph({
    Content = "Join our Discord server and help us improve by suggesting new features for our script!"
 })
 
--- Discord invite button with enhanced functionality
-local DiscordButton = Tabs.Discord:AddButton("JoinDiscordButton", {
+local DiscordButton = Tabs.Discord:AddButton({
     Title = "Click to Copy Discord Invite",
+    Name = "JoinDiscordButton", -- Internal identifier
     Callback = function()
-        -- Replace DISCORD_INVITE_LINK with your actual Discord invite link
         local discordLink = "https://discord.gg/3DR8b2pA2z"
         
-        -- Attempt to copy to clipboard with error handling
         local success, err = pcall(function()
             setclipboard(discordLink)
         end)
         
-        -- Provide appropriate feedback to user
         if success then
             Fluent:Notify({
                 Title = "Success!",
