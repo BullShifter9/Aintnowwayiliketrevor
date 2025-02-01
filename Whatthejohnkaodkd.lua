@@ -595,6 +595,16 @@ local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
+local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
+
+roundStartedEvent.OnClientEvent:Connect(onRoundStart)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- Create the GUI elements
 local roleGui = Instance.new("ScreenGui")
 local roleFrame = Instance.new("Frame")
 local roleText = Instance.new("TextLabel")
@@ -603,24 +613,29 @@ roleGui.Name = "RoleNotifyGui"
 roleGui.Parent = LocalPlayer.PlayerGui
 
 roleFrame.Name = "RoleFrame"
-roleFrame.Size = UDim2.new(0, 200, 0, 50)
-roleFrame.Position = UDim2.new(0.5, -100, 0, 10)
-roleFrame.BackgroundTransparency = 0.3
+roleFrame.Size = UDim2.new(0, 300, 0, 80) -- Larger size for better visibility
+roleFrame.Position = UDim2.new(0.5, -150, 0.1, 0) -- Positioned slightly below the top center
+roleFrame.BackgroundTransparency = 0.7 -- Semi-transparent background
 roleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+roleFrame.BorderSizePixel = 0 -- No border
+roleFrame.Visible = false -- Initially hidden
 roleFrame.Parent = roleGui
 
 roleText.Name = "RoleText"
 roleText.Size = UDim2.new(1, 0, 1, 0)
-roleText.BackgroundTransparency = 1
-roleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-roleText.TextSize = 18
-roleText.Font = Enum.Font.GothamBold
+roleText.BackgroundTransparency = 1 -- Fully transparent text background
+roleText.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+roleText.TextSize = 24 -- Larger font size
+roleText.Font = Enum.Font.GothamBold -- Modern font
 roleText.Text = ""
+roleText.TextScaled = true -- Automatically scales text to fit
+roleText.TextWrapped = true -- Wraps text if it's too long
 roleText.Parent = roleFrame
 
 -- Track toggle state
 local isEnabled = false
 
+-- Function to notify roles
 local function notifyRoles()
     if not isEnabled then return end
     
@@ -647,6 +662,11 @@ local function notifyRoles()
                 data.Role == "Murderer" and Color3.fromRGB(255, 0, 0) or
                 data.Role == "Sheriff" and Color3.fromRGB(0, 0, 255) or
                 Color3.fromRGB(0, 255, 0)
+            
+            -- Make the GUI disappear after 5 seconds
+            task.delay(5, function()
+                roleFrame.Visible = false
+            end)
         end
     end
     
@@ -664,14 +684,6 @@ local function notifyRoles()
         end
     end
 end
-
--- Set up round start detection
-RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
-    if RoleSelector.Title.Text == "" then
-        task.wait(0.1) -- Small delay to ensure role data is ready
-        notifyRoles()
-    end
-end)
 
 
 
@@ -733,12 +745,20 @@ local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
     Default = false,
     Callback = function(Value)
         isEnabled = Value
-        roleFrame.Visible = Value
         if Value then
-            notifyRoles()
+            notifyRoles() -- Call notifyRoles immediately when toggled on
+        else
+            roleFrame.Visible = false -- Hide the frame when toggled off
         end
     end
 })
+
+-- Listen for round start event
+local function onRoundStart()
+    if isEnabled then
+        notifyRoles()
+    end
+end
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
