@@ -594,7 +594,6 @@ local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
-local RoleSelector = MainGUI.Game:WaitForChild("RoleSelector")
 
 -- Create the GUI elements
 local roleGui = Instance.new("ScreenGui")
