@@ -594,6 +594,7 @@ local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
+local RoleSelector = MainGUI.Game:WaitForChild("RoleSelector")
 
 -- Create the GUI elements
 local roleGui = Instance.new("ScreenGui")
@@ -731,7 +732,8 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
-local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
+
+local RoleNotifyButton = RoleSelector:AddToggle("Role Notify", {
     Title = "Role Notifier",
     Default = false,
     Callback = function(Value)
@@ -759,8 +761,7 @@ roundStartedEvent.OnClientEvent:Connect(onRoundStart)
 
 -- Listen for round end fade event
 local function onRoundEndFade()
-    -- Optionally, you can add any cleanup or additional logic here if needed
-    -- For now, we just ensure the GUI is hidden when the round ends
+    -- Hide the role frame when the round ends
     roleFrame.Visible = false
 end
 
