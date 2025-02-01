@@ -595,6 +595,12 @@ local LocalPlayer = Players.LocalPlayer
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
 -- Create the GUI elements
 local roleGui = Instance.new("ScreenGui")
 local roleFrame = Instance.new("Frame")
@@ -731,8 +737,7 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
-
-local RoleNotifyButton = RoleSelector:AddToggle("Role Notify", {
+local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
     Title = "Role Notifier",
     Default = false,
     Callback = function(Value)
@@ -752,23 +757,9 @@ local function onRoundStart()
     end
 end
 
--- Connect to the RoundStart event
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local roundStartedEvent = ReplicatedStorage.Remotes.Gameplay.RoundStart
 
 roundStartedEvent.OnClientEvent:Connect(onRoundStart)
-
--- Listen for round end fade event
-local function onRoundEndFade()
-    -- Hide the role frame when the round ends
-    roleFrame.Visible = false
-end
-
--- Connect to the RoundEndFade event
-local roundEndFadeEvent = ReplicatedStorage.Remotes.Gameplay.RoundEndFade
-
-roundEndFadeEvent.OnClientEvent:Connect(onRoundEndFade)
-
 
 
 -- Prediction Ping Toggle
