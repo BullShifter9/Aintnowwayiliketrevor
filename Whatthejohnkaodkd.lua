@@ -608,7 +608,6 @@ roleFrame.Position = UDim2.new(0.5, -100, 0, 10)
 roleFrame.BackgroundTransparency = 0.3
 roleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 roleFrame.Parent = roleGui
-roleFrame.Visible = false
 
 roleText.Name = "RoleText"
 roleText.Size = UDim2.new(1, 0, 1, 0)
@@ -619,8 +618,12 @@ roleText.Font = Enum.Font.GothamBold
 roleText.Text = ""
 roleText.Parent = roleFrame
 
--- Core role notification function
+-- Track toggle state
+local isEnabled = false
+
 local function notifyRoles()
+    if not isEnabled then return end
+    
     local success, playerData = pcall(function()
         return GetPlayerData:InvokeServer()
     end)
@@ -662,12 +665,11 @@ local function notifyRoles()
     end
 end
 
--- Auto notification setup
+-- Set up round start detection
 RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
     if RoleSelector.Title.Text == "" then
+        task.wait(0.1) -- Small delay to ensure role data is ready
         notifyRoles()
-    elseif RoleSelector.Title.Text ~= "You Are" then
-        roleFrame.Visible = false
     end
 end)
 
@@ -727,13 +729,13 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
-    Title = "auto role notify",
+    Title = "Role Notifier",
     Default = false,
     Callback = function(Value)
+        isEnabled = Value
+        roleFrame.Visible = Value
         if Value then
             notifyRoles()
-        else
-            roleFrame.Visible = false
         end
     end
 })
