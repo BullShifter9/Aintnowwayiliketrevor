@@ -588,129 +588,73 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
--- Notification function with role data parsing
-local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
-local LocalPlayer = Players.LocalPlayer
+
+
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI")
 local RoleSelector = MainGUI.Game.RoleSelector
 
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-local LocalPlayer = Players.LocalPlayer
-
--- Create the GUI elements
-local roleGui = Instance.new("ScreenGui")
-local roleFrame = Instance.new("Frame")
-local roleText = Instance.new("TextLabel")
-
-roleGui.Name = "RoleNotifyGui"
-roleGui.Parent = LocalPlayer.PlayerGui
-
-roleFrame.Name = "RoleFrame"
-roleFrame.Size = UDim2.new(0, 300, 0, 80) -- Larger size for better visibility
-roleFrame.Position = UDim2.new(0.5, -150, 0.1, 0) -- Positioned slightly below the top center
-roleFrame.BackgroundTransparency = 0.7 -- Semi-transparent background
-roleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-roleFrame.BorderSizePixel = 0 -- No border
-roleFrame.Visible = false -- Initially hidden
-roleFrame.Parent = roleGui
-
-roleText.Name = "RoleText"
-roleText.Size = UDim2.new(1, 0, 1, 0)
-roleText.BackgroundTransparency = 1 -- Fully transparent text background
-roleText.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
-roleText.TextSize = 24 -- Larger font size
-roleText.Font = Enum.Font.GothamBold -- Modern font
-roleText.Text = ""
-roleText.TextScaled = true -- Automatically scales text to fit
-roleText.TextWrapped = true -- Wraps text if it's too long
-roleText.Parent = roleFrame
-
--- Track toggle state
+-- Track state
 local isEnabled = false
+local currentConnection = nil
 
--- Function to get player data
-local function getPlayerData()
-    local success, playerData = pcall(function()
-        return GetPlayerData:InvokeServer()
-    end)
-    if not success or not playerData then
-        warn("Failed to get player data:", playerData)
-        return nil
-    end
-    return playerData
+-- Function to notify about a role
+local function notifyRole(playerName, role)
+   local player = Players:FindFirstChild(playerName)
+   if player then
+       StarterGui:SetCore("SendNotification", {
+           Title = role,
+           Text = playerName,
+           Icon = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100",
+           Duration = 5
+       })
+   end
 end
 
--- Function to notify roles
-local function notifyRoles()
-    if not isEnabled then return end
-    
-    local playerData = getPlayerData()
-    if not playerData then return end
-    
-    local g = LocalPlayer.Name
-    local R = playerData
-    local F = roleText
-    local q = {}
-    
-    if R[g] then
-        local role = R[g].Role
-        
-        -- Set text with murderer chance if applicable
-        F.Text = N.ShowMurdererChance and role .. ("\n<font size=\"16\">Murderer Chance: " .. (z.Function(A.Remotes.Extras.GetChance) .. "%</font>") or role
-        F.TextColor3 = tK(v) -- Assuming tK(v) is a function to set the text color
-        F.Visible = true
-        F.RichText = true
-        F.TextSize = 40
-        
-        -- Disconnect previous connection if exists
-        if F.connection then
-            F.connection:Disconnect()
-        end
-        
-        -- Connect to the RoleSelector Title property changed signal
-        F.connection = D.PlayerGui.MainGUI.Game.RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
-            if D.PlayerGui.MainGUI.Game.RoleSelector.Title.Text ~= "You Are" then
-                F.connection:Disconnect()
-                F.Visible = false
-            end
-        end)
-        
-        -- Collect roles for notifications
-        for playerName, data in pairs(R) do
-            if data.Role == "Murderer" or data.Role == "Sheriff" then
-                q[data.Role] = playerName
-            end
-        end
-        
-        task.wait(0.5)
-        
-        -- Send notifications for Murderer and Sheriff
-        for role, playerName in pairs(q) do
-            if playerName then
-                local player = Players:FindFirstChild(playerName)
-                if player then
-                    StarterGui:SetCore("SendNotification", {
-                        Title = "",
-                        Text = role .. " is: " .. playerName,
-                        Icon = "https://web.roblox.com/Thumbs/Avatar.ashx?x=180&y=180&Format=Png&userid=" .. player.UserId,
-                        Duration = 5
-                    })
-                end
-            end
-        end
-        
-        -- Make the GUI disappear after 5 seconds
-        task.delay(5, function()
-            F.Visible = false
-        end)
-    end
+-- Role notification system
+local function setupRoleNotification()
+   if currentConnection then
+       currentConnection:Disconnect()
+   end
+
+   currentConnection = RoleSelector.Title:GetPropertyChangedSignal("Text"):Connect(function()
+       if not isEnabled then 
+           currentConnection:Disconnect()
+           return
+       end
+       
+       if RoleSelector.Title.Text ~= "You Are" then
+           currentConnection:Disconnect()
+           return
+       end
+       
+       task.wait(0.5)
+       
+       local roles = {
+           Murderer = "",
+           Sheriff = ""
+       }
+       
+       for player, data in pairs(PlayerData) do
+           if data.Role == "Murderer" or data.Role == "Sheriff" then
+               roles[data.Role] = player
+           end
+       end
+       
+       if roles.Murderer ~= "" then
+           notifyRole(roles.Murderer, "Murderer")
+       end
+       if roles.Sheriff ~= "" then
+           notifyRole(roles.Sheriff, "Sheriff")
+       end
+   end)
 end
 
-
+-- Character added handler
+local function onCharacterAdded()
+   if not isEnabled then return end
+   task.wait(1)
+   setupRoleNotification()
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -765,34 +709,30 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
+
 local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
-    Title = "Role Notifier",
-    Default = false,
-    Callback = function(Value)
-        isEnabled = Value
-        if Value then
-            notifyRoles() -- Call notifyRoles immediately when toggled on
-        else
-            roleFrame.Visible = false -- Hide the frame when toggled off
-            if roleText.connection then
-                roleText.connection:Disconnect()
-            end
-        end
-    end
+   Title = "Role Notifier",
+   Default = false,
+   Callback = function(Value)
+       isEnabled = Value
+       
+       if isEnabled then
+           -- Set up initial notification if already in game
+           if LocalPlayer.Character then
+               setupRoleNotification()
+           end
+           
+           -- Connect character added event
+           LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+       else
+           -- Clean up
+           if currentConnection then
+               currentConnection:Disconnect()
+               currentConnection = nil
+           end
+       end
+   end
 })
-
--- Optional: Handle RoleSelector Title change to re-trigger notifyRoles
-local function onRoleSelectorTitleChanged()
-    local roleSelectorTitle = D.PlayerGui.MainGUI.Game.RoleSelector.Title
-    if roleSelectorTitle.Text == "You Are" then
-        notifyRoles()
-    end
-end
-
--- Connect to the PropertyChangedSignal of the RoleSelector Title
-local roleSelectorTitle = D.PlayerGui.MainGUI.Game.RoleSelector.Title
-roleSelectorTitle:GetPropertyChangedSignal("Text"):Connect(onRoleSelectorTitleChanged)
-
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
