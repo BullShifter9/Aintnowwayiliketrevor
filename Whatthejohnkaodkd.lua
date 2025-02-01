@@ -722,6 +722,50 @@ UIStroke.Color = Color3.fromRGB(255, 100, 0)
 UIStroke.Thickness = 2
 UIStroke.Transparency = 0.5
 
+local CollectionState = {
+   enabled = false,
+   collecting = false
+}
+
+-- Optimized Collection Function with Integrated Bypass
+local function GunDropCollector()
+   -- Validation checks
+   local player = Players.LocalPlayer
+   local character = player.Character
+   if not character or CollectionState.collecting then return end
+   
+   local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+   if not humanoidRootPart then return end
+   
+   -- Mark collection state and cache position
+   CollectionState.collecting = true
+   local originalCFrame = humanoidRootPart.CFrame
+   
+   -- Gun detection and bypass collection
+   local GunDrop = workspace:FindFirstChild("GunDrop", true)
+   if GunDrop then
+       -- Remove collection restrictions
+       local grabCooldown = player:FindFirstChild("GrabCooldown")
+       if grabCooldown then grabCooldown:Destroy() end
+       
+       -- Execute optimized collection sequence
+       humanoidRootPart.CFrame = GunDrop.CFrame * CFrame.new(0, 0.5, 0)
+       task.wait()
+       
+       -- Force collection with retry mechanism
+       for i = 1, 3 do
+           if not GunDrop:IsDescendantOf(workspace) then break end
+           game:GetService("ReplicatedStorage").RemoteEvents.GrabEvent:FireServer()
+           task.wait()
+       end
+       
+       -- Restore position
+       humanoidRootPart.CFrame = originalCFrame
+   end
+   
+   CollectionState.collecting = false
+end
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -811,6 +855,37 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
         gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
+
+local AutoGunToggle = Tabs.Main:AddToggle("AutoGunDropCollector", {
+   Title = "Auto Get Gun Drop",
+   Default = false,
+   Callback = function(Value)
+       CollectionState.enabled = Value
+       
+       if Value then
+           -- Initialize collection loop with performance optimization
+           task.spawn(function()
+               while CollectionState.enabled and task.wait(0.1) do
+                   GunDropCollector()
+               end
+           end)
+           
+           -- User feedback
+           Fluent:Notify({
+               Title = "Gun collect",
+               Content = "Gun Collect Enable",
+               Duration = 2
+           })
+       else
+           -- Disable notification
+           Fluent:Notify({
+               Title = "Gun Collect",
+               Content = "Collect disabled",
+               Duration = 2
+           })
+       end
+   end
+})
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
