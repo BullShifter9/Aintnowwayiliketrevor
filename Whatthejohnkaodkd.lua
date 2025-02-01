@@ -693,8 +693,8 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
-local RoleNotifyButton = Tabs.Main:AddToggle("RoleNotifyButton", {
-    Title = "Role Notify",
+local RoleNotifyButton = Tabs.Main:AddToggle("Role Notify", {
+    Title = "Notify",
     Default = false,
     Callback = function(Value)
         if Value then
