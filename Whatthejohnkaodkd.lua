@@ -866,6 +866,10 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
+Tabs.Main:AddParagraph({
+    Title = "Development Notice",
+    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
+})
 
 -- ESP Toggle
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
