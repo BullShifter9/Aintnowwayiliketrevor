@@ -884,6 +884,7 @@ local SilentAimToggleV3 = Tabs.Main:AddToggle("SilentAimToggleV3", {
     end
 })
 
+-- Algorithm Type Dropdown
 local SelectedAlgorithm = "Algorithm" -- Default algorithm
 local SilentAimChoice = Tabs.Main:AddDropdown("SilentAimChoice", {
     Title = "Algorithm Type",
@@ -901,11 +902,37 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
     if not gun then return end
     local murderer = GetMurderer() -- Assume this function exists and returns the murderer
     if not murderer then return end
-    localPlayer.Character.Humanoid:EquipTool(gun)
 
-    -- Use the selected algorithm type
+    -- Equip the gun if not already equipped
+    if not localPlayer.Character:FindFirstChild("Gun") then
+        local hum = localPlayer.Character:FindFirstChild("Humanoid")
+        if localPlayer.Backpack:FindFirstChild("Gun") then
+            hum:EquipTool(localPlayer.Backpack:FindFirstChild("Gun"))
+        else
+            return
+        end
+    end
+
+    local murdererHRP = murderer.Character:FindFirstChild("HumanoidRootPart")
+    if not murdererHRP then return end
+
+    -- Predict the murderer's position
     local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
-    if predictedPos then
+    if not predictedPos then return end
+
+    -- Check for obstructions
+    local characterRootPart = localPlayer.Character.HumanoidRootPart
+    local rayDirection = predictedPos - characterRootPart.Position
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {localPlayer.Character}
+
+    local hit = workspace:Raycast(characterRootPart.Position, rayDirection, raycastParams)
+    if not hit or hit.Instance.Parent == murderer.Character then -- Check if nothing collides or if it collides with the murderer
+        -- Aim at the predicted position
+        local mouse = game.Players.LocalPlayer:GetMouse()
+        mouse.Hit.p = predictedPos
         gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
