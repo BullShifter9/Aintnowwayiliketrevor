@@ -711,7 +711,7 @@ SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
 SilentAimButtonV3.BorderSizePixel = 2
 SilentAimButtonV3.Position = UDim2.new(0.5, -25, 0.5, -25) -- Centered
 SilentAimButtonV3.Size = UDim2.new(0, 50, 0, 50) -- Smaller size for crosshair
-SilentAimButtonV3.Image = "rbxassetid://CROSSHAIR_ASSET_ID" -- Replace with your crosshair asset ID
+SilentAimButtonV3.Image = "rbxassetid://11162755592" -- Replace with your crosshair asset ID
 SilentAimButtonV3.Draggable = true
 SilentAimButtonV3.Visible = false
 
@@ -729,16 +729,12 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
     if not murderer then return end
     localPlayer.Character.Humanoid:EquipTool(gun)
 
-    -- Choose prediction method
-    local predictedPos
-    if Tabs.Main.SilentAimMethodDropdown.Value == "Basic" then
-        predictedPos = predictMurderV3(murderer, "Basic")
-    elseif Tabs.Main.SilentAimMethodDropdown.Value == "Rio" then
-        predictedPos = predictMurderV3(murderer, "Rio")
-    end
+    -- Dynamically select the prediction method
+    local SelectedAlgorithm = Tabs.Main.SilentAimMethodDropdown.Value -- Get the selected algorithm from the dropdown
+    local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Basic") -- Default to "Basic" if no algorithm is selected
 
     if predictedPos then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH3")
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
 
