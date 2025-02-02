@@ -597,14 +597,36 @@ local function predictMurderV3(murderer, algorithmType)
 
     -- Constants for prediction
     local Interval = 0.1 -- Fixed interval for prediction
-    local Gravity = 196.2
-    local FrictionDeceleration = 10
-    local ProbabilityFactor = 0.7 -- Probability-like factor for directional consistency
+    local Gravity = 196.2 -- Standard Roblox gravity
+    local FrictionDeceleration = 10 -- Deceleration due to friction
+    local JumpPower = humanoid.JumpPower -- Jump power of the humanoid
+    local MaxVerticalOffset = 5 -- Maximum vertical offset to avoid shooting into the ground
+    local MaxPredictionTime = 0.5 -- Maximum time to predict future position
 
     -- Simulate position and velocity
     local SimulatedPosition = rootPart.Position
     local SimulatedVelocity = rootPart.AssemblyLinearVelocity
     local MoveDirection = humanoid.MoveDirection
+
+    -- Function to predict jump height
+    local function predictJumpHeight(jumpPower, gravity, interval)
+        local initialVelocity = jumpPower / 100
+        local time = 0
+        local peakHeight = 0
+        while true do
+            local height = initialVelocity * time - 0.5 * gravity * time^2
+            if height <= 0 then break end
+            peakHeight = height
+            time = time + interval
+        end
+        return peakHeight
+    end
+
+    -- Predict jump if the humanoid is jumping
+    if humanoid.Jump then
+        local jumpHeight = predictJumpHeight(JumpPower, Gravity, Interval)
+        SimulatedPosition = SimulatedPosition + Vector3.new(0, jumpHeight, 0)
+    end
 
     -- Algorithm-specific adjustments
     if algorithmType == "Algorithm" then
@@ -615,34 +637,39 @@ local function predictMurderV3(murderer, algorithmType)
         end
 
         -- Predict movement with refined acceleration handling
-        SimulatedPosition = SimulatedPosition + Vector3.new(
-            SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2 * DirectionFactor,
-            SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
-            SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2 * DirectionFactor
-        )
+        local totalPredictionTime = 0
+        while totalPredictionTime < MaxPredictionTime do
+            SimulatedPosition = SimulatedPosition + Vector3.new(
+                SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2 * DirectionFactor,
+                SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+                SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2 * DirectionFactor
+            )
 
-        -- Adjust velocity based on movement direction with better deceleration
-        local Axes = {"X", "Z"}
-        for _, Axis in ipairs(Axes) do
-            local Goal = MoveDirection[Axis] * 16.2001
-            local CurrentVelocity = SimulatedVelocity[Axis]
-            if math.abs(CurrentVelocity) > math.abs(Goal) then
-                SimulatedVelocity = SimulatedVelocity - Vector3.new(
-                    Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0, -- Reduced friction for smoother deceleration
-                    0,
-                    Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0
-                )
-            elseif math.abs(CurrentVelocity) < math.abs(Goal) then
-                SimulatedVelocity = SimulatedVelocity + Vector3.new(
-                    Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0, -- Reduced friction for smoother acceleration
-                    0,
-                    Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0
-                )
+            -- Adjust velocity based on movement direction with better deceleration
+            local Axes = {"X", "Z"}
+            for _, Axis in ipairs(Axes) do
+                local Goal = MoveDirection[Axis] * 16.2001
+                local CurrentVelocity = SimulatedVelocity[Axis]
+                if math.abs(CurrentVelocity) > math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0
+                    )
+                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0
+                    )
+                end
             end
-        end
 
-        -- Apply gravity with slight dampening for realism
-        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
+            -- Apply gravity with slight dampening for realism
+            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
+
+            totalPredictionTime = totalPredictionTime + Interval
+        end
 
     elseif algorithmType == "Jet" then
         -- Jet mode is an aggressive version of Algorithm with faster speeds and sharper changes
@@ -650,42 +677,48 @@ local function predictMurderV3(murderer, algorithmType)
         local JetHeightFactor = humanoid.Jump and 8 or 0 -- Higher jump height for jet-like behavior
 
         -- Predict movement with enhanced speed and vertical adjustment
-        SimulatedPosition = SimulatedPosition + Vector3.new(
-            SimulatedVelocity.X * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
-            JetHeightFactor + SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
-            SimulatedVelocity.Z * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
-        )
+        local totalPredictionTime = 0
+        while totalPredictionTime < MaxPredictionTime do
+            SimulatedPosition = SimulatedPosition + Vector3.new(
+                SimulatedVelocity.X * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
+                JetHeightFactor + SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+                SimulatedVelocity.Z * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
+            )
 
-        -- Adjust velocity with higher friction for sharp stops/starts
-        local Axes = {"X", "Z"}
-        for _, Axis in ipairs(Axes) do
-            local Goal = MoveDirection[Axis] * 25 -- Higher goal speed for jet mode
-            local CurrentVelocity = SimulatedVelocity[Axis]
-            if math.abs(CurrentVelocity) > math.abs(Goal) then
-                SimulatedVelocity = SimulatedVelocity - Vector3.new(
-                    Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0, -- Increased friction for sharper deceleration
-                    0,
-                    Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0
-                )
-            elseif math.abs(CurrentVelocity) < math.abs(Goal) then
-                SimulatedVelocity = SimulatedVelocity + Vector3.new(
-                    Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0, -- Increased friction for sharper acceleration
-                    0,
-                    Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0
-                )
+            -- Adjust velocity with higher friction for sharp stops/starts
+            local Axes = {"X", "Z"}
+            for _, Axis in ipairs(Axes) do
+                local Goal = MoveDirection[Axis] * 25 -- Higher goal speed for jet mode
+                local CurrentVelocity = SimulatedVelocity[Axis]
+                if math.abs(CurrentVelocity) > math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0
+                    )
+                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0
+                    )
+                end
             end
-        end
 
-        -- Apply gravity with reduced dampening for faster falls
-        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
+            -- Apply gravity with reduced dampening for faster falls
+            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
+
+            totalPredictionTime = totalPredictionTime + Interval
+        end
     end
 
     -- Raycast to check for floor or ceiling
     local RaycastParams = RaycastParams.new()
     RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     RaycastParams.FilterDescendantsInstances = {character}
-    local FloorCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, -3, 0), RaycastParams)
-    local CeilingCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, 3, 0), RaycastParams)
+
+    local FloorCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, -MaxVerticalOffset, 0), RaycastParams)
+    local CeilingCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, MaxVerticalOffset, 0), RaycastParams)
 
     -- Adjust position based on raycast results
     if FloorCheck then
@@ -694,9 +727,9 @@ local function predictMurderV3(murderer, algorithmType)
         SimulatedPosition = Vector3.new(SimulatedPosition.X, CeilingCheck.Position.Y - 2, SimulatedPosition.Z)
     end
 
-    -- Predict jump with refined height adjustment
-    if humanoid.Jump then
-        SimulatedPosition = SimulatedPosition + Vector3.new(0, 6, 0) -- Increased jump height
+    -- Clamp vertical position to avoid shooting into the ground
+    if SimulatedPosition.Y < rootPart.Position.Y - MaxVerticalOffset then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, rootPart.Position.Y - MaxVerticalOffset, SimulatedPosition.Z)
     end
 
     return SimulatedPosition
@@ -705,14 +738,18 @@ end
 -- Silent Aim V3 GUI Button
 local SilentAimGuiV3 = Instance.new("ScreenGui")
 local SilentAimButtonV3 = Instance.new("ImageButton")
+
+SilentAimGuiV3.Name = "SilentAimGuiV3"
 SilentAimGuiV3.Parent = game.CoreGui
+
+SilentAimButtonV3.Name = "SilentAimButtonV3"
 SilentAimButtonV3.Parent = SilentAimGuiV3
 SilentAimButtonV3.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 SilentAimButtonV3.BackgroundTransparency = 0.3
 SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
 SilentAimButtonV3.BorderSizePixel = 2
-SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5)
-SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2)
+SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5, 0)
+SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2, 0)
 SilentAimButtonV3.Image = "rbxassetid://11162755592"
 SilentAimButtonV3.Draggable = true
 SilentAimButtonV3.Visible = false
@@ -727,44 +764,61 @@ local CollectionState = {
    collecting = false
 }
 
--- Optimized Collection Function with Integrated Bypass
-local function GunDropCollector()
-   -- Validation checks
-   local player = Players.LocalPlayer
-   local character = player.Character
-   if not character or CollectionState.collecting then return end
-   
-   local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-   if not humanoidRootPart then return end
-   
-   -- Mark collection state and cache position
-   CollectionState.collecting = true
-   local originalCFrame = humanoidRootPart.CFrame
-   
-   -- Gun detection and bypass collection
-   local GunDrop = workspace:FindFirstChild("GunDrop", true)
-   if GunDrop then
-       -- Remove collection restrictions
-       local grabCooldown = player:FindFirstChild("GrabCooldown")
-       if grabCooldown then grabCooldown:Destroy() end
-       
-       -- Execute optimized collection sequence
-       humanoidRootPart.CFrame = GunDrop.CFrame * CFrame.new(0, 0.5, 0)
-       task.wait()
-       
-       -- Force collection with retry mechanism
-       for i = 1, 3 do
-           if not GunDrop:IsDescendantOf(workspace) then break end
-           game:GetService("ReplicatedStorage").RemoteEvents.GrabEvent:FireServer()
-           task.wait()
-       end
-       
-       -- Restore position
-       humanoidRootPart.CFrame = originalCFrame
-   end
-   
-   CollectionState.collecting = false
+
+-- Safety check function
+local function IsSafeToCollect(humanoidRootPart)
+    local murderer = GetMurderer()
+    if murderer and murderer:FindFirstChild("HumanoidRootPart") then
+        local distance = (murderer.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
+        return distance > 10 -- Fixed safe distance of 20 studs
+    end
+    return true
 end
+
+-- Enhanced Collection Function with Safety Checks
+local function GunDropCollector()
+    local player = Players.LocalPlayer
+    local character = player.Character
+    if not character or CollectionState.collecting then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    if not IsSafeToCollect(humanoidRootPart) then
+        Fluent:Notify({
+            Title = "Grab Gun",
+            Content = "Murderer too close",
+            Duration = 2
+        })
+        return
+    end
+    
+    CollectionState.collecting = true
+    local originalCFrame = humanoidRootPart.CFrame
+    
+    local GunDrop = workspace:FindFirstChild("GunDrop", true)
+    if GunDrop then
+        local grabCooldown = player:FindFirstChild("GrabCooldown")
+        if grabCooldown then grabCooldown:Destroy() end
+        
+        humanoidRootPart.CFrame = GunDrop.CFrame * CFrame.new(0, 0.5, 0)
+        task.wait()
+        
+        for i = 1, 3 do
+            if not IsSafeToCollect(humanoidRootPart) then
+                break
+            end
+            if not GunDrop:IsDescendantOf(workspace) then break end
+            game:GetService("ReplicatedStorage").RemoteEvents.GrabEvent:FireServer()
+            task.wait()
+        end
+        
+        humanoidRootPart.CFrame = originalCFrame
+    end
+    
+    CollectionState.collecting = false
+end
+
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -857,34 +911,31 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
 end)
 
 local AutoGunToggle = Tabs.Main:AddToggle("AutoGunDropCollector", {
-   Title = "Auto Get Gun Drop",
-   Default = false,
-   Callback = function(Value)
-       CollectionState.enabled = Value
-       
-       if Value then
-           -- Initialize collection loop with performance optimization
-           task.spawn(function()
-               while CollectionState.enabled and task.wait(0.1) do
-                   GunDropCollector()
-               end
-           end)
-           
-           -- User feedback
-           Fluent:Notify({
-               Title = "Gun collect",
-               Content = "Gun Collect Enable",
-               Duration = 2
-           })
-       else
-           -- Disable notification
-           Fluent:Notify({
-               Title = "Gun Collect",
-               Content = "Collect disabled",
-               Duration = 2
-           })
-       end
-   end
+    Title = "Auto Get Gun Drop",
+    Default = false,
+    Callback = function(Value)
+        CollectionState.enabled = Value
+        
+        if Value then
+            task.spawn(function()
+                while CollectionState.enabled and task.wait(0.1) do
+                    GunDropCollector()
+                end
+            end)
+            
+            Fluent:Notify({
+                Title = "Grab Gun",
+                Content = "Grab Gun enabled",
+                Duration = 2
+            })
+        else
+            Fluent:Notify({
+                Title = "Grab Gun",
+                Content = "Grab Gun disabled",
+                Duration = 2
+            })
+        end
+    end
 })
 
 -- Prediction Ping Toggle
