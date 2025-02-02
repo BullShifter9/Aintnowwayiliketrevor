@@ -735,6 +735,30 @@ local function predictMurderV3(murderer, algorithmType)
     return SimulatedPosition
 end
 
+-- New Prediction Function Based on Provided Logic
+local function predictMurderV3_Simplified(murderer, shootOffset, offsetToPingMult)
+    local localplayer = game.Players.LocalPlayer
+    local player = murderer.Character
+    if not player then return nil end
+
+    local playerHRP = player:FindFirstChild("UpperTorso")
+    local playerHum = player:FindFirstChild("Humanoid")
+    if not playerHRP or not playerHum then
+        return nil
+    end
+
+    local playerPosition = playerHRP.Position
+    local velocity = playerHRP.AssemblyLinearVelocity
+    local playerMoveDirection = playerHum.MoveDirection
+    local playerLookVec = playerHRP.CFrame.LookVector
+    local yVelFactor = velocity.Y > 0 and -1 or 0.5
+
+    local predictedPosition = playerHRP.Position + ((velocity * Vector3.new(0, yVelFactor, 0))) * (shootOffset / 15) + playerMoveDirection * shootOffset
+    predictedPosition = predictedPosition * (((localplayer:GetNetworkPing() * 1000) * ((offsetToPingMult - 1) * 0.01)) + 1)
+
+    return predictedPosition
+end
+
 -- Silent Aim V3 GUI Button
 local SilentAimGuiV3 = Instance.new("ScreenGui")
 local SilentAimButtonV3 = Instance.new("ImageButton")
@@ -888,12 +912,16 @@ local SilentAimToggleV3 = Tabs.Main:AddToggle("SilentAimToggleV3", {
 local SelectedAlgorithm = "Algorithm" -- Default algorithm
 local SilentAimChoice = Tabs.Main:AddDropdown("SilentAimChoice", {
     Title = "Algorithm Type",
-    Values = {"Algorithm", "Jet"},
+    Values = {"Algorithm", "Jet", "Simplified"},
     Default = "Algorithm",
     Callback = function(choice)
         SelectedAlgorithm = choice
     end
 })
+
+-- Constants for Simplified Prediction
+local ShootOffset = 10 -- Adjust as needed
+local OffsetToPingMult = 1.5 -- Adjust as needed
 
 -- Silent Aim V3 Button Click Event
 SilentAimButtonV3.MouseButton1Click:Connect(function()
@@ -913,11 +941,13 @@ SilentAimButtonV3.MouseButton1Click:Connect(function()
         end
     end
 
-    local murdererHRP = murderer.Character:FindFirstChild("HumanoidRootPart")
-    if not murdererHRP then return end
+    local predictedPos
+    if SelectedAlgorithm == "Simplified" then
+        predictedPos = predictMurderV3_Simplified(murderer, ShootOffset, OffsetToPingMult)
+    else
+        predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
+    end
 
-    -- Predict the murderer's position
-    local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
     if not predictedPos then return end
 
     -- Check for obstructions
