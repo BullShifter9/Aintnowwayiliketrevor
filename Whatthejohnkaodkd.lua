@@ -602,6 +602,7 @@ local function predictMurderV3(murderer, algorithmType)
     local JumpPower = humanoid.JumpPower -- Jump power of the humanoid
     local MaxVerticalOffset = 5 -- Maximum vertical offset to avoid shooting into the ground
     local MaxPredictionTime = 0.5 -- Maximum time to predict future position
+    local AirResistance = 0.1 -- Air resistance factor
 
     -- Simulate position and velocity
     local SimulatedPosition = rootPart.Position
@@ -626,7 +627,11 @@ local function predictMurderV3(murderer, algorithmType)
     if humanoid.Jump then
         local jumpHeight = predictJumpHeight(JumpPower, Gravity, Interval)
         SimulatedPosition = SimulatedPosition + Vector3.new(0, jumpHeight, 0)
+        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, JumpPower / 100, 0)
     end
+
+    -- Apply air resistance
+    SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
 
     -- Algorithm-specific adjustments
     if algorithmType == "Algorithm" then
@@ -668,6 +673,9 @@ local function predictMurderV3(murderer, algorithmType)
             -- Apply gravity with slight dampening for realism
             SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
 
+            -- Apply air resistance
+            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
+
             totalPredictionTime = totalPredictionTime + Interval
         end
 
@@ -708,6 +716,9 @@ local function predictMurderV3(murderer, algorithmType)
             -- Apply gravity with reduced dampening for faster falls
             SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
 
+            -- Apply air resistance
+            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
+
             totalPredictionTime = totalPredictionTime + Interval
         end
     end
@@ -723,40 +734,19 @@ local function predictMurderV3(murderer, algorithmType)
     -- Adjust position based on raycast results
     if FloorCheck then
         SimulatedPosition = Vector3.new(SimulatedPosition.X, FloorCheck.Position.Y + 3, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on landing
     elseif CeilingCheck then
         SimulatedPosition = Vector3.new(SimulatedPosition.X, CeilingCheck.Position.Y - 2, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on hitting ceiling
     end
 
     -- Clamp vertical position to avoid shooting into the ground
     if SimulatedPosition.Y < rootPart.Position.Y - MaxVerticalOffset then
         SimulatedPosition = Vector3.new(SimulatedPosition.X, rootPart.Position.Y - MaxVerticalOffset, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on ground
     end
 
     return SimulatedPosition
-end
-
--- New Prediction Function Based on Provided Logic
-local function predictMurderV3_Simplified(murderer, shootOffset, offsetToPingMult)
-    local localplayer = game.Players.LocalPlayer
-    local player = murderer.Character
-    if not player then return nil end
-
-    local playerHRP = player:FindFirstChild("UpperTorso")
-    local playerHum = player:FindFirstChild("Humanoid")
-    if not playerHRP or not playerHum then
-        return nil
-    end
-
-    local playerPosition = playerHRP.Position
-    local velocity = playerHRP.AssemblyLinearVelocity
-    local playerMoveDirection = playerHum.MoveDirection
-    local playerLookVec = playerHRP.CFrame.LookVector
-    local yVelFactor = velocity.Y > 0 and -1 or 0.5
-
-    local predictedPosition = playerHRP.Position + ((velocity * Vector3.new(0, yVelFactor, 0))) * (shootOffset / 15) + playerMoveDirection * shootOffset
-    predictedPosition = predictedPosition * (((localplayer:GetNetworkPing() * 1000) * ((offsetToPingMult - 1) * 0.01)) + 1)
-
-    return predictedPosition
 end
 
 -- Silent Aim V3 GUI Button
