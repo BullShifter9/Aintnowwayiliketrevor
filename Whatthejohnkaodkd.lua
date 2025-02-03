@@ -538,13 +538,13 @@ local MurdererPerkToggle = Tabs.Main:AddToggle("MurdererPerkNotify", {
                    local character = player.Character
                    local playerRole = character and character:FindFirstChild("Role")
                    
-                   if playerRole and playerRole.Value == "Murderer" then
-                       local perkData = player:FindFirstChild("PerkData")
+                   if playerRole and playerRole:GetAttribute("Role") == "Murderer" then
+                       local perkEffect = playerRole:GetAttribute("Perk")
                        
-                       if perkData and perkData:GetAttribute("Effect") then
+                       if perkEffect then
                            Fluent:Notify({
                                Title = "Murderer Perk Alert",
-                               Content = player.Name .. " is using " .. perkData:GetAttribute("Effect") .. " Perk!",
+                               Content = player.Name .. " is using " .. perkEffect .. " Perk!",
                                Duration = 5
                            })
                        end
