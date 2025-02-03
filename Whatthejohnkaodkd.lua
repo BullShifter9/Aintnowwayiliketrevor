@@ -527,37 +527,36 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local MurdererPerkToggle = Tabs.Main:AddToggle("MurdererPerkNotify", {
-    Title = "Auto Murderer Perk Notify",
-    Default = false,
-    Callback = function(toggle)
-        if toggle then
-            -- Periodic check for Murderer perks
-            MurdererPerkConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                if not MurdererPerkToggle.Value then return end
-                
-                for playerName, playerData in pairs(game.Players) do
-                    local roleData = workspace:FindFirstChild(playerName .. "_Role")
-                    
-                    if roleData and roleData.Value == "Murderer" then
-                        local perkEffect = roleData:FindFirstChild("Perk")
-                        
-                        if perkEffect and perkEffect.Value ~= "" then
-                            Fluent:Notify({
-                                Title = "Murderer Perk Alert",
-                                Content = playerName .. " is using " .. perkEffect.Value .. " Perk!",
-                                Duration = 5
-                            })
-                        end
-                    end
-                end
-            end)
-        else
-            -- Disconnect when toggle is off
-            if MurdererPerkConnection then
-                MurdererPerkConnection:Disconnect()
-            end
-        end
-    end
+   Title = "Auto Murderer Perk Notify",
+   Default = false,
+   Callback = function(toggle)
+       if toggle then
+           MurdererPerkConnection = game:GetService("RunService").Heartbeat:Connect(function()
+               if not MurdererPerkToggle.Value then return end
+               
+               for _, player in pairs(game.Players:GetPlayers()) do
+                   local character = player.Character
+                   local playerRole = character and character:FindFirstChild("Role")
+                   
+                   if playerRole and playerRole.Value == "Murderer" then
+                       local perkData = player:FindFirstChild("PerkData")
+                       
+                       if perkData and perkData:GetAttribute("Effect") then
+                           Fluent:Notify({
+                               Title = "Murderer Perk Alert",
+                               Content = player.Name .. " is using " .. perkData:GetAttribute("Effect") .. " Perk!",
+                               Duration = 5
+                           })
+                       end
+                   end
+               end
+           end)
+       else
+           if MurdererPerkConnection then
+               MurdererPerkConnection:Disconnect()
+           end
+       end
+   end
 })
 
 -- Prediction Ping Toggle
