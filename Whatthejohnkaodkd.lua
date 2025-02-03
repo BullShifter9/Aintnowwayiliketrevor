@@ -532,8 +532,6 @@ local MurdererPerkToggle = Tabs.Main:AddToggle("MurdererPerkNotify", {
    Callback = function(toggle)
        if toggle then
            MurdererPerkConnection = game:GetService("RunService").Heartbeat:Connect(function()
-               if not MurdererPerkToggle.Value then return end
-               
                for _, player in pairs(game.Players:GetPlayers()) do
                    local character = player.Character
                    local playerRole = character and character:FindFirstChild("Role")
