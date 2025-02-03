@@ -527,34 +527,35 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 local MurdererPerkToggle = Tabs.Main:AddToggle("MurdererPerkNotify", {
-   Title = "Auto Murderer Perk Notify",
-   Default = false,
-   Callback = function(toggle)
-       if toggle then
-           MurdererPerkConnection = game:GetService("RunService").Heartbeat:Connect(function()
-               for _, player in pairs(game.Players:GetPlayers()) do
-                   local character = player.Character
-                   local playerRole = character and character:FindFirstChild("Role")
-                   
-                   if playerRole and playerRole:GetAttribute("Role") == "Murderer" then
-                       local perkEffect = playerRole:GetAttribute("Perk")
-                       
-                       if perkEffect then
-                           Fluent:Notify({
-                               Title = "Murderer Perk Alert",
-                               Content = player.Name .. " is using " .. perkEffect .. " Perk!",
-                               Duration = 5
-                           })
-                       end
-                   end
-               end
-           end)
-       else
-           if MurdererPerkConnection then
-               MurdererPerkConnection:Disconnect()
-           end
-       end
-   end
+    Title = "Auto Murderer Perk Notify", 
+    Default = false,
+    Callback = function(toggle)
+        if toggle then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local GetDataRemote = ReplicatedStorage.Remotes.Extras.GetData2
+            
+            MurdererPerkConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    local playerData = GetDataRemote:InvokeServer(player)
+                    
+                    -- Check if player is Murderer and has owned perks
+                    if playerData and playerData.Role == "Murderer" and playerData.Perks and playerData.Perks.Owned then
+                        for _, perk in ipairs(playerData.Perks.Owned) do
+                            Fluent:Notify({
+                                Title = "Murderer Perk Alert",
+                                Content = player.Name .. " is using " .. tostring(perk) .. " Perk!",
+                                Duration = 5
+                            })
+                        end
+                    end
+                end
+            end)
+        else
+            if MurdererPerkConnection then
+                MurdererPerkConnection:Disconnect()
+            end
+        end
+    end
 })
 
 -- Prediction Ping Toggle
