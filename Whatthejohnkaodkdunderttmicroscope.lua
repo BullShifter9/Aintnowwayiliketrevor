@@ -469,103 +469,7 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
-local MurdererPerkModule = {
-    Remotes = {
-        RoundStart = game:GetService("ReplicatedStorage").Remotes.Gameplay.RoundStart,
-        ActivatePerk = game:GetService("ReplicatedStorage").Remotes.Gameplay.ActivatePerk,
-        GetData = game:GetService("ReplicatedStorage").Remotes.Extras.GetData2
-    },
-    
-    -- Core Notification Methods
-    Methods = {
-        -- Method 1: Retrieve Murderers from Round Start
-        GetMurderersFromRoundStart = function()
-            local success, roundData = pcall(function()
-                return MurdererPerkModule.Remotes.RoundStart:InvokeServer()
-            end)
-            
-            if success and roundData and roundData.Murderers then
-                return roundData.Murderers
-            end
-            
-            return {}
-        end,
-        
-        -- Method 2: Fetch Perk Information
-        GetPerkInformation = function(player)
-            local success, perkData = pcall(function()
-                return MurdererPerkModule.Remotes.ActivatePerk:InvokeServer(player)
-            end)
-            
-            if success and perkData then
-                return perkData
-            end
-            
-            return nil
-        end,
-        
-        -- Method 3: Alternative Data Retrieval
-        GetAlternativePlayerData = function(player)
-            local success, playerData = pcall(function()
-                return MurdererPerkModule.Remotes.GetData:InvokeServer(player)
-            end)
-            
-            if success and playerData and playerData.Role == "Murderer" then
-                return playerData
-            end
-            
-            return nil
-        end
-    },
-    
-    -- Comprehensive Notification System
-    NotifyMurdererPerks = function()
-        -- Primary Method: Round Start Murderers
-        local murderers = MurdererPerkModule.Methods.GetMurderersFromRoundStart()
-        
-        if #murderers > 0 then
-            for _, murdererName in ipairs(murderers) do
-                local player = game.Players[murdererName]
-                
-                if player then
-                    -- Primary Perk Check via Activate Perk Remote
-                    local perkInfo = MurdererPerkModule.Methods.GetPerkInformation(player)
-                    
-                    if perkInfo and perkInfo.PerkName then
-                        Fluent:Notify({
-                            Title = "Murderer Perk Detected",
-                            Content = murdererName .. " is using " .. perkInfo.PerkName .. " Perk!",
-                            Duration = 5
-                        })
-                    else
-                        -- Fallback: Alternative Data Retrieval
-                        local alternativeData = MurdererPerkModule.Methods.GetAlternativePlayerData(player)
-                        
-                        if alternativeData and alternativeData.Perks and #alternativeData.Perks.Owned > 0 then
-                            Fluent:Notify({
-                                Title = "Alternative Murderer Perk",
-                                Content = murdererName .. " is using " .. table.concat(alternativeData.Perks.Owned, ", ") .. " Perk!",
-                                Duration = 5
-                            })
-                        else
-                            Fluent:Notify({
-                                Title = "Murderer Detected",
-                                Content = murdererName .. " has no active perks.",
-                                Duration = 3
-                            })
-                        end
-                    end
-                end
-            end
-        else
-            Fluent:Notify({
-                Title = "Perk Notification",
-                Content = "No murderers found in current round.",
-                Duration = 3
-            })
-        end
-    end
-}
+
 
 
 -- Fluent UI Integration
@@ -623,6 +527,7 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
 })
 
 
+
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
@@ -650,12 +555,6 @@ local PingSlider = Tabs.Main:AddSlider("PingSlider", {
    end
 })
 
-local NotifyMurdererPerkButton = Tabs.Main:AddButton({
-    Title = "Notify Murderers Perk",
-    Callback = function()
-        MurdererPerkModule.NotifyMurdererPerks()
-    end
-})
 
 local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   Title = "Auto Coin",
@@ -682,6 +581,87 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
           end
       end
   end
+})
+
+local NotifyMurdererPerkButton = Tabs.Main:AddButton({
+   Title = "Notify Murderers Perk",
+   Callback = function()
+       -- Service References
+       local ReplicatedStorage = game:GetService("ReplicatedStorage")
+       local Remotes = {
+           RoundStart = ReplicatedStorage.Remotes.Gameplay.RoundStart,
+           ActivatePerk = ReplicatedStorage.Remotes.Gameplay.ActivatePerk,
+           GetData2 = ReplicatedStorage.Remotes.Extras.GetData2
+       }
+       
+       -- Comprehensive Murderer Perk Retrieval Method
+       local function GetMurdererPerkInfo(playerName)
+           local perkData = {}
+           
+           -- Fetch Player-Specific Data
+           local success, playerInfo = pcall(function()
+               return Remotes.GetData2:InvokeServer(game.Players[playerName])
+           end)
+           
+           if success and playerInfo then
+               perkData.OwnedPerks = playerInfo.Perks and playerInfo.Perks.Owned or {}
+           end
+           
+           -- Fetch Activated Perk Information
+           local perkSuccess, activePerkInfo = pcall(function()
+               return Remotes.ActivatePerk:InvokeServer(game.Players[playerName])
+           end)
+           
+           if perkSuccess and activePerkInfo then
+               perkData.ActivePerk = activePerkInfo.PerkName or "Unknown Perk"
+           end
+           
+           return perkData
+       end
+       
+       -- Round Start Murderer Detection
+       local roundSuccess, roundData = pcall(function()
+           return Remotes.RoundStart:InvokeServer()
+       end)
+       
+       if not roundSuccess or not roundData or not roundData.Murderers then
+           Fluent:Notify({
+               Title = "Perk Notification",
+               Content = "Unable to retrieve round information.",
+               Duration = 3
+           })
+           return
+       end
+       
+       -- Murderer Perk Notification Engine
+       for _, murdererName in ipairs(roundData.Murderers) do
+           local perkInfo = GetMurdererPerkInfo(murdererName)
+           
+           -- Comprehensive Notification Logic
+           if perkInfo.ActivePerk then
+               Fluent:Notify({
+                   Title = "Murderer Perk Detected",
+                   Content = string.format("%s is using %s Perk!", 
+                       murdererName, 
+                       perkInfo.ActivePerk
+                   ),
+                   Duration = 5
+               })
+           end
+           
+           -- Additional Owned Perks Notification
+           if perkInfo.OwnedPerks and #perkInfo.OwnedPerks > 0 then
+               Fluent:Notify({
+                   Title = "Additional Murderer Perks",
+                   Content = string.format("%s owns: %s", 
+                       murdererName, 
+                       table.concat(perkInfo.OwnedPerks, ", ")
+                   ),
+                   Duration = 4
+               })
+           end
+       end
+   end
 })
 
 -- Discord Section Configuration
