@@ -7,6 +7,8 @@ local HttpService = game:GetService("HttpService")
 local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true)
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
+local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
+local AutoNotifyEnabled = true
 
 
 -- Global State Management
@@ -470,7 +472,69 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
     end
 end)
 
+local function NotifyMurdererPerk()
+    if not AutoNotifyEnabled then
+        return
+    end
 
+    local murdererPlayer = GetMurderer()
+
+    if not murdererPlayer then
+        Fluent:Notify({
+            Title = "🕵️ Murderer Detection",
+            Content = "No murderer found in current round.",
+            Duration = 3
+        })
+        return
+    end
+
+    local knownPerks = {
+        "Xray",
+        "Footsteps",
+        "Sleight",
+        "Ninja",
+        "Sprint",
+        "Fake Gun",
+        "Haste",
+        "Trap",
+        "Ghost"
+    }
+
+    local murdererFolder = workspace:FindFirstChild(murdererPlayer.Name)
+    local detectedPerk = nil
+
+    if murdererFolder then
+        for _, perkName in ipairs(knownPerks) do
+            if murdererFolder:FindFirstChild(perkName) then
+                detectedPerk = perkName
+                break
+            end
+        end
+    end
+
+    if detectedPerk then
+        Fluent:Notify({
+            Title = "🔪 Murderer Perk Detected",
+            Content = string.format(
+                "%s is using the %s Perk!", 
+                murdererPlayer.Name, 
+                detectedPerk
+            ),
+            Duration = 5
+        })
+    else
+        Fluent:Notify({
+            Title = "🕵️ Murderer Found",
+            Content = murdererPlayer.Name .. " detected, but no perk information available.",
+            Duration = 4
+        })
+    end
+end
+
+GameplayEvents.RoundStart.OnClientEvent:Connect(function()
+    task.wait(1)
+    NotifyMurdererPerk()
+end)
 
 
 -- Fluent UI Integration
@@ -518,77 +582,28 @@ ESPToggle:OnChanged(function()
    end
 end)
 
-local NotifyMurdererPerkButton = Tabs.Main:AddButton({
-    Title = "Identify & Notify Murderer Perks",
-    Callback = function()
-        -- Function to find the murderer
-        local function GetMurderer()
-            for _, player in pairs(game.Players:GetPlayers()) do
-                local character = player.Character
-                if character and (character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")) then
-                    return player
-                end
-            end
-        end
 
-        -- Get the murderer
-        local murdererPlayer = GetMurderer()
-
-        if not murdererPlayer then
-            Fluent:Notify({
-                Title = "🕵️ Murderer Detection",
-                Content = "No murderer found in current round.",
-                Duration = 3
-            })
-            return
-        end
-
-        -- List of known perks
-        local knownPerks = {
-            "Xray",
-            "Footsteps",
-            "Sleight",
-            "Ninja",
-            "Sprint",
-            "Fake Gun",
-            "Haste",
-            "Trap",
-            "Ghost"
-        }
-
-        -- Check for perks in workspace
-        local murdererFolder = workspace:FindFirstChild(murdererPlayer.Name)
-        local detectedPerk = nil
-
-        if murdererFolder then
-            for _, perkName in ipairs(knownPerks) do
-                if murdererFolder:FindFirstChild(perkName) then
-                    detectedPerk = perkName
-                    break
-                end
-            end
-        end
-
-        -- Notify based on detected perk
-        if detectedPerk then
-            Fluent:Notify({
-                Title = "🔪 Murderer Perk Detected",
-                Content = string.format(
-                    "%s is using the %s Perk!", 
-                    murdererPlayer.Name, 
-                    detectedPerk
-                ),
-                Duration = 5
-            })
-        else
-            Fluent:Notify({
-                Title = "🕵️ Murderer Found",
-                Content = murdererPlayer.Name .. " detected, but no perk information available.",
-                Duration = 4
-            })
-        end
+local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
+    Title = "Silent Aim",
+    Default = false,
+    Callback = function(toggle)
+        SilentAimButtonV2.Visible = toggle
     end
 })
+
+local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
+    Title = "Auto Notify Murderers Perk",
+    Default = true,
+})
+
+AutoNotifyToggle:OnChanged(function(state)
+    AutoNotifyEnabled = state
+    Fluent:Notify({
+        Title = "Auto Notify",
+        Content = state and " ENABLED." or " DISABLED.",
+        Duration = 3
+    })
+end)
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
