@@ -26,6 +26,12 @@ local state = {
    gunDrop = nil
 }
 
+local states = {
+    perkNotificationsEnabled = false,
+    notificationCooldown = 1.0,
+    lastNotificationTime = 0
+}
+
 --Prediction State
 local predictionState = {
    pingEnabled = false,
@@ -465,7 +471,7 @@ SilentAimButtonV2.MouseButton1Click:Connect(function()
 
     local predictedPos = predictMurderV2(murderer)
     if predictedPos then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH")
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
 end)
 
@@ -499,57 +505,6 @@ Tabs.Main:AddParagraph({
     Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
 })
 
-local NotifyMurdererPerkButton = Tabs.Main:AddButton({
-   Title = "Identify & Notify Murderer Perks",
-   Callback = function()
-       local function GetMurderer()
-           for _, player in pairs(game.Players:GetPlayers()) do
-               local character = player.Character
-               if character and (character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")) then
-                   return player
-               end
-           end
-       end
-
-       local murdererPlayer = GetMurderer()
-       
-       if not murdererPlayer then
-           Fluent:Notify({
-               Title = "🕵️ Murderer Detection",
-               Content = "No murderer found in current round.",
-               Duration = 3
-           })
-           return
-       end
-
-       -- Robust Perk Retrieval Strategy
-       local success, perkInfo = pcall(function()
-           local PerkService = require(game:GetService("ReplicatedStorage").Modules.PerkService)
-           return PerkService:GetPerkInfo(murdererPlayer.Name)
-       end)
-
-       if success and perkInfo then
-           -- Comprehensive Perk Notification
-           Fluent:Notify({
-               Title = "🔪 Murderer Perk Detected",
-               Content = string.format(
-                   "%s is using the %s Perk!\n📍 Details: %s", 
-                   murdererPlayer.Name, 
-                   perkInfo.DisplayName or perkInfo.Name,
-                   perkInfo.Description or "No additional details available"
-               ),
-               Duration = 5
-           })
-       else
-           -- Fallback Notification
-           Fluent:Notify({
-               Title = "🕵️ Murderer Found",
-               Content = murdererPlayer.Name .. " detected, but no perk information available.",
-               Duration = 4
-           })
-       end
-   end
-})
 
 -- ESP Toggle
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
@@ -568,7 +523,50 @@ ESPToggle:OnChanged(function()
    end
 end)
 
-
+local PerkNotificationToggle = Tabs.Main:AddToggle("PerkNotificationToggle", {
+    Title = "Murderer Perk Notifications",
+    Default = false,
+    Callback = function(toggle)
+        states.perkNotificationsEnabled = toggle
+        
+        if toggle then
+            -- Initialize notification system
+            local PerkService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("PerkService"))
+            
+            -- Connect to PerkService events
+            PerkService.MurdererPerkActivated.Event:Connect(function(murderer, perkInfo)
+                if not states.perkNotificationsEnabled then return end
+                
+                -- Implement rate limiting
+                local currentTime = tick()
+                if currentTime - states.lastNotificationTime < states.notificationCooldown then
+                    return
+                end
+                states.lastNotificationTime = currentTime
+                
+                -- Validate data
+                if not murderer or not perkInfo then return end
+                
+                -- Send notification
+                ReplicatedStorage.Modules.PerkService.NotifyMurdererPerk:FireServer({
+                    murdererPlayer = murderer,
+                    perkType = perkInfo.perkType,
+                    timestamp = currentTime
+                })
+                
+                -- UI Notification
+                Fluent:Notify({
+                    Title = "Murderer Perk Detected",
+                    Content = string.format("%s activated %s", 
+                        murderer.Name, 
+                        perkInfo.perkType
+                    ),
+                    Duration = 3
+                })
+            end)
+        end
+    end
+})
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     Title = "Silent Aim",
