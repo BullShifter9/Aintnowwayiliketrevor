@@ -537,6 +537,62 @@ GameplayEvents.RoundStart.OnClientEvent:Connect(function()
 end)
 
 
+local function predictMurderSharpShooter(murderer)
+    local character = murderer.Character
+    if not character then return nil end
+    local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not primaryPart or not humanoid then return nil end
+
+    -- Constants for prediction
+    local Interval = 0.02 -- Extremely small interval for high precision
+    local Gravity = 196.2
+    local MaxAcceleration = 50 -- Maximum acceleration for adaptive tracking
+    local JumpVelocity = 50 -- Initial upward velocity for jumps
+    local AdaptiveFactor = 0.8 -- Factor for adaptive velocity adjustment
+
+    -- Get current position and velocity
+    local CurrentPosition = primaryPart.Position
+    local CurrentVelocity = primaryPart.AssemblyLinearVelocity
+    local MoveDirection = humanoid.MoveDirection
+
+    -- Adaptive velocity adjustment
+    local PredictedVelocity = CurrentVelocity * AdaptiveFactor + MoveDirection * (1 - AdaptiveFactor)
+    local PredictedPosition = CurrentPosition + PredictedVelocity * Interval
+
+    -- Account for gravity
+    PredictedPosition = PredictedPosition + Vector3.new(0, -0.5 * Gravity * Interval^2, 0)
+
+    -- Predict jump arc
+    if humanoid.Jump then
+        local TimeInAir = JumpVelocity / Gravity
+        local HorizontalVelocity = PredictedVelocity * Vector3.new(1, 0, 1) -- Only horizontal components
+        local PredictedJumpPosition = PredictedPosition + HorizontalVelocity * TimeInAir + Vector3.new(0, JumpVelocity * TimeInAir - 0.5 * Gravity * TimeInAir^2, 0)
+        PredictedPosition = PredictedJumpPosition
+    end
+
+    -- Raycast to detect obstacles
+    local RaycastParams = RaycastParams.new()
+    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    RaycastParams.FilterDescendantsInstances = {character}
+
+    -- Check for walls or floors
+    local WallCheck = workspace:Raycast(
+        CurrentPosition,
+        PredictedPosition - CurrentPosition,
+        RaycastParams
+    )
+
+    if WallCheck then
+        PredictedPosition = WallCheck.Position + (PredictedPosition - WallCheck.Position).Unit * 2 -- Adjust position near wall
+    end
+
+    -- Final adjustment for sharpness
+    PredictedPosition = PredictedPosition + PredictedVelocity * 0.1 -- Fine-tune position
+
+    return PredictedPosition
+end
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -588,6 +644,19 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     Default = false,
     Callback = function(toggle)
         SilentAimButtonV2.Visible = toggle
+    end
+})
+
+local SharpShooterToggle = Tabs.Main:AddToggle("SharpShooterToggle", {
+    Title = "Sharp Shooter",
+    Default = false,
+    Callback = function(toggle)
+        SharpShooterEnabled = toggle
+        Fluent:Notify({
+            Title = "Sharp Shooter",
+            Content = toggle and "Sharp Shooter is now ENABLED." or "Sharp Shooter is now DISABLED.",
+            Duration = 3
+        })
     end
 })
 
