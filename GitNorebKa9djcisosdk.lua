@@ -13,22 +13,23 @@ local AutoNotifyEnabled = true
 
 
 -- Global State Management
-local LocalPlayer = Players.LocalPlayer
 local state = {
-    espEnabled = false,
-    murder = nil,
-    sheriff = nil,
-    hero = nil,
-    gunDrop = nil,
-    autoGetGunDropEnabled = false,
-    originalPosition = nil,
-    murdererNearDistance = 15 -- Distance threshold to consider murderer near
-},
+   espEnabled = false,
+   espColors = {
+       murderer = Color3.fromRGB(255, 0, 0),
+       sheriff = Color3.fromRGB(0, 0, 255),
+       hero = Color3.fromRGB(255, 255, 0),
+       innocent = Color3.fromRGB(0, 255, 0),
+       gunDrop = Color3.fromRGB(128, 0, 128)
+   },
    roles = {},
    murder = nil,
    sheriff = nil,
    hero = nil,
-   gunDrop = nil
+   gunDrop = nil,
+   autoGetGunDropEnabled = false,
+   originalPosition = nil,
+   murdererNearDistance = 15
 }
 
 
@@ -718,6 +719,14 @@ local SharpShooterToggle = Tabs.Main:AddToggle("SharpShooterToggle", {
     end
 })
 
+local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
+    Title = "Auto Get Gun Drop",
+    Default = false,
+    Callback = function(toggle)
+        state.autoGetGunDropEnabled = toggle
+    end
+})
+
 local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
     Title = "Auto Notify Murderers Perk",
     Default = true,
@@ -731,14 +740,6 @@ AutoNotifyToggle:OnChanged(function(state)
         Duration = 3
     })
 end)
-
-local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
-    Title = "Auto Get Gun Drop",
-    Default = false,
-    Callback = function(toggle)
-        state.autoGetGunDropEnabled = toggle
-    end
-})
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
