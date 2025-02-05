@@ -652,6 +652,33 @@ Workspace.DescendantRemoving:Connect(function(descendant)
     end
 end)
 
+local function collectCoins()
+    if not state.coinAuraEnabled then return end
+    
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local nearestCoin = nil
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Coin_Server" or v.Name == "SnowToken" then
+            if nearestCoin then
+                if (root.Position - nearestCoin.Position).Magnitude > (root.Position - v.Position).Magnitude then
+                    nearestCoin = v
+                end
+            else
+                nearestCoin = v
+            end
+        end
+    end
+    
+    if nearestCoin and (root.Position - nearestCoin.Position).Magnitude <= state.coinAuraRadius then
+        -- Trigger the coin collection
+        firetouch(LocalPlayer.Character.HumanoidRootPart, nearestCoin)
+        wait(0.1) -- Small delay to ensure the coin is collected
+    end
+end
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -724,6 +751,14 @@ local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
     Default = false,
     Callback = function(toggle)
         state.autoGetGunDropEnabled = toggle
+    end
+})
+
+local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
+    Title = "Coin Aura",
+    Default = false,
+    Callback = function(toggle)
+        state.coinAuraEnabled = toggle
     end
 })
 
