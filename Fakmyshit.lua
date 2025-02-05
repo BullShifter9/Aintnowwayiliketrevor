@@ -785,6 +785,9 @@ Fluent:Notify({
 
 SaveManager:LoadAutoloadConfig()
 
+local FluentContainer = Window.Instance -- The main container of the Fluent UI
+
+-- Create Toggle Button for Fluent UI
 local ToggleButton = Instance.new("ImageButton")
 local ToggleButtonUIStroke = Instance.new("UIStroke")
 
@@ -801,7 +804,7 @@ ToggleButton.BorderColor3 = Color3.fromRGB(255, 100, 0)
 ToggleButton.BorderSizePixel = 0
 ToggleButton.Position = UDim2.new(0, 10, 0.5, -25) -- Centered vertically, 10px from the left
 ToggleButton.Size = UDim2.new(0, 50, 0, 50) -- Circular button
-ToggleButton.Image = "rbxassetid://11162755592" -- Replace with your desired image
+ToggleButton.Image = "rbxassetid://2398054" -- Replace with your desired image
 ToggleButton.ZIndex = 10
 
 -- Add UIStroke for border effect
@@ -814,9 +817,9 @@ ToggleButtonUIStroke.Parent = ToggleButton
 local IsOpen = true
 ToggleButton.MouseButton1Click:Connect(function()
     if IsOpen then
-        Window:Minimize() -- Minimize Fluent UI
+        FluentContainer.Visible = false -- Hide the Fluent UI
     else
-        Window:Restore() -- Restore Fluent UI
+        FluentContainer.Visible = true -- Show the Fluent UI
     end
     IsOpen = not IsOpen
 end)
