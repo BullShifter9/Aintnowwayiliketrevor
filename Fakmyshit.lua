@@ -785,14 +785,6 @@ Fluent:Notify({
 
 SaveManager:LoadAutoloadConfig()
 
-local function toggleFluentUI()
-    local mainFrame = Window:GetRef("Main")
-    if mainFrame then
-        mainFrame.Visible = not mainFrame.Visible
-    end
-end
-
--- Create Toggle Button for Fluent UI
 local ToggleButton = Instance.new("ImageButton")
 local ToggleButtonUIStroke = Instance.new("UIStroke")
 
@@ -819,6 +811,12 @@ ToggleButtonUIStroke.Transparency = 0.5
 ToggleButtonUIStroke.Parent = ToggleButton
 
 -- Toggle Fluent UI Visibility
+local IsOpen = true
 ToggleButton.MouseButton1Click:Connect(function()
-    toggleFluentUI()
+    if IsOpen then
+        Window:Minimize() -- Minimize Fluent UI
+    else
+        Window:Toggled() -- Restore Fluent UI
+    end
+    IsOpen = not IsOpen
 end)
