@@ -785,6 +785,7 @@ Fluent:Notify({
 
 SaveManager:LoadAutoloadConfig()
 
+-- Create Toggle Button for Fluent UI
 local ToggleButton = Instance.new("ImageButton")
 local ToggleButtonUIStroke = Instance.new("UIStroke")
 
@@ -816,7 +817,24 @@ ToggleButton.MouseButton1Click:Connect(function()
     if IsOpen then
         Window:Minimize() -- Minimize Fluent UI
     else
-        Window:Toggled() -- Restore Fluent UI
+        Window:Restore() -- Restore Fluent UI
     end
     IsOpen = not IsOpen
+end)
+
+-- Override the Minimize method to handle visibility properly
+Window.Minimize = function(self)
+    self.Window.Visible = false
+    IsOpen = false
+end
+
+-- Override the Restore method to handle visibility properly
+Window.Restore = function(self)
+    self.Window.Visible = true
+    IsOpen = true
+end
+
+-- Update ToggleButton appearance based on Fluent UI visibility
+Window.Window:GetPropertyChangedSignal("Visible"):Connect(function()
+    IsOpen = Window.Window.Visible
 end)
