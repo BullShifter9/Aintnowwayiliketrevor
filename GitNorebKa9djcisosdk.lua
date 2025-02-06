@@ -831,6 +831,52 @@ AutoNotifyToggle:OnChanged(function(state)
     })
 end)
 
+-- Speed Glitch Configuration
+local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
+   Title = "Speed Glitch",
+   Default = false,
+   Callback = function(toggle)
+       state.speedGlitchEnabled = toggle
+   end
+})
+
+-- Speed Glitch Power Slider
+local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
+   Title = "Speed Glitch Power",
+   Default = 25,
+   Min = 0,
+   Max = 100,
+   Rounding = 0,
+   Callback = function(value)
+       state.speedGlitchPower = value
+   end
+})
+
+-- Speed Glitch Core Logic
+RunService.Heartbeat:Connect(function()
+   local player = game.Players.LocalPlayer
+   local character = player.Character
+   
+   if not character then return end
+   
+   local humanoid = character:FindFirstChildOfClass("Humanoid")
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   
+   if not humanoid or not rootPart then return end
+   
+   -- Check if speed glitch is enabled and player is jumping
+   if state.speedGlitchEnabled and humanoid.FloorMaterial == Enum.Material.Air then
+       local speedMultiplier = 1 + (state.speedGlitchPower / 50)  -- Scaling speed boost
+       
+       -- Apply velocity boost while jumping
+       rootPart.Velocity = Vector3.new(
+           rootPart.Velocity.X * speedMultiplier, 
+           rootPart.Velocity.Y, 
+           rootPart.Velocity.Z * speedMultiplier
+       )
+   end
+end)
+
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
