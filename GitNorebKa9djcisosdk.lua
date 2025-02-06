@@ -840,10 +840,19 @@ local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
    end
 })
 
--- Speed Glitch Power Slider (Full Range with Controlled Scaling)
+-- Speed Glitch Configuration
+local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
+   Title = "Speed Glitch",
+   Default = false,
+   Callback = function(toggle)
+       state.speedGlitchEnabled = toggle
+   end
+})
+
+-- Speed Glitch Power Slider
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
    Title = "Speed Glitch Power",
-   Default = 15,
+   Default = 20,
    Min = 0,
    Max = 100,
    Rounding = 0,
@@ -852,7 +861,16 @@ local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
    end
 })
 
--- Speed Glitch Core Logic
+-- Local reference to UserInputService for jump detection
+local UserInputService = game:GetService("UserInputService")
+
+-- Speed Glitch Persistent State Tracker
+local speedGlitchState = {
+   accumulatedSpeed = 0,
+   lastJumpTime = 0
+}
+
+-- Core Speed Glitch Logic
 RunService.Heartbeat:Connect(function()
    local player = game.Players.LocalPlayer
    local character = player.Character
@@ -864,31 +882,40 @@ RunService.Heartbeat:Connect(function()
    
    if not humanoid or not rootPart then return end
    
-   -- Check if speed glitch is enabled and player is jumping
-   if state.speedGlitchEnabled and humanoid.FloorMaterial == Enum.Material.Air then
-       -- Exponential-like scaling with logarithmic curve
-       local rawPower = state.speedGlitchPower
-       local speedMultiplier = 1 + (math.log(rawPower + 1) / 10)
+   -- Validate continuous jump and speed glitch conditions
+   local isJumpHeld = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+   local isAirborne = humanoid.FloorMaterial == Enum.Material.Air
+   
+   if state.speedGlitchEnabled and isJumpHeld and isAirborne then
+       -- Progressive speed accumulation
+       speedGlitchState.accumulatedSpeed = math.min(
+           speedGlitchState.accumulatedSpeed + 0.75, 
+           state.speedGlitchPower / 10
+       )
        
-       -- Implement precise velocity control
+       -- Velocity manipulation with controlled scaling
        local currentVelocity = rootPart.Velocity
+       local speedMultiplier = 1 + speedGlitchState.accumulatedSpeed
+       
        local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+       local maxHorizontalSpeed = 50  -- Configurable hard limit
        
-       -- Conservative max speed limit
-       local maxHorizontalSpeed = 40
-       local clampedHorizontalVelocity = horizontalVelocity * math.min(speedMultiplier, 1.5)
-       clampedHorizontalVelocity = Vector3.new(
-           math.clamp(clampedHorizontalVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
+       local acceleratedVelocity = horizontalVelocity * speedMultiplier
+       acceleratedVelocity = Vector3.new(
+           math.clamp(acceleratedVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
            0,
-           math.clamp(clampedHorizontalVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
+           math.clamp(acceleratedVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
        )
        
-       -- Reconstruct velocity with controlled horizontal movement
+       -- Apply accumulated speed while preserving vertical momentum
        rootPart.Velocity = Vector3.new(
-           clampedHorizontalVelocity.X, 
-           currentVelocity.Y,  -- Preserve vertical momentum
-           clampedHorizontalVelocity.Z
+           acceleratedVelocity.X, 
+           currentVelocity.Y, 
+           acceleratedVelocity.Z
        )
+   else
+       -- Reset speed accumulator when not continuously jumping
+       speedGlitchState.accumulatedSpeed = 0
    end
 end)
 
