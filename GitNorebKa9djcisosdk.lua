@@ -7,7 +7,6 @@ local HttpService = game:GetService("HttpService")
 local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true)
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
@@ -680,9 +679,6 @@ local function collectCoins()
     end
 end
 
-
-
-
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -701,7 +697,6 @@ local Window = Fluent:CreateWindow({
 -- Add Discord Tab
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
-    Misc = Window:AddTab({ Title = "Misc", Icon = "tool" }),
     Discord = Window:AddTab({ Title = "Join Discord", Icon = "message-square" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
@@ -836,172 +831,7 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
-local systemStates = {
-    noClipConnection = nil,
-    antiAFKConnection = nil,
-    origNamecall = nil
-}
 
--- X-Ray System Implementation
-local XRayToggle = Tabs.Misc:AddToggle("XRayToggle", {
-    Title = "X-Ray",
-    Default = false,
-    Callback = function(toggle)
-        -- Implement X-Ray using LocalTransparencyModifier for better performance
-        local transparencyValue = toggle and (XRayTransparency.Value / 100) or 0
-        for _, part in ipairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-                part.LocalTransparencyModifier = transparencyValue
-            end
-        end
-    end
-})
-
-local XRayTransparency = Tabs.Misc:AddSlider("XRayTransparency", {
-    Title = "X-Ray Transparency",
-    Description = "Adjust X-Ray transparency level",
-    Default = 50,
-    Min = 0,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(value)
-        if XRayToggle.Value then
-            local transparencyValue = value / 100
-            for _, part in ipairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-                    part.LocalTransparencyModifier = transparencyValue
-                end
-            end
-        end
-    end
-})
-
--- NoClip System Implementation using RunService.Stepped
-local NoClipToggle = Tabs.Misc:AddToggle("NoClipToggle", {
-    Title = "NoClip",
-    Default = false,
-    Callback = function(toggle)
-        if toggle then
-            systemStates.noClipConnection = RunService.Stepped:Connect(function()
-                local character = LocalPlayer.Character
-                if character then
-                    for _, part in ipairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end)
-        else
-            if systemStates.noClipConnection then
-                systemStates.noClipConnection:Disconnect()
-                systemStates.noClipConnection = nil
-                
-                -- Restore collision states
-                local character = LocalPlayer.Character
-                if character then
-                    for _, part in ipairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = true
-                        end
-                    end
-                end
-            end
-        end
-    end
-})
-
--- Anti-AFK System using VirtualUser service
-local AntiAFKToggle = Tabs.Misc:AddToggle("AntiAFKToggle", {
-    Title = "Anti-AFK",
-    Default = false,
-    Callback = function(toggle)
-        if toggle then
-            systemStates.antiAFKConnection = LocalPlayer.Idled:Connect(function()
-                VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-                task.wait(0.1)  -- Using task.wait for better performance
-                VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-            end)
-        else
-            if systemStates.antiAFKConnection then
-                systemStates.antiAFKConnection:Disconnect()
-                systemStates.antiAFKConnection = nil
-            end
-        end
-    end
-})
-
--- Anti-Kick System using metatable hook
-local AntiKickToggle = Tabs.Misc:AddToggle("AntiKickToggle", {
-    Title = "Anti-Kick",
-    Default = false,
-    Callback = function(toggle)
-        if toggle and not systemStates.origNamecall then
-            systemStates.origNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                if method == "Kick" or method == "kick" then
-                    return nil
-                end
-                return systemStates.origNamecall(self, ...)
-            end)
-        elseif not toggle and systemStates.origNamecall then
-            hookmetamethod(game, "__namecall", systemStates.origNamecall)
-            systemStates.origNamecall = nil
-        end
-    end
-})
-
--- Character Movement Modifications
-local WalkSpeedSlider = Tabs.Misc:AddSlider("WalkSpeedSlider", {
-    Title = "Walk Speed",
-    Description = "Adjust walking speed",
-    Default = 16,
-    Min = 16,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = value
-        end
-    end
-})
-
-local JumpPowerSlider = Tabs.Misc:AddSlider("JumpPowerSlider", {
-    Title = "Jump Power",
-    Description = "Adjust jump power",
-    Default = 50,
-    Min = 50,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.JumpPower = value
-        end
-    end
-})
-
--- Character respawn handler
-LocalPlayer.CharacterAdded:Connect(function(character)
-    task.wait()  -- Wait for Humanoid to initialize
-    local humanoid = character:WaitForChild("Humanoid")
-    if humanoid then
-        -- Restore movement modifications
-        humanoid.WalkSpeed = WalkSpeedSlider.Value
-        humanoid.JumpPower = JumpPowerSlider.Value
-    end
-end)
-
--- Cleanup handler for proper system shutdown
-game:BindToClose(function()
-    for _, connection in pairs(systemStates) do
-        if typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
-        end
-    end
-    if systemStates.origNamecall then
-        hookmetamethod(game, "__namecall", systemStates.origNamecall)
-    end
-end)
 
 -- Discord Section Configuration
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
