@@ -833,23 +833,23 @@ end)
 
 -- Speed Glitch Configuration
 local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
-   Title = "Speed Glitch",
-   Default = false,
-   Callback = function(toggle)
-       state.speedGlitchEnabled = toggle
-   end
+    Title = "Speed Glitch",
+    Default = false,
+    Callback = function(toggle)
+        state.speedGlitchEnabled = toggle
+    end
 })
 
 -- Speed Glitch Power Slider
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
-   Title = "Speed Glitch Power",
-   Default = 20,
-   Min = 0,
-   Max = 100,
-   Rounding = 0,
-   Callback = function(value)
-       state.speedGlitchPower = value
-   end
+    Title = "Speed Glitch Power",
+    Default = 20,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(value)
+        state.speedGlitchPower = value
+    end
 })
 
 -- Local services
@@ -857,63 +857,62 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Speed Glitch State Tracker
 local speedGlitchState = {
-   accumulatedSpeed = 0
+    accumulatedSpeed = 0
 }
 
 -- Core Speed Glitch Logic
 RunService.Heartbeat:Connect(function()
-   local player = game.Players.LocalPlayer
-   local character = player.Character
-   
-   if not character then return end
-   
-   local humanoid = character:FindFirstChildOfClass("Humanoid")
-   local rootPart = character:FindFirstChild("HumanoidRootPart")
-   
-   if not humanoid or not rootPart then return end
-   
-   -- Check for jump button press (works for both mobile and PC)
-   local isJumping = false
-   
-   -- Mobile jump button detection
-   if UserInputService.TouchEnabled then
-       isJumping = humanoid.Jump
-   end
-   
-   -- PC jump key detection
-   if UserInputService.KeyboardEnabled then
-       isJumping = UserInputService:IsKeyDown(Enum.KeyCode.Space)
-   end
-   
-   local isAirborne = humanoid.FloorMaterial == Enum.Material.Air
-   
-   if state.speedGlitchEnabled and isJumping and isAirborne then
-       speedGlitchState.accumulatedSpeed = math.min(
-           speedGlitchState.accumulatedSpeed + 0.75, 
-           state.speedGlitchPower / 10
-       )
-       
-       local currentVelocity = rootPart.Velocity
-       local speedMultiplier = 1 + speedGlitchState.accumulatedSpeed
-       
-       local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
-       local maxHorizontalSpeed = 50
-       
-       local acceleratedVelocity = horizontalVelocity * speedMultiplier
-       acceleratedVelocity = Vector3.new(
-           math.clamp(acceleratedVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
-           0,
-           math.clamp(acceleratedVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
-       )
-       
-       rootPart.Velocity = Vector3.new(
-           acceleratedVelocity.X, 
-           currentVelocity.Y, 
-           acceleratedVelocity.Z
-       )
-   else
-       speedGlitchState.accumulatedSpeed = 0
-   end
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return end
+    
+    -- Check for jump button press (works for both mobile and PC)
+    local isJumping = false
+    
+    -- Mobile jump button detection
+    if UserInputService.TouchEnabled then
+        isJumping = humanoid.Jump
+    end
+    
+    -- PC jump key detection
+    if UserInputService.KeyboardEnabled then
+        isJumping = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+    end
+    
+    if state.speedGlitchEnabled and isJumping then
+        -- Keep accumulating speed even on ground as long as jump is held
+        speedGlitchState.accumulatedSpeed = math.min(
+            speedGlitchState.accumulatedSpeed + 0.75, 
+            state.speedGlitchPower / 10
+        )
+        
+        local currentVelocity = rootPart.Velocity
+        local speedMultiplier = 1 + speedGlitchState.accumulatedSpeed
+        
+        local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+        local maxHorizontalSpeed = 50
+        
+        local acceleratedVelocity = horizontalVelocity * speedMultiplier
+        acceleratedVelocity = Vector3.new(
+            math.clamp(acceleratedVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
+            0,
+            math.clamp(acceleratedVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
+        )
+        
+        rootPart.Velocity = Vector3.new(
+            acceleratedVelocity.X, 
+            currentVelocity.Y, 
+            acceleratedVelocity.Z
+        )
+    else
+        speedGlitchState.accumulatedSpeed = 0
+    end
 end)
 
 -- Prediction Ping Toggle
