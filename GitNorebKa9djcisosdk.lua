@@ -7,6 +7,7 @@ local HttpService = game:GetService("HttpService")
 local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true)
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
@@ -679,6 +680,213 @@ local function collectCoins()
     end
 end
 
+local state = {
+   skeletonEnabled = false,
+   roles = {},
+   murder = nil,
+   sheriff = nil, 
+   hero = nil,
+   espColors = {
+       murderer = Color3.fromRGB(255, 0, 0),
+       sheriff = Color3.fromRGB(0, 0, 255), 
+       hero = Color3.fromRGB(255, 255, 0),
+       innocent = Color3.fromRGB(0, 255, 0)
+   }
+}
+
+-- Skeleton ESP System Configuration
+local SkeletonESP = {
+   active = {},
+   connections = {},
+   config = {
+       mainLineThickness = 1.5,
+       glowLineThickness = 2.5,
+       mainTransparency = 0.2,
+       glowTransparency = 0.6,
+       updateInterval = 2,
+       zIndex = {glow = 1, main = 2}
+   }
+}
+
+-- R15 Bone Structure Definition
+local SKELETON_BONES = {
+   primary = {
+       {from = "Head", to = "UpperTorso"},
+       {from = "UpperTorso", to = "LowerTorso"},
+       {from = "UpperTorso", to = "LeftUpperArm"},
+       {from = "UpperTorso", to = "RightUpperArm"},
+       {from = "LowerTorso", to = "LeftUpperLeg"},
+       {from = "LowerTorso", to = "RightUpperLeg"}
+   },
+   secondary = {
+       {from = "LeftUpperArm", to = "LeftLowerArm"},
+       {from = "LeftLowerArm", to = "LeftHand"},
+       {from = "RightUpperArm", to = "RightLowerArm"},
+       {from = "RightLowerArm", to = "RightHand"},
+       {from = "LeftUpperLeg", to = "LeftLowerLeg"},
+       {from = "LeftLowerLeg", to = "LeftFoot"},
+       {from = "RightUpperLeg", to = "RightLowerLeg"},
+       {from = "RightLowerLeg", to = "RightFoot"}
+   }
+}
+
+-- Drawing Object Factory
+local function createNeonLine()
+   local glow = Drawing.new("Line")
+   glow.Thickness = SkeletonESP.config.glowLineThickness
+   glow.Transparency = 1 - SkeletonESP.config.glowTransparency
+   glow.ZIndex = SkeletonESP.config.zIndex.glow
+
+   local main = Drawing.new("Line")
+   main.Thickness = SkeletonESP.config.mainLineThickness
+   main.Transparency = 1 - SkeletonESP.config.mainTransparency
+   main.ZIndex = SkeletonESP.config.zIndex.main
+
+   return {glow = glow, main = main}
+end
+
+-- WorldToScreen Conversion
+local function worldToScreen(position)
+   local screenPos, onScreen = Camera:WorldToScreenPoint(position)
+   return Vector2.new(screenPos.X, screenPos.Y), onScreen and screenPos.Z > 0
+end
+
+-- Initialize Player Skeleton
+function SkeletonESP.initializePlayer(player)
+   if SkeletonESP.active[player] then return end
+   
+   local lines = {
+       primary = {},
+       secondary = {}
+   }
+
+   for _ in ipairs(SKELETON_BONES.primary) do
+       table.insert(lines.primary, createNeonLine())
+   end
+   
+   for _ in ipairs(SKELETON_BONES.secondary) do
+       table.insert(lines.secondary, createNeonLine())
+   end
+
+   SkeletonESP.active[player] = lines
+
+   local frameCount = 0
+   SkeletonESP.connections[player] = RunService.RenderStepped:Connect(function()
+       if not state.skeletonEnabled then return end
+       
+       frameCount += 1
+       if frameCount >= SkeletonESP.config.updateInterval then
+           frameCount = 0
+           SkeletonESP.updatePlayer(player)
+       end
+   end)
+end
+
+-- Update Player Skeleton
+function SkeletonESP.updatePlayer(player)
+   local lines = SkeletonESP.active[player]
+   if not lines then return end
+
+   local character = player.Character
+   if not character then return end
+
+   -- Determine role and color
+   local baseColor = state.espColors.innocent
+   if player.Name == state.murder then
+       baseColor = state.espColors.murderer
+   elseif player.Name == state.sheriff then
+       baseColor = state.espColors.sheriff
+   elseif player.Name == state.hero then
+       baseColor = state.espColors.hero
+   end
+
+   -- Calculate glow color
+   local glowColor = Color3.new(
+       math.min(1, baseColor.R * 1.4),
+       math.min(1, baseColor.G * 1.4),
+       math.min(1, baseColor.B * 1.4)
+   )
+
+   -- Update bones
+   local function updateBoneSet(boneSet, lineSet)
+       for i, bone in ipairs(SKELETON_BONES[boneSet]) do
+           local lineGroup = lineSet[i]
+           local fromPart = character:FindFirstChild(bone.from)
+           local toPart = character:FindFirstChild(bone.to)
+
+           if fromPart and toPart then
+               local from, fromVisible = worldToScreen(fromPart.Position)
+               local to, toVisible = worldToScreen(toPart.Position)
+
+               local visible = fromVisible and toVisible
+               lineGroup.glow.Visible = visible
+               lineGroup.main.Visible = visible
+
+               if visible then
+                   lineGroup.glow.From = from
+                   lineGroup.glow.To = to
+                   lineGroup.glow.Color = glowColor
+
+                   lineGroup.main.From = from
+                   lineGroup.main.To = to
+                   lineGroup.main.Color = baseColor
+               end
+           else
+               lineGroup.glow.Visible = false
+               lineGroup.main.Visible = false
+           end
+       end
+   end
+
+   updateBoneSet("primary", lines.primary)
+   updateBoneSet("secondary", lines.secondary)
+end
+
+-- Remove Player Cleanup
+function SkeletonESP.removePlayer(player)
+   if SkeletonESP.connections[player] then
+       SkeletonESP.connections[player]:Disconnect()
+       SkeletonESP.connections[player] = nil
+   end
+
+   if SkeletonESP.active[player] then
+       for _, lineSet in pairs(SkeletonESP.active[player]) do
+           for _, lineGroup in ipairs(lineSet) do
+               lineGroup.glow:Remove()
+               lineGroup.main:Remove()
+           end
+       end
+       SkeletonESP.active[player] = nil
+   end
+end
+
+-- Role Detection
+RunService.Heartbeat:Connect(function()
+   state.roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+   
+   for playerName, playerData in pairs(state.roles) do
+       if playerData.Role == "Murderer" then
+           state.murder = playerName
+       elseif playerData.Role == "Sheriff" then
+           state.sheriff = playerName
+       elseif playerData.Role == "Hero" then
+           state.hero = playerName
+       end
+   end
+end)
+
+-- Player Lifecycle Management
+Players.PlayerAdded:Connect(function(player)
+   if player ~= LocalPlayer and state.skeletonEnabled then
+       SkeletonESP.initializePlayer(player)
+   end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+   SkeletonESP.removePlayer(player)
+end)
+
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -697,6 +905,7 @@ local Window = Fluent:CreateWindow({
 -- Add Discord Tab
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "tool" }),
     Discord = Window:AddTab({ Title = "Join Discord", Icon = "message-square" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
@@ -724,6 +933,32 @@ ESPToggle:OnChanged(function()
    end
 end)
 
+local SkeletonESPToggle = Tabs.Main:AddToggle("SkeletonESPToggle", {
+   Title = "Skeleton ESP",
+   Default = false,
+   Callback = function(toggle)
+       state.skeletonEnabled = toggle
+       
+       if toggle then
+           for _, player in ipairs(Players:GetPlayers()) do
+               if player ~= LocalPlayer then
+                   SkeletonESP.initializePlayer(player)
+               end
+           end
+       else
+           for player in pairs(SkeletonESP.active) do
+               SkeletonESP.removePlayer(player)
+           end
+       end
+   end
+})
+
+-- Cleanup
+game:BindToClose(function()
+   for player in pairs(SkeletonESP.active) do
+       SkeletonESP.removePlayer(player)
+   end
+end)
 
 local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     Title = "Silent Aim",
@@ -831,7 +1066,172 @@ local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
   end
 })
 
+local systemStates = {
+    noClipConnection = nil,
+    antiAFKConnection = nil,
+    origNamecall = nil
+}
 
+-- X-Ray System Implementation
+local XRayToggle = Tabs.Misc:AddToggle("XRayToggle", {
+    Title = "X-Ray",
+    Default = false,
+    Callback = function(toggle)
+        -- Implement X-Ray using LocalTransparencyModifier for better performance
+        local transparencyValue = toggle and (XRayTransparency.Value / 100) or 0
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
+                part.LocalTransparencyModifier = transparencyValue
+            end
+        end
+    end
+})
+
+local XRayTransparency = Tabs.Misc:AddSlider("XRayTransparency", {
+    Title = "X-Ray Transparency",
+    Description = "Adjust X-Ray transparency level",
+    Default = 50,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(value)
+        if XRayToggle.Value then
+            local transparencyValue = value / 100
+            for _, part in ipairs(workspace:GetDescendants()) do
+                if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
+                    part.LocalTransparencyModifier = transparencyValue
+                end
+            end
+        end
+    end
+})
+
+-- NoClip System Implementation using RunService.Stepped
+local NoClipToggle = Tabs.Misc:AddToggle("NoClipToggle", {
+    Title = "NoClip",
+    Default = false,
+    Callback = function(toggle)
+        if toggle then
+            systemStates.noClipConnection = RunService.Stepped:Connect(function()
+                local character = LocalPlayer.Character
+                if character then
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            if systemStates.noClipConnection then
+                systemStates.noClipConnection:Disconnect()
+                systemStates.noClipConnection = nil
+                
+                -- Restore collision states
+                local character = LocalPlayer.Character
+                if character then
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Anti-AFK System using VirtualUser service
+local AntiAFKToggle = Tabs.Misc:AddToggle("AntiAFKToggle", {
+    Title = "Anti-AFK",
+    Default = false,
+    Callback = function(toggle)
+        if toggle then
+            systemStates.antiAFKConnection = LocalPlayer.Idled:Connect(function()
+                VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                task.wait(0.1)  -- Using task.wait for better performance
+                VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            end)
+        else
+            if systemStates.antiAFKConnection then
+                systemStates.antiAFKConnection:Disconnect()
+                systemStates.antiAFKConnection = nil
+            end
+        end
+    end
+})
+
+-- Anti-Kick System using metatable hook
+local AntiKickToggle = Tabs.Misc:AddToggle("AntiKickToggle", {
+    Title = "Anti-Kick",
+    Default = false,
+    Callback = function(toggle)
+        if toggle and not systemStates.origNamecall then
+            systemStates.origNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                if method == "Kick" or method == "kick" then
+                    return nil
+                end
+                return systemStates.origNamecall(self, ...)
+            end)
+        elseif not toggle and systemStates.origNamecall then
+            hookmetamethod(game, "__namecall", systemStates.origNamecall)
+            systemStates.origNamecall = nil
+        end
+    end
+})
+
+-- Character Movement Modifications
+local WalkSpeedSlider = Tabs.Misc:AddSlider("WalkSpeedSlider", {
+    Title = "Walk Speed",
+    Description = "Adjust walking speed",
+    Default = 16,
+    Min = 16,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = value
+        end
+    end
+})
+
+local JumpPowerSlider = Tabs.Misc:AddSlider("JumpPowerSlider", {
+    Title = "Jump Power",
+    Description = "Adjust jump power",
+    Default = 50,
+    Min = 50,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = value
+        end
+    end
+})
+
+-- Character respawn handler
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait()  -- Wait for Humanoid to initialize
+    local humanoid = character:WaitForChild("Humanoid")
+    if humanoid then
+        -- Restore movement modifications
+        humanoid.WalkSpeed = WalkSpeedSlider.Value
+        humanoid.JumpPower = JumpPowerSlider.Value
+    end
+end)
+
+-- Cleanup handler for proper system shutdown
+game:BindToClose(function()
+    for _, connection in pairs(systemStates) do
+        if typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    if systemStates.origNamecall then
+        hookmetamethod(game, "__namecall", systemStates.origNamecall)
+    end
+end)
 
 -- Discord Section Configuration
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
