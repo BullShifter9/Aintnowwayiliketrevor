@@ -840,15 +840,6 @@ local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
    end
 })
 
--- Speed Glitch Configuration
-local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
-   Title = "Speed Glitch",
-   Default = false,
-   Callback = function(toggle)
-       state.speedGlitchEnabled = toggle
-   end
-})
-
 -- Speed Glitch Power Slider
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
    Title = "Speed Glitch Power",
@@ -861,13 +852,12 @@ local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
    end
 })
 
--- Local reference to UserInputService for jump detection
+-- Local services
 local UserInputService = game:GetService("UserInputService")
 
--- Speed Glitch Persistent State Tracker
+-- Speed Glitch State Tracker
 local speedGlitchState = {
-   accumulatedSpeed = 0,
-   lastJumpTime = 0
+   accumulatedSpeed = 0
 }
 
 -- Core Speed Glitch Logic
@@ -882,23 +872,32 @@ RunService.Heartbeat:Connect(function()
    
    if not humanoid or not rootPart then return end
    
-   -- Validate continuous jump and speed glitch conditions
-   local isJumpHeld = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+   -- Check for jump button press (works for both mobile and PC)
+   local isJumping = false
+   
+   -- Mobile jump button detection
+   if UserInputService.TouchEnabled then
+       isJumping = humanoid.Jump
+   end
+   
+   -- PC jump key detection
+   if UserInputService.KeyboardEnabled then
+       isJumping = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+   end
+   
    local isAirborne = humanoid.FloorMaterial == Enum.Material.Air
    
-   if state.speedGlitchEnabled and isJumpHeld and isAirborne then
-       -- Progressive speed accumulation
+   if state.speedGlitchEnabled and isJumping and isAirborne then
        speedGlitchState.accumulatedSpeed = math.min(
            speedGlitchState.accumulatedSpeed + 0.75, 
            state.speedGlitchPower / 10
        )
        
-       -- Velocity manipulation with controlled scaling
        local currentVelocity = rootPart.Velocity
        local speedMultiplier = 1 + speedGlitchState.accumulatedSpeed
        
        local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
-       local maxHorizontalSpeed = 50  -- Configurable hard limit
+       local maxHorizontalSpeed = 50
        
        local acceleratedVelocity = horizontalVelocity * speedMultiplier
        acceleratedVelocity = Vector3.new(
@@ -907,14 +906,12 @@ RunService.Heartbeat:Connect(function()
            math.clamp(acceleratedVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
        )
        
-       -- Apply accumulated speed while preserving vertical momentum
        rootPart.Velocity = Vector3.new(
            acceleratedVelocity.X, 
            currentVelocity.Y, 
            acceleratedVelocity.Z
        )
    else
-       -- Reset speed accumulator when not continuously jumping
        speedGlitchState.accumulatedSpeed = 0
    end
 end)
