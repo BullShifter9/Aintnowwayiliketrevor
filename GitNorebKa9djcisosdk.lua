@@ -10,7 +10,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
-
+local BreakGunEnabled = false -- Default: Disabled
 
 -- Global State Management
 local state = {
@@ -679,6 +679,28 @@ local function collectCoins()
     end
 end
 
+local function BreakAllGuns()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= Players.LocalPlayer then
+            -- Check if the player has a gun in their Backpack
+            if v.Backpack:FindFirstChild("Gun") then
+                local gun = v.Backpack:FindFirstChild("Gun")
+                if gun:FindFirstChild("KnifeServer") and gun.KnifeServer:FindFirstChild("ShootGun") then
+                    gun.KnifeServer.ShootGun:InvokeServer(1, 0, "AH")
+                end
+            end
+
+            -- Check if the player has a gun in their Character
+            if v.Character and v.Character:FindFirstChild("Gun") then
+                local gun = v.Character:FindFirstChild("Gun")
+                if gun:FindFirstChild("KnifeServer") and gun.KnifeServer:FindFirstChild("ShootGun") then
+                    gun.KnifeServer.ShootGun:InvokeServer(1, 0, "AH")
+                end
+            end
+        end
+    end
+end
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -766,6 +788,39 @@ local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
     Title = "Auto Notify Murderers Perk",
     Default = true,
 })
+
+local AutoGunBreakToggle = Tabs.Main:AddToggle("AutoGunBreakToggle", {
+    Title = "Auto Gun Break",
+    Default = false,
+    Callback = function(toggle)
+        BreakGunEnabled = toggle
+        Fluent:Notify({
+            Title = "Auto Gun Break",
+            Content = toggle and "Auto Gun Break is now ENABLED." or "Auto Gun Break is now DISABLED.",
+            Duration = 3
+        })
+    end
+})
+
+-- Break Gun Button
+local BreakGunButton = Tabs.Main:AddButton({
+    Title = "Break All Guns",
+    Callback = function()
+        BreakAllGuns()
+        Fluent:Notify({
+            Title = "Break Gun",
+            Content = "All guns have been broken!",
+            Duration = 3
+        })
+    end
+})
+
+-- Auto Gun Break Loop
+RunService.Heartbeat:Connect(function()
+    if BreakGunEnabled then
+        BreakAllGuns()
+    end
+end)
 
 AutoNotifyToggle:OnChanged(function(state)
     AutoNotifyEnabled = state
