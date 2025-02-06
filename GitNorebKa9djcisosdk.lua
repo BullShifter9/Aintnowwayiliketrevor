@@ -840,10 +840,10 @@ local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
    end
 })
 
--- Speed Glitch Power Slider
+-- Speed Glitch Power Slider (Full Range with Controlled Scaling)
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
    Title = "Speed Glitch Power",
-   Default = 25,
+   Default = 15,
    Min = 0,
    Max = 100,
    Rounding = 0,
@@ -866,13 +866,28 @@ RunService.Heartbeat:Connect(function()
    
    -- Check if speed glitch is enabled and player is jumping
    if state.speedGlitchEnabled and humanoid.FloorMaterial == Enum.Material.Air then
-       local speedMultiplier = 1 + (state.speedGlitchPower / 50)  -- Scaling speed boost
+       -- Exponential-like scaling with logarithmic curve
+       local rawPower = state.speedGlitchPower
+       local speedMultiplier = 1 + (math.log(rawPower + 1) / 10)
        
-       -- Apply velocity boost while jumping
+       -- Implement precise velocity control
+       local currentVelocity = rootPart.Velocity
+       local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+       
+       -- Conservative max speed limit
+       local maxHorizontalSpeed = 40
+       local clampedHorizontalVelocity = horizontalVelocity * math.min(speedMultiplier, 1.5)
+       clampedHorizontalVelocity = Vector3.new(
+           math.clamp(clampedHorizontalVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
+           0,
+           math.clamp(clampedHorizontalVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
+       )
+       
+       -- Reconstruct velocity with controlled horizontal movement
        rootPart.Velocity = Vector3.new(
-           rootPart.Velocity.X * speedMultiplier, 
-           rootPart.Velocity.Y, 
-           rootPart.Velocity.Z * speedMultiplier
+           clampedHorizontalVelocity.X, 
+           currentVelocity.Y,  -- Preserve vertical momentum
+           clampedHorizontalVelocity.Z
        )
    end
 end)
