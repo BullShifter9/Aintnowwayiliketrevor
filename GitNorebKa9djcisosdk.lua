@@ -790,7 +790,7 @@ local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
 })
 
 local AutoGunBreakToggle = Tabs.Main:AddToggle("AutoGunBreakToggle", {
-    Title = "Auto Gun Break",
+    Title = "Auto Gun reak",
     Default = false,
     Callback = function(toggle)
         BreakGunEnabled = toggle
@@ -850,6 +850,68 @@ local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
     Callback = function(value)
         state.speedGlitchPower = value
     end
+})
+
+-- Break Gun Function with Gun Detection and Notification
+local function breakGun(player)
+   if player.Character and player.Character:FindFirstChild("Gun") then
+       local gun = player.Character:FindFirstChild("Gun")
+       if gun and gun:FindFirstChild("KnifeServer") then
+           for i = 1, 30 do
+               gun.KnifeServer.ShootGun:FireServer(0, CFrame.new(), Vector3.new())
+           end
+           
+           Fluent:Notify({
+               Title = "Gun Break",
+               Content = "Successfully broke " .. player.Name .. "'s gun!",
+               Duration = 3
+           })
+       end
+   end
+end
+
+-- Gun Detection and Auto Break System
+game.Players.PlayerAdded:Connect(function(player)
+   player.CharacterAdded:Connect(function(character)
+       character.ChildAdded:Connect(function(child)
+           if child.Name == "Gun" then
+               if breakGunEnabled then
+                   breakGun(player)
+               end
+           end
+       end)
+   end)
+end)
+
+-- Initial check for existing players
+for _, player in pairs(game.Players:GetPlayers()) do
+   if player.Character then
+       player.CharacterAdded:Connect(function(character)
+           character.ChildAdded:Connect(function(child)
+               if child.Name == "Gun" then
+                   if breakGunEnabled then
+                       breakGun(player)
+                   end
+               end
+           end)
+       end)
+   end
+end
+
+-- Toggle for Auto Break Gun
+local breakGunEnabled = false
+local autoBreakToggle = Tabs.Main:AddToggle("AutoGunBreakToggle", {
+   Title = "Auto Gun Break",
+   Default = false,
+   Callback = function(toggle)
+       breakGunEnabled = toggle
+       
+       Fluent:Notify({
+           Title = "Auto Gun Break",
+           Content = toggle and "Auto Gun Break Enabled" or "Auto Gun Break Disabled",
+           Duration = 3
+       })
+   end
 })
 
 -- Local services
