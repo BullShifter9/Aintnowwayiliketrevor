@@ -789,47 +789,6 @@ local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
     Default = true,
 })
 
-local AutoGunBreakToggle = Tabs.Main:AddToggle("AutoGunBreakToggle", {
-    Title = "Auto Gun reak",
-    Default = false,
-    Callback = function(toggle)
-        BreakGunEnabled = toggle
-        Fluent:Notify({
-            Title = "Auto Gun Break",
-            Content = toggle and "Auto Gun Break is now ENABLED." or "Auto Gun Break is now DISABLED.",
-            Duration = 3
-        })
-    end
-})
-
--- Break Gun Button
-local BreakGunButton = Tabs.Main:AddButton({
-    Title = "Break All Guns",
-    Callback = function()
-        BreakAllGuns()
-        Fluent:Notify({
-            Title = "Break Gun",
-            Content = "All guns have been broken!",
-            Duration = 3
-        })
-    end
-})
-
--- Auto Gun Break Loop
-RunService.Heartbeat:Connect(function()
-    if BreakGunEnabled then
-        BreakAllGuns()
-    end
-end)
-
-AutoNotifyToggle:OnChanged(function(state)
-    AutoNotifyEnabled = state
-    Fluent:Notify({
-        Title = "Auto Notify",
-        Content = state and " ENABLED." or " DISABLED.",
-        Duration = 3
-    })
-end)
 
 -- Speed Glitch Configuration
 local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
@@ -841,6 +800,14 @@ local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
 })
 
 -- Speed Glitch Power Slider
+local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
+    Title = "Speed Glitch",
+    Default = false,
+    Callback = function(toggle)
+        state.speedGlitchEnabled = toggle
+    end
+})
+
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
     Title = "Speed Glitch Power",
     Default = 20,
@@ -852,128 +819,78 @@ local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
     end
 })
 
--- Break Gun Function with Gun Detection and Notification
-local function breakGun(player)
-   if player.Character and player.Character:FindFirstChild("Gun") then
-       local gun = player.Character:FindFirstChild("Gun")
-       if gun and gun:FindFirstChild("KnifeServer") then
-           for i = 1, 30 do
-               gun.KnifeServer.ShootGun:FireServer(0, CFrame.new(), Vector3.new())
-           end
-           
-           Fluent:Notify({
-               Title = "Gun Break",
-               Content = "Successfully broke " .. player.Name .. "'s gun!",
-               Duration = 3
-           })
-       end
-   end
-end
-
--- Gun Detection and Auto Break System
-game.Players.PlayerAdded:Connect(function(player)
-   player.CharacterAdded:Connect(function(character)
-       character.ChildAdded:Connect(function(child)
-           if child.Name == "Gun" then
-               if breakGunEnabled then
-                   breakGun(player)
-               end
-           end
-       end)
-   end)
-end)
-
--- Initial check for existing players
-for _, player in pairs(game.Players:GetPlayers()) do
-   if player.Character then
-       player.CharacterAdded:Connect(function(character)
-           character.ChildAdded:Connect(function(child)
-               if child.Name == "Gun" then
-                   if breakGunEnabled then
-                       breakGun(player)
-                   end
-               end
-           end)
-       end)
-   end
-end
-
--- Toggle for Auto Break Gun
-local breakGunEnabled = false
-local autoBreakToggle = Tabs.Main:AddToggle("AutoGunBreakToggle", {
-   Title = "Auto Gun Break",
-   Default = false,
-   Callback = function(toggle)
-       breakGunEnabled = toggle
-       
-       Fluent:Notify({
-           Title = "Auto Gun Break",
-           Content = toggle and "Auto Gun Break Enabled" or "Auto Gun Break Disabled",
-           Duration = 3
-       })
-   end
-})
-
--- Local services
+-- Service initialization
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- Speed Glitch State Tracker
+-- State management with physics parameters
 local speedGlitchState = {
-    accumulatedSpeed = 0
+    accumulatedSpeed = 0,
+    groundedThreshold = 1, -- Distance threshold for ground detection
+    momentumRetention = 0.95, -- Momentum preservation factor
+    accelerationRate = 0.85  -- Speed build-up rate
 }
 
--- Core Speed Glitch Logic
+-- Optimized ground detection function
+local function isGrounded(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return false end
+    
+    -- Cast ray directly below the character
+    local rayOrigin = humanoidRootPart.Position
+    local rayDirection = Vector3.new(0, -speedGlitchState.groundedThreshold - humanoidRootPart.Size.Y/2, 0)
+    
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {character}
+    
+    local result = workspace:Raycast(rayOrigin, rayDirection, params)
+    return result ~= nil
+end
+
+-- Enhanced speed glitch logic
 RunService.Heartbeat:Connect(function()
     local player = game.Players.LocalPlayer
     local character = player.Character
-    
     if not character then return end
     
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
     if not humanoid or not rootPart then return end
     
-    -- Check for jump button press (works for both mobile and PC)
-    local isJumping = false
+    -- Input detection for both platforms
+    local isJumpPressed = UserInputService:IsKeyDown(Enum.KeyCode.Space) or 
+                         (UserInputService.TouchEnabled and humanoid.Jump)
     
-    -- Mobile jump button detection
-    if UserInputService.TouchEnabled then
-        isJumping = humanoid.Jump
-    end
-    
-    -- PC jump key detection
-    if UserInputService.KeyboardEnabled then
-        isJumping = UserInputService:IsKeyDown(Enum.KeyCode.Space)
-    end
-    
-    if state.speedGlitchEnabled and isJumping then
-        -- Keep accumulating speed even on ground as long as jump is held
+    if state.speedGlitchEnabled and isJumpPressed then
+        -- Progressive speed accumulation
         speedGlitchState.accumulatedSpeed = math.min(
-            speedGlitchState.accumulatedSpeed + 0.75, 
-            state.speedGlitchPower / 10
+            speedGlitchState.accumulatedSpeed + speedGlitchState.accelerationRate,
+            state.speedGlitchPower
         )
         
         local currentVelocity = rootPart.Velocity
-        local speedMultiplier = 1 + speedGlitchState.accumulatedSpeed
+        local moveDirection = humanoid.MoveDirection
         
-        local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
-        local maxHorizontalSpeed = 50
-        
-        local acceleratedVelocity = horizontalVelocity * speedMultiplier
-        acceleratedVelocity = Vector3.new(
-            math.clamp(acceleratedVelocity.X, -maxHorizontalSpeed, maxHorizontalSpeed),
-            0,
-            math.clamp(acceleratedVelocity.Z, -maxHorizontalSpeed, maxHorizontalSpeed)
-        )
-        
-        rootPart.Velocity = Vector3.new(
-            acceleratedVelocity.X, 
-            currentVelocity.Y, 
-            acceleratedVelocity.Z
-        )
+        -- Apply directional boost based on movement input
+        if moveDirection.Magnitude > 0 then
+            local targetVelocity = moveDirection * (humanoid.WalkSpeed * (1 + speedGlitchState.accumulatedSpeed/10))
+            
+            -- Smooth velocity transition
+            rootPart.Velocity = Vector3.new(
+                targetVelocity.X,
+                currentVelocity.Y,
+                targetVelocity.Z
+            )
+        end
     else
-        speedGlitchState.accumulatedSpeed = 0
+        -- Gradually decay speed when not jumping
+        if isGrounded(character) then
+            speedGlitchState.accumulatedSpeed = speedGlitchState.accumulatedSpeed * speedGlitchState.momentumRetention
+            if speedGlitchState.accumulatedSpeed < 0.1 then
+                speedGlitchState.accumulatedSpeed = 0
+            end
+        end
     end
 end)
 
