@@ -790,16 +790,6 @@ local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
 })
 
 
--- Speed Glitch Configuration
-local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
-    Title = "Speed Glitch",
-    Default = false,
-    Callback = function(toggle)
-        state.speedGlitchEnabled = toggle
-    end
-})
-
--- Speed Glitch Power Slider
 local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
     Title = "Speed Glitch",
     Default = false,
@@ -809,7 +799,7 @@ local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
 })
 
 local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
-    Title = "Speed Glitch Power",
+    Title = "Speed Glitch Power", 
     Default = 20,
     Min = 0,
     Max = 100,
@@ -819,38 +809,59 @@ local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
     end
 })
 
--- Service initialization
+-- Core services
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
--- State management with physics parameters
-local speedGlitchState = {
-    accumulatedSpeed = 0,
-    groundedThreshold = 1, -- Distance threshold for ground detection
-    momentumRetention = 0.95, -- Momentum preservation factor
-    accelerationRate = 0.85  -- Speed build-up rate
+-- Physics configuration
+local PHYSICS_PARAMS = {
+    BASE_MULTIPLIER = 2.5,        -- Base speed multiplier
+    VELOCITY_CAP = 150,           -- Maximum velocity magnitude
+    VERTICAL_DAMPENING = 0.2,     -- Reduced vertical interference
+    ACCELERATION_CURVE = 1.15     -- Exponential acceleration factor
 }
 
--- Optimized ground detection function
-local function isGrounded(character)
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return false end
+-- State management
+local speedGlitchState = {
+    activeVelocity = Vector3.new(),
+    lastTick = tick()
+}
+
+-- Velocity manipulation handler
+local function calculateSpeedGlitchVelocity(rootPart, humanoid, deltaTime)
+    local moveDirection = humanoid.MoveDirection
+    if moveDirection.Magnitude <= 0 then return rootPart.Velocity end
     
-    -- Cast ray directly below the character
-    local rayOrigin = humanoidRootPart.Position
-    local rayDirection = Vector3.new(0, -speedGlitchState.groundedThreshold - humanoidRootPart.Size.Y/2, 0)
+    -- Calculate speed multiplier based on slider value
+    local speedMultiplier = PHYSICS_PARAMS.BASE_MULTIPLIER * 
+        (1 + (state.speedGlitchPower / 50))
     
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {character}
+    -- Apply exponential acceleration
+    local accelerationFactor = math.pow(
+        PHYSICS_PARAMS.ACCELERATION_CURVE, 
+        deltaTime * speedMultiplier
+    )
     
-    local result = workspace:Raycast(rayOrigin, rayDirection, params)
-    return result ~= nil
+    -- Calculate target velocity
+    local targetVelocity = moveDirection * (
+        humanoid.WalkSpeed * speedMultiplier * accelerationFactor
+    )
+    
+    -- Maintain vertical velocity with reduced interference
+    local currentVelocity = rootPart.Velocity
+    targetVelocity = Vector3.new(
+        math.clamp(targetVelocity.X, -PHYSICS_PARAMS.VELOCITY_CAP, PHYSICS_PARAMS.VELOCITY_CAP),
+        currentVelocity.Y * PHYSICS_PARAMS.VERTICAL_DAMPENING,
+        math.clamp(targetVelocity.Z, -PHYSICS_PARAMS.VELOCITY_CAP, PHYSICS_PARAMS.VELOCITY_CAP)
+    )
+    
+    return targetVelocity
 end
 
--- Enhanced speed glitch logic
+-- Main update loop
 RunService.Heartbeat:Connect(function()
-    local player = game.Players.LocalPlayer
+    local player = Players.LocalPlayer
     local character = player.Character
     if not character then return end
     
@@ -858,39 +869,33 @@ RunService.Heartbeat:Connect(function()
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoid or not rootPart then return end
     
-    -- Input detection for both platforms
-    local isJumpPressed = UserInputService:IsKeyDown(Enum.KeyCode.Space) or 
-                         (UserInputService.TouchEnabled and humanoid.Jump)
+    -- Check jump input state
+    local isJumpActive = UserInputService:IsKeyDown(Enum.KeyCode.Space) or
+                        (UserInputService.TouchEnabled and humanoid.Jump)
     
-    if state.speedGlitchEnabled and isJumpPressed then
-        -- Progressive speed accumulation
-        speedGlitchState.accumulatedSpeed = math.min(
-            speedGlitchState.accumulatedSpeed + speedGlitchState.accelerationRate,
-            state.speedGlitchPower
+    if state.speedGlitchEnabled and isJumpActive then
+        local currentTick = tick()
+        local deltaTime = currentTick - speedGlitchState.lastTick
+        speedGlitchState.lastTick = currentTick
+        
+        -- Apply continuous velocity override
+        rootPart.AssemblyLinearVelocity = calculateSpeedGlitchVelocity(
+            rootPart, 
+            humanoid, 
+            deltaTime
         )
         
-        local currentVelocity = rootPart.Velocity
-        local moveDirection = humanoid.MoveDirection
-        
-        -- Apply directional boost based on movement input
-        if moveDirection.Magnitude > 0 then
-            local targetVelocity = moveDirection * (humanoid.WalkSpeed * (1 + speedGlitchState.accumulatedSpeed/10))
-            
-            -- Smooth velocity transition
-            rootPart.Velocity = Vector3.new(
-                targetVelocity.X,
-                currentVelocity.Y,
-                targetVelocity.Z
-            )
-        end
+        -- Prevent default physics interference
+        rootPart.CustomPhysicalProperties = PhysicalProperties.new(
+            0.01,    -- Density
+            0,       -- Friction
+            0,       -- Elasticity
+            0,       -- FrictionWeight
+            0        -- ElasticityWeight
+        )
     else
-        -- Gradually decay speed when not jumping
-        if isGrounded(character) then
-            speedGlitchState.accumulatedSpeed = speedGlitchState.accumulatedSpeed * speedGlitchState.momentumRetention
-            if speedGlitchState.accumulatedSpeed < 0.1 then
-                speedGlitchState.accumulatedSpeed = 0
-            end
-        end
+        -- Reset physical properties when disabled
+        rootPart.CustomPhysicalProperties = nil
     end
 end)
 
