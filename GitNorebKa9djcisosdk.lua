@@ -336,104 +336,132 @@ end)
 
 
 local function predictMurderV2(murderer)
-    local character = murderer.Character
-    if not character then return nil end
+   local character = murderer.Character
+   if not character then return nil end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not rootPart or not humanoid then return nil end
 
-    if not rootPart or not humanoid then return nil end
+   -- Optimized physics constants
+   local PHYSICS = {
+       TICK_RATE = 1/60,
+       GRAVITY = workspace.Gravity,
+       BASE_JUMP_POWER = humanoid.JumpPower,
+       WALK_SPEED = humanoid.WalkSpeed,
+       MAX_PREDICTION_STEPS = 12
+   }
 
-    -- Constants for prediction
-    local Interval = 0.1 -- Fixed interval for prediction
-    local Gravity = 196.2
-    local FrictionDeceleration = 10
-    local ProbabilityFactor = 0.7 -- Probability of the murderer continuing in the same direction
+   -- Advanced targeting parameters 
+   local TARGETING = {
+       VELOCITY_WEIGHT = 0.65,         -- Historical velocity influence
+       DIRECTION_WEIGHT = 0.35,        -- Current direction influence
+       RANDOM_DEVIATION = 0.15,        -- Maximum random trajectory deviation
+       VERTICAL_OFFSET = 3.5,          -- Target height adjustment
+       ACCELERATION_DAMPING = 0.85,    -- Smooth acceleration changes
+       MIN_PREDICTION_DISTANCE = 5,    -- Minimum prediction range
+       MAX_PREDICTION_DISTANCE = 100   -- Maximum prediction range
+   }
 
-    -- Simulate position and velocity
-    local SimulatedPosition = rootPart.Position
-    local SimulatedVelocity = rootPart.AssemblyLinearVelocity
-    local MoveDirection = humanoid.MoveDirection
+   -- Initialize prediction state
+   local state = {
+       position = rootPart.Position,
+       velocity = rootPart.AssemblyLinearVelocity,
+       moveDirection = humanoid.MoveDirection,
+       isJumping = humanoid.Jump,
+       lastGroundTime = 0
+   }
 
-    -- Apply probability-based adjustments to movement direction
-    if math.random() > ProbabilityFactor then
-        -- Simulate a sudden change in direction
-        MoveDirection = Vector3.new(
-            MoveDirection.X * (math.random() > 0.5 and -1 or 1),
-            MoveDirection.Y,
-            MoveDirection.Z * (math.random() > 0.5 and -1 or 1)
-        )
-    end
+   -- Calculate adaptive velocity with momentum
+   local function computeAdaptiveVelocity()
+       local baseVel = state.velocity
+       local inputVel = state.moveDirection * PHYSICS.WALK_SPEED
+       
+       -- Apply weighted velocity blending
+       local blendedVel = (baseVel * TARGETING.VELOCITY_WEIGHT) + 
+                         (inputVel * TARGETING.DIRECTION_WEIGHT)
 
-    -- Predict movement
-    SimulatedPosition = SimulatedPosition + Vector3.new(
-        SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
-        SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
-        SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
-    )
+       -- Add controlled random deviation for prediction uncertainty
+       local deviation = Vector3.new(
+           math.random(-100, 100) / 100 * TARGETING.RANDOM_DEVIATION,
+           0,
+           math.random(-100, 100) / 100 * TARGETING.RANDOM_DEVIATION
+       )
 
-    -- Adjust velocity based on movement direction
-    local Axes = {"X", "Z"}
-    for _, Axis in ipairs(Axes) do
-        local Goal = MoveDirection[Axis] * 16.2001
-        local CurrentVelocity = SimulatedVelocity[Axis]
+       return blendedVel + (blendedVel * deviation)
+   end
 
-        if math.abs(CurrentVelocity) > math.abs(Goal) then
-            SimulatedVelocity = SimulatedVelocity - Vector3.new(
-                Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval) or 0,
-                0,
-                Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval) or 0
-            )
-        elseif math.abs(CurrentVelocity) < math.abs(Goal) then
-            SimulatedVelocity = SimulatedVelocity + Vector3.new(
-                Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval) or 0,
-                0,
-                Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval) or 0
-            )
-        end
-    end
+   -- Enhanced ground detection with caching
+   local function checkGroundContact()
+       local rayParams = RaycastParams.new()
+       rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+       rayParams.FilterDescendantsInstances = {character}
 
-    -- Apply gravity
-    SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval, 0)
+       local result = workspace:Raycast(
+           state.position,
+           Vector3.new(0, -TARGETING.VERTICAL_OFFSET * 1.5, 0),
+           rayParams
+       )
 
-    -- Raycast to check for floor or ceiling
-    local RaycastParams = RaycastParams.new()
-    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    RaycastParams.FilterDescendantsInstances = {character}
+       if result then
+           state.lastGroundTime = tick()
+           return result.Position.Y
+       end
+       return nil
+   end
 
-    local FloorCheck = workspace:Raycast(
-        SimulatedPosition, 
-        Vector3.new(0, -3, 0), 
-        RaycastParams
-    )
+   -- Predictive jump trajectory calculation
+   local function predictJumpArc()
+       if not state.isJumping then return state.position end
 
-    local CeilingCheck = workspace:Raycast(
-        SimulatedPosition, 
-        Vector3.new(0, 3, 0), 
-        RaycastParams
-    )
+       local timeInAir = (tick() - state.lastGroundTime)
+       local jumpApex = PHYSICS.BASE_JUMP_POWER * timeInAir - 
+                       (0.5 * PHYSICS.GRAVITY * timeInAir ^ 2)
 
-    -- Adjust position based on raycast results
-    if FloorCheck then
-        SimulatedPosition = Vector3.new(
-            SimulatedPosition.X, 
-            FloorCheck.Position.Y + 3, 
-            SimulatedPosition.Z
-        )
-    elseif CeilingCheck then
-        SimulatedPosition = Vector3.new(
-            SimulatedPosition.X, 
-            CeilingCheck.Position.Y - 2, 
-            SimulatedPosition.Z
-        )
-    end
+       return state.position + Vector3.new(
+           0,
+           math.max(jumpApex, 0) * TARGETING.ACCELERATION_DAMPING,
+           0
+       )
+   end
 
-    -- Predict jump with probability
-    if humanoid.Jump and math.random() < 0.5 then -- 50% chance of jumping again
-        SimulatedPosition = SimulatedPosition + Vector3.new(0, 5, 0)
-    end
+   -- Main prediction loop with collision handling
+   local predictedPosition = state.position
+   local currentVelocity = computeAdaptiveVelocity()
 
-    return SimulatedPosition
+   for step = 1, PHYSICS.MAX_PREDICTION_STEPS do
+       local stepWeight = step / PHYSICS.MAX_PREDICTION_STEPS
+       
+       -- Update position with velocity and gravity
+       local nextPosition = predictedPosition + 
+           (currentVelocity * PHYSICS.TICK_RATE * stepWeight)
+
+       -- Apply gravity influence
+       nextPosition = nextPosition + Vector3.new(
+           0,
+           -0.5 * PHYSICS.GRAVITY * PHYSICS.TICK_RATE ^ 2,
+           0
+       )
+
+       -- Handle jump prediction
+       if state.isJumping then
+           nextPosition = predictJumpArc()
+       end
+
+       -- Ground collision correction
+       local groundY = checkGroundContact()
+       if groundY then
+           nextPosition = Vector3.new(
+               nextPosition.X,
+               groundY + TARGETING.VERTICAL_OFFSET,
+               nextPosition.Z
+           )
+       end
+
+       predictedPosition = nextPosition
+   end
+
+   return predictedPosition
 end
 
 
@@ -542,59 +570,198 @@ end)
 
 
 local function predictMurderSharpShooter(murderer)
-    local character = murderer.Character
-    if not character then return nil end
-    local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not primaryPart or not humanoid then return nil end
+   local character = murderer.Character
+   if not character then return nil end
+   
+   local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not primaryPart or not humanoid then return nil end
 
-    -- Constants for prediction
-    local Interval = 0.02 -- Extremely small interval for high precision
-    local Gravity = 196.2
-    local MaxAcceleration = 50 -- Maximum acceleration for adaptive tracking
-    local JumpVelocity = 50 -- Initial upward velocity for jumps
-    local AdaptiveFactor = 0.8 -- Factor for adaptive velocity adjustment
+   -- Physics and prediction constants
+   local CONSTANTS = {
+       TICK_RATE = 0.016,            -- Base simulation tick rate (60 FPS)
+       GRAVITY = 196.2,              -- Roblox physics gravity constant
+       MAX_PREDICTION_STEPS = 15,     -- Prediction iteration limit
+       JUMP_POWER = humanoid.JumpPower or 50,
+       WALK_SPEED = humanoid.WalkSpeed,
+       
+       -- Logarithmic scaling parameters
+       LOG_BASE = math.exp(1),       -- Natural logarithm base
+       SCALE_FACTOR = 1.5,           -- Logarithmic curve steepness
+       MIN_LOG_VALUE = 0.1,          -- Minimum value for log scaling
+       MAX_LOG_VALUE = 5.0,          -- Maximum value for log scaling
+       
+       -- Advanced tuning parameters
+       VELOCITY_WEIGHT = 0.7,
+       DIRECTION_WEIGHT = 0.3,
+       ACCELERATION_CAP = 75,
+       PREDICTION_SMOOTHING = 0.85,
+       WALL_OFFSET = 2.5,
+       
+       -- Logarithmic decay constants
+       DISTANCE_DECAY = 0.8,         -- Distance-based prediction decay
+       TIME_DECAY = 0.9              -- Time-based prediction decay
+   }
 
-    -- Get current position and velocity
-    local CurrentPosition = primaryPart.Position
-    local CurrentVelocity = primaryPart.AssemblyLinearVelocity
-    local MoveDirection = humanoid.MoveDirection
+   -- Logarithmic scaling utility functions
+   local function applyLogarithmicScale(value, min, max)
+       -- Normalize value to [0,1] range
+       local normalized = (value - min) / (max - min)
+       -- Apply logarithmic scaling with dynamic base
+       local logScaled = math.log(normalized * (CONSTANTS.LOG_BASE - 1) + 1) / math.log(CONSTANTS.LOG_BASE)
+       -- Rescale to original range
+       return min + logScaled * (max - min)
+   end
 
-    -- Adaptive velocity adjustment
-    local PredictedVelocity = CurrentVelocity * AdaptiveFactor + MoveDirection * (1 - AdaptiveFactor)
-    local PredictedPosition = CurrentPosition + PredictedVelocity * Interval
+   local function getLogarithmicWeight(distance, maxDistance)
+       -- Calculate logarithmic weight based on distance
+       local normalizedDist = math.clamp(distance / maxDistance, CONSTANTS.MIN_LOG_VALUE, CONSTANTS.MAX_LOG_VALUE)
+       return math.log(normalizedDist * CONSTANTS.SCALE_FACTOR + 1) / math.log(CONSTANTS.LOG_BASE + 1)
+   end
 
-    -- Account for gravity
-    PredictedPosition = PredictedPosition + Vector3.new(0, -0.5 * Gravity * Interval^2, 0)
+   -- State tracking with logarithmic components
+   local predictionState = {
+       position = primaryPart.Position,
+       velocity = primaryPart.AssemblyLinearVelocity,
+       moveDirection = humanoid.MoveDirection,
+       lastJumpTime = 0,
+       distanceWeight = 1
+   }
 
-    -- Predict jump arc
-    if humanoid.Jump then
-        local TimeInAir = JumpVelocity / Gravity
-        local HorizontalVelocity = PredictedVelocity * Vector3.new(1, 0, 1) -- Only horizontal components
-        local PredictedJumpPosition = PredictedPosition + HorizontalVelocity * TimeInAir + Vector3.new(0, JumpVelocity * TimeInAir - 0.5 * Gravity * TimeInAir^2, 0)
-        PredictedPosition = PredictedJumpPosition
-    end
+   -- Enhanced velocity calculation with logarithmic scaling
+   local function calculateAdaptiveVelocity()
+       local baseVelocity = predictionState.velocity
+       local inputVelocity = predictionState.moveDirection * CONSTANTS.WALK_SPEED
+       
+       -- Apply logarithmic scaling to velocity components
+       local speedMagnitude = baseVelocity.Magnitude
+       local scaledSpeed = applyLogarithmicScale(
+           speedMagnitude,
+           0,
+           CONSTANTS.ACCELERATION_CAP
+       )
+       
+       -- Normalize and rescale velocity
+       local normalizedVel = baseVelocity.Unit * scaledSpeed
+       
+       -- Calculate weighted blend with logarithmic decay
+       local distanceWeight = getLogarithmicWeight(
+           (primaryPart.Position - predictionState.position).Magnitude,
+           50 -- Max distance threshold
+       )
+       
+       local blendedVelocity = normalizedVel * (CONSTANTS.VELOCITY_WEIGHT * distanceWeight) +
+                              inputVelocity * (CONSTANTS.DIRECTION_WEIGHT * (1 - distanceWeight))
+       
+       -- Apply logarithmic acceleration capping
+       local acceleration = (blendedVelocity - baseVelocity).Magnitude / CONSTANTS.TICK_RATE
+       local maxAcc = applyLogarithmicScale(
+           CONSTANTS.ACCELERATION_CAP,
+           0,
+           CONSTANTS.ACCELERATION_CAP
+       )
+       
+       if acceleration > maxAcc then
+           blendedVelocity = baseVelocity + 
+               (blendedVelocity - baseVelocity).Unit * 
+               (maxAcc * CONSTANTS.TICK_RATE)
+       end
+       
+       return blendedVelocity
+   end
 
-    -- Raycast to detect obstacles
-    local RaycastParams = RaycastParams.new()
-    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    RaycastParams.FilterDescendantsInstances = {character}
+   -- Jump prediction with logarithmic arc
+   local function predictJumpArc(startPos, startVel)
+       if not humanoid.Jump then return startPos end
+       
+       local timeInAir = CONSTANTS.JUMP_POWER / CONSTANTS.GRAVITY
+       local horizontalVel = startVel * Vector3.new(1, 0, 1)
+       
+       -- Apply logarithmic scaling to jump parameters
+       local scaledJumpPower = applyLogarithmicScale(
+           CONSTANTS.JUMP_POWER,
+           0,
+           CONSTANTS.JUMP_POWER * 1.5
+       )
+       
+       -- Calculate parabolic arc with logarithmic components
+       local jumpPrediction = startPos +
+           (horizontalVel * timeInAir * CONSTANTS.DISTANCE_DECAY) +
+           Vector3.new(
+               0,
+               scaledJumpPower * timeInAir * CONSTANTS.TIME_DECAY - 
+               0.5 * CONSTANTS.GRAVITY * timeInAir * timeInAir,
+               0
+           )
+       
+       return jumpPrediction
+   end
 
-    -- Check for walls or floors
-    local WallCheck = workspace:Raycast(
-        CurrentPosition,
-        PredictedPosition - CurrentPosition,
-        RaycastParams
-    )
+   -- Collision handling with logarithmic reflection
+   local function handleCollision(origin, target)
+       local rayParams = RaycastParams.new()
+       rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+       rayParams.FilterDescendantsInstances = {character}
+       
+       local result = workspace:Raycast(origin, target - origin, rayParams)
+       if result then
+           local normal = result.Normal
+           local direction = (target - origin).Unit
+           
+           -- Apply logarithmic scaling to reflection
+           local reflectionStrength = getLogarithmicWeight(
+               (result.Position - origin).Magnitude,
+               20 -- Reflection distance threshold
+           )
+           
+           local reflection = direction - 
+               (2 * direction:Dot(normal) * normal * reflectionStrength)
+           
+           return result.Position + (reflection * CONSTANTS.WALL_OFFSET)
+       end
+       
+       return target
+   end
 
-    if WallCheck then
-        PredictedPosition = WallCheck.Position + (PredictedPosition - WallCheck.Position).Unit * 2 -- Adjust position near wall
-    end
+   -- Main prediction loop with logarithmic smoothing
+   local predictedPosition = predictionState.position
+   local currentVelocity = calculateAdaptiveVelocity()
+   
+   for step = 1, CONSTANTS.MAX_PREDICTION_STEPS do
+       local stepMultiplier = step / CONSTANTS.MAX_PREDICTION_STEPS
+       local timeStep = CONSTANTS.TICK_RATE * stepMultiplier
+       
+       -- Calculate step weight using logarithmic scaling
+       local stepWeight = getLogarithmicWeight(step, CONSTANTS.MAX_PREDICTION_STEPS)
+       
+       -- Update position with logarithmic velocity scaling
+       local nextPosition = predictedPosition + 
+           (currentVelocity * timeStep * stepWeight)
+       
+       -- Apply gravity with logarithmic decay
+       nextPosition += Vector3.new(
+           0,
+           -0.5 * CONSTANTS.GRAVITY * timeStep * timeStep * CONSTANTS.TIME_DECAY,
+           0
+       )
+       
+       nextPosition = predictJumpArc(nextPosition, currentVelocity)
+       predictedPosition = handleCollision(predictedPosition, nextPosition)
+       
+       -- Apply logarithmic smoothing
+       local smoothingFactor = applyLogarithmicScale(
+           CONSTANTS.PREDICTION_SMOOTHING * stepWeight,
+           0,
+           1
+       )
+       
+       predictedPosition = predictedPosition:Lerp(
+           nextPosition,
+           smoothingFactor
+       )
+   end
 
-    -- Final adjustment for sharpness
-    PredictedPosition = PredictedPosition + PredictedVelocity * 0.1 -- Fine-tune position
-
-    return PredictedPosition
+   return predictedPosition
 end
 
 local function isMurdererNear(position)
@@ -788,116 +955,6 @@ local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
     Title = "Auto Notify Murderers Perk",
     Default = true,
 })
-
-
-local SpeedGlitchToggle = Tabs.Main:AddToggle("SpeedGlitchToggle", {
-    Title = "Speed Glitch",
-    Default = false,
-    Callback = function(toggle)
-        state.speedGlitchEnabled = toggle
-    end
-})
-
-local SpeedGlitchSlider = Tabs.Main:AddSlider("SpeedGlitchPowerSlider", {
-    Title = "Speed Glitch Power", 
-    Default = 20,
-    Min = 0,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(value)
-        state.speedGlitchPower = value
-    end
-})
-
--- Core services
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-
--- Physics configuration
-local PHYSICS_PARAMS = {
-    BASE_MULTIPLIER = 2.5,        -- Base speed multiplier
-    VELOCITY_CAP = 150,           -- Maximum velocity magnitude
-    VERTICAL_DAMPENING = 0.2,     -- Reduced vertical interference
-    ACCELERATION_CURVE = 1.15     -- Exponential acceleration factor
-}
-
--- State management
-local speedGlitchState = {
-    activeVelocity = Vector3.new(),
-    lastTick = tick()
-}
-
--- Velocity manipulation handler
-local function calculateSpeedGlitchVelocity(rootPart, humanoid, deltaTime)
-    local moveDirection = humanoid.MoveDirection
-    if moveDirection.Magnitude <= 0 then return rootPart.Velocity end
-    
-    -- Calculate speed multiplier based on slider value
-    local speedMultiplier = PHYSICS_PARAMS.BASE_MULTIPLIER * 
-        (1 + (state.speedGlitchPower / 50))
-    
-    -- Apply exponential acceleration
-    local accelerationFactor = math.pow(
-        PHYSICS_PARAMS.ACCELERATION_CURVE, 
-        deltaTime * speedMultiplier
-    )
-    
-    -- Calculate target velocity
-    local targetVelocity = moveDirection * (
-        humanoid.WalkSpeed * speedMultiplier * accelerationFactor
-    )
-    
-    -- Maintain vertical velocity with reduced interference
-    local currentVelocity = rootPart.Velocity
-    targetVelocity = Vector3.new(
-        math.clamp(targetVelocity.X, -PHYSICS_PARAMS.VELOCITY_CAP, PHYSICS_PARAMS.VELOCITY_CAP),
-        currentVelocity.Y * PHYSICS_PARAMS.VERTICAL_DAMPENING,
-        math.clamp(targetVelocity.Z, -PHYSICS_PARAMS.VELOCITY_CAP, PHYSICS_PARAMS.VELOCITY_CAP)
-    )
-    
-    return targetVelocity
-end
-
--- Main update loop
-RunService.Heartbeat:Connect(function()
-    local player = Players.LocalPlayer
-    local character = player.Character
-    if not character then return end
-    
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not rootPart then return end
-    
-    -- Check jump input state
-    local isJumpActive = UserInputService:IsKeyDown(Enum.KeyCode.Space) or
-                        (UserInputService.TouchEnabled and humanoid.Jump)
-    
-    if state.speedGlitchEnabled and isJumpActive then
-        local currentTick = tick()
-        local deltaTime = currentTick - speedGlitchState.lastTick
-        speedGlitchState.lastTick = currentTick
-        
-        -- Apply continuous velocity override
-        rootPart.AssemblyLinearVelocity = calculateSpeedGlitchVelocity(
-            rootPart, 
-            humanoid, 
-            deltaTime
-        )
-        
-        -- Prevent default physics interference
-        rootPart.CustomPhysicalProperties = PhysicalProperties.new(
-            0.01,    -- Density
-            0,       -- Friction
-            0,       -- Elasticity
-            0,       -- FrictionWeight
-            0        -- ElasticityWeight
-        )
-    else
-        -- Reset physical properties when disabled
-        rootPart.CustomPhysicalProperties = nil
-    end
-end)
 
 -- Prediction Ping Toggle
 local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
