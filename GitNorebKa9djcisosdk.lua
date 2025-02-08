@@ -819,32 +819,7 @@ Workspace.DescendantRemoving:Connect(function(descendant)
     end
 end)
 
-local function collectCoins()
-    if not state.coinAuraEnabled then return end
-    
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local nearestCoin = nil
-    
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "Coin_Server" or v.Name == "SnowToken" then
-            if nearestCoin then
-                if (root.Position - nearestCoin.Position).Magnitude > (root.Position - v.Position).Magnitude then
-                    nearestCoin = v
-                end
-            else
-                nearestCoin = v
-            end
-        end
-    end
-    
-    if nearestCoin and (root.Position - nearestCoin.Position).Magnitude <= state.coinAuraRadius then
-        -- Trigger the coin collection
-        firetouch(LocalPlayer.Character.HumanoidRootPart, nearestCoin)
-        wait(0.1) -- Small delay to ensure the coin is collected
-    end
-end
+
 
 local function BreakAllGuns()
     for _, v in pairs(Players:GetPlayers()) do
@@ -943,11 +918,65 @@ local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
     end
 })
 
-local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
-    Title = "Coin Aura",
+-- Add GetPlayerData toggle to Main tab
+local GetPlayerDataToggle = Tabs.Main:AddToggle("GetPlayerDataToggle", {
+    Title = "Auto Remove Chroma",
     Default = false,
     Callback = function(toggle)
-        state.coinAuraEnabled = toggle
+        state.getPlayerDataEnabled = toggle
+        
+        if toggle then
+            -- Create connection if enabled
+            state.getPlayerDataConnection = RunService.Heartbeat:Connect(function()
+                pcall(function()
+                    if not GetPlayerData then return end
+                    
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if not player.Character then continue end
+                        
+                        -- Clean up knife display items
+                        local knifeDisplay = player.Character.KnifeDisplay
+                        if knifeDisplay then
+                            for _, item in pairs(knifeDisplay:GetDescendants()) do
+                                local shouldDestroy = item.Name ~= "Attachment" and 
+                                                    item.Name ~= "CustomAttachment" and 
+                                                    item.Name ~= "RigidConstraint" and 
+                                                    item.Name ~= "Mesh" or 
+                                                    item.Name == "Chroma"
+                                
+                                if shouldDestroy then
+                                    item:Destroy()
+                                end
+                            end
+                        end
+
+                        -- Remove Chroma from Murderer's knife
+                        if state.murder == player.Name then
+                            local knife = player.Character:FindFirstChild("Knife")
+                            local chromaEffect = knife and knife.Handle:FindFirstChild("Chroma")
+                            if chromaEffect then
+                                chromaEffect:Destroy()
+                            end
+                        end
+
+                        -- Remove Chroma from Sheriff's gun 
+                        if state.sheriff == player.Name then
+                            local gun = player.Character:FindFirstChild("Gun")
+                            local chromaEffect = gun and gun.Handle:FindFirstChild("Chroma")
+                            if chromaEffect then
+                                chromaEffect:Destroy()
+                            end
+                        end
+                    end
+                end)
+            end)
+        else
+            -- Disconnect if disabled
+            if state.getPlayerDataConnection then
+                state.getPlayerDataConnection:Disconnect()
+                state.getPlayerDataConnection = nil
+            end
+        end
     end
 })
 
