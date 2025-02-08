@@ -843,6 +843,45 @@ local function BreakAllGuns()
     end
 end
 
+local COIN_AURA_RANGE = 5
+local COLLECTION_COOLDOWN = 0.1
+
+-- Function to get nearest coin
+local function getNearestCoin(character)
+    local nearestCoin = nil
+    local shortestDistance = COIN_AURA_RANGE
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoidRootPart then return nil end
+    
+    for _, coin in pairs(workspace:GetChildren()) do
+        if coin:IsA("BasePart") and coin.Name == "Coin_Server" then
+            local distance = (coin.Position - humanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestCoin = coin
+            end
+        end
+    end
+    
+    return nearestCoin
+end
+
+-- Coin collection logic
+local function collectNearbyCoins()
+    local player = Players.LocalPlayer
+    local character = player.Character
+    if not character then return end
+    
+    local nearestCoin = getNearestCoin(character)
+    if nearestCoin then
+        ReplicatedStorage.Remotes.Gameplay.CoinCollected:FireServer(nearestCoin)
+    end
+end
+
+-- Coin aura connection
+local coinAuraConnection = nil
+
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -918,63 +957,16 @@ local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
     end
 })
 
--- Add GetPlayerData toggle to Main tab
-local GetPlayerDataToggle = Tabs.Main:AddToggle("GetPlayerDataToggle", {
-    Title = "Auto Remove Chroma",
+local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
+    Title = "Coin Aura",
     Default = false,
     Callback = function(toggle)
-        state.getPlayerDataEnabled = toggle
-        
         if toggle then
-            -- Create connection if enabled
-            state.getPlayerDataConnection = RunService.Heartbeat:Connect(function()
-                pcall(function()
-                    if not GetPlayerData then return end
-                    
-                    for _, player in pairs(Players:GetPlayers()) do
-                        if not player.Character then continue end
-                        
-                        -- Clean up knife display items
-                        local knifeDisplay = player.Character.KnifeDisplay
-                        if knifeDisplay then
-                            for _, item in pairs(knifeDisplay:GetDescendants()) do
-                                local shouldDestroy = item.Name ~= "Attachment" and 
-                                                    item.Name ~= "CustomAttachment" and 
-                                                    item.Name ~= "RigidConstraint" and 
-                                                    item.Name ~= "Mesh" or 
-                                                    item.Name == "Chroma"
-                                
-                                if shouldDestroy then
-                                    item:Destroy()
-                                end
-                            end
-                        end
-
-                        -- Remove Chroma from Murderer's knife
-                        if state.murder == player.Name then
-                            local knife = player.Character:FindFirstChild("Knife")
-                            local chromaEffect = knife and knife.Handle:FindFirstChild("Chroma")
-                            if chromaEffect then
-                                chromaEffect:Destroy()
-                            end
-                        end
-
-                        -- Remove Chroma from Sheriff's gun 
-                        if state.sheriff == player.Name then
-                            local gun = player.Character:FindFirstChild("Gun")
-                            local chromaEffect = gun and gun.Handle:FindFirstChild("Chroma")
-                            if chromaEffect then
-                                chromaEffect:Destroy()
-                            end
-                        end
-                    end
-                end)
-            end)
+            coinAuraConnection = RunService.Heartbeat:Connect(collectNearbyCoins)
         else
-            -- Disconnect if disabled
-            if state.getPlayerDataConnection then
-                state.getPlayerDataConnection:Disconnect()
-                state.getPlayerDataConnection = nil
+            if coinAuraConnection then
+                coinAuraConnection:Disconnect()
+                coinAuraConnection = nil
             end
         end
     end
