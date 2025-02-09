@@ -889,8 +889,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 
 local Window = Fluent:CreateWindow({
    Title = "OmniHub Script By Azzakirms",
-   SubTitle = "NiggaTron",
-   TabWidth = 160,
+   SubTitle = "V1.1.0",
+   TabWidth = 100,
    Size = UDim2.fromOffset(580, 460),
    Acrylic = true,
    Theme = "Dark",
@@ -900,18 +900,21 @@ local Window = Fluent:CreateWindow({
 -- Add Discord Tab
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "camera" }),
+    Combat = Window:AddTab({ Title = "Combat", Icon = "crosshair" }),
+    Farming = Window:AddTab({ Title = "Farming", Icon = "dollar-sign" }),
     Discord = Window:AddTab({ Title = "Join Discord", Icon = "message-square" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
+-- Main Tab Content
 Tabs.Main:AddParagraph({
     Title = "Development Notice",
     Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
 })
 
-
--- ESP Toggle
-local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
+-- Visuals Tab Content
+local ESPToggle = Tabs.Visuals:AddToggle("ESPToggle", {
    Title = "Player ESP",
    Default = false 
 })
@@ -927,8 +930,8 @@ ESPToggle:OnChanged(function()
    end
 end)
 
-
-local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
+-- Combat Tab Content
+local SilentAimToggle = Tabs.Combat:AddToggle("SilentAimToggle", {
     Title = "Silent Aim",
     Default = false,
     Callback = function(toggle)
@@ -936,7 +939,7 @@ local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
     end
 })
 
-local SharpShooterToggle = Tabs.Main:AddToggle("SharpShooterToggle", {
+local SharpShooterToggle = Tabs.Combat:AddToggle("SharpShooterToggle", {
     Title = "Sharp Shooter",
     Default = false,
     Callback = function(toggle)
@@ -949,15 +952,64 @@ local SharpShooterToggle = Tabs.Main:AddToggle("SharpShooterToggle", {
     end
 })
 
-local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
-    Title = "Auto Get Gun Drop",
+local PredictionPingToggle = Tabs.Combat:AddToggle("PredictionPingToggle", {
+   Title = "Prediction Ping",
+   Default = false,
+   Callback = function(toggle)
+       predictionState.pingEnabled = toggle
+       Fluent:Notify({
+           Title = "Prediction Ping",
+           Content = toggle and "Prediction Ping Enabled" or "Prediction Ping Disabled",
+           Duration = 3
+       })
+   end
+})
+
+local PingSlider = Tabs.Combat:AddSlider("PingSlider", {
+   Title = "Prediction Ping Value",
+   Description = "Adjust ping",
+   Default = 50,
+   Min = 0,
+   Max = 300,
+   Rounding = 0,
+   Callback = function(value)
+       predictionState.pingValue = value
+   end
+})
+
+local AutoNotifyToggle = Tabs.Combat:AddToggle("AutoNotifyToggle", {
+    Title = "Auto Notify Murderers Perk",
+    Default = true,
+})
+
+-- Farming Tab Content
+local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
+    Title = "Auto Coin",
     Default = false,
     Callback = function(toggle)
-        state.autoGetGunDropEnabled = toggle
+        AutoCoin = toggle
+        if not toggle then
+            local character = game.Players.LocalPlayer.Character
+            if character then
+                for _, part in pairs(character:GetChildren()) do
+                    if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                        for _, child in pairs(part:GetChildren()) do
+                            if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
+                                child:Destroy()
+                            end
+                        end
+                    end
+                end
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.PlatformStand = false
+                end
+            end
+        end
     end
 })
 
-local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
+local CoinAuraToggle = Tabs.Farming:AddToggle("CoinAuraToggle", {
     Title = "Coin Aura",
     Default = false,
     Callback = function(toggle)
@@ -972,64 +1024,12 @@ local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
     end
 })
 
-local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
-    Title = "Auto Notify Murderers Perk",
-    Default = true,
-})
-
--- Prediction Ping Toggle
-local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
-   Title = "Prediction Ping",
-   Default = false,
-   Callback = function(toggle)
-       predictionState.pingEnabled = toggle
-       Fluent:Notify({
-           Title = "Prediction Ping",
-           Content = toggle and "Prediction Ping Enabled" or "Prediction Ping Disabled",
-           Duration = 3
-       })
-   end
-})
-
--- Ping Slider
-local PingSlider = Tabs.Main:AddSlider("PingSlider", {
-   Title = "Prediction Ping Value",
-   Description = "Adjust ping",
-   Default = 50,
-   Min = 0,
-   Max = 300,
-   Rounding = 0,
-   Callback = function(value)
-       predictionState.pingValue = value
-   end
-})
-
-
-local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
-  Title = "Auto Coin",
-  Default = false,
-  Callback = function(toggle)
-      AutoCoin = toggle
-      if not toggle then
-          -- Stop farming immediately
-          local character = game.Players.LocalPlayer.Character
-          if character then
-              for _, part in pairs(character:GetChildren()) do
-                  if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                      for _, child in pairs(part:GetChildren()) do
-                          if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
-                              child:Destroy()
-                          end
-                      end
-                  end
-              end
-              local humanoid = character:FindFirstChildOfClass("Humanoid")
-              if humanoid then
-                  humanoid.PlatformStand = false -- Reset to standing when stopping
-              end
-          end
-      end
-  end
+local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
+    Title = "Auto Get Gun Drop",
+    Default = false,
+    Callback = function(toggle)
+        state.autoGetGunDropEnabled = toggle
+    end
 })
 
 
