@@ -908,9 +908,123 @@ local Tabs = {
 }
 
 -- Main Tab Content
+local MainSection = Tabs.Main:AddSection("User Information")
+
+-- Create Avatar Image
+local UserAvatar = Tabs.Main:AddImage({
+    Title = "User Avatar",
+    Description = game.Players.LocalPlayer.DisplayName,
+    Size = UDim2.fromOffset(150, 150)
+})
+
+-- Update avatar image using player's thumbnail
+local userId = game.Players.LocalPlayer.UserId
+local thumbType = Enum.ThumbnailType.HeadShot
+local thumbSize = Enum.ThumbnailSize.Size420x420
+local content = game.Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
+UserAvatar:SetImage(content)
+
+-- Add User Information
+Tabs.Main:AddParagraph({
+    Title = "User Details",
+    Content = string.format(
+        "Username: %s\nDisplay Name: %s\nUser ID: %s\nGame ID: %s",
+        game.Players.LocalPlayer.Name,
+        game.Players.LocalPlayer.DisplayName,
+        game.Players.LocalPlayer.UserId,
+        game.PlaceId
+    )
+})
+
+-- FPS and Ping Counter
+local PerformanceLabel = Tabs.Main:AddParagraph({
+    Title = "Performance Metrics",
+    Content = "FPS: Calculating...\nPing: Calculating..."
+})
+
+-- Update FPS and Ping
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local frameCount = 0
+local lastTime = tick()
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local currentTime = tick()
+    local elapsed = currentTime - lastTime
+    
+    if elapsed >= 1 then
+        local fps = math.floor(frameCount / elapsed)
+        local ping = math.floor(Stats:GetValue("NetworkPing") * 1000)
+        
+        PerformanceLabel:SetDesc(string.format(
+            "FPS: %d\nPing: %d ms",
+            fps,
+            ping
+        ))
+        
+        frameCount = 0
+        lastTime = currentTime
+    end
+end)
+
+-- Character Modifications Section
+local CharacterSection = Tabs.Main:AddSection("Character Modifications")
+
+-- X-Ray Transparency Slider
+local XRaySlider = Tabs.Main:AddSlider("XRaySlider", {
+    Title = "X-Ray Transparency",
+    Description = "Adjust building transparency",
+    Default = 0,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(Value)
+        local transparency = Value / 100
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
+                part.LocalTransparencyModifier = transparency
+            end
+        end
+    end
+})
+
+-- Jump Power Slider
+local JumpPowerSlider = Tabs.Main:AddSlider("JumpPowerSlider", {
+    Title = "Jump Power",
+    Description = "Adjust jump height",
+    Default = 50,
+    Min = 0,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(Value)
+        if game.Players.LocalPlayer.Character and 
+           game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+            game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+        end
+    end
+})
+
+-- Walk Speed Slider
+local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeedSlider", {
+    Title = "Walk Speed",
+    Description = "Adjust walking speed",
+    Default = 16,
+    Min = 0,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(Value)
+        if game.Players.LocalPlayer.Character and 
+           game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+-- Development Notice (moved to bottom of Main tab)
 Tabs.Main:AddParagraph({
     Title = "Development Notice",
-    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
+    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you."
 })
 
 -- Visuals Tab Content
