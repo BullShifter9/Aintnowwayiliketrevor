@@ -883,77 +883,85 @@ end
 local coinAuraConnection = nil
 
 -- Fluent UI Integration
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/jensonhirst/Rayfield/refs/heads/main/source'))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Initialize core window with configuration
-local Window = Rayfield:CreateWindow({
-    Name = "OmniHub Script By Azzakirms",
-    LoadingTitle = "OmniHub Loading...",
-    LoadingSubtitle = "by Azzakirms",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "notasingleshitcomingfromyourmouth",
-        FileName = "OmniHubConfig"
-    },
-    KeySystem = false
+local Window = Fluent:CreateWindow({
+   Title = "OmniHub Script By Azzakirms",
+   SubTitle = "NiggaTron",
+   TabWidth = 160,
+   Size = UDim2.fromOffset(580, 460),
+   Acrylic = true,
+   Theme = "Dark",
+   MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Main functionality tab implementation
-local MainTab = Window:CreateTab("Main", 9734555213)
+-- Add Discord Tab
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "eye" }),
+    Discord = Window:AddTab({ Title = "Join Discord", Icon = "message-square" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
 
-local NoticeParagraph = MainTab:CreateParagraph({
+Tabs.Main:AddParagraph({
     Title = "Development Notice",
-    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you."
+    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
 })
 
-local ESPToggle = MainTab:CreateToggle({
-    Name = "Player ESP",
-    CurrentValue = false,
-    Flag = "ESPToggle",
-    Callback = function(Value)
-        state.espEnabled = Value
-        if not state.espEnabled then
-            for player, esp in pairs(ESPSystem.active) do
-                ESPSystem.returnToPool(esp)
-            end
-            ESPSystem.active = {}
-        end
+
+-- ESP Toggle
+local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
+   Title = "Player ESP",
+   Default = false 
+})
+
+ESPToggle:OnChanged(function()
+   state.espEnabled = ESPToggle.Value
+   
+   if not state.espEnabled then
+       for player, esp in pairs(ESPSystem.active) do
+           ESPSystem.returnToPool(esp)
+       end
+       ESPSystem.active = {}
+   end
+end)
+
+
+local SilentAimToggle = Tabs.Main:AddToggle("SilentAimToggle", {
+    Title = "Silent Aim",
+    Default = false,
+    Callback = function(toggle)
+        SilentAimButtonV2.Visible = toggle
     end
 })
 
-local SilentAimToggle = MainTab:CreateToggle({
-    Name = "Silent Aim",
-    CurrentValue = false,
-    Flag = "SilentAimToggle",
-    Callback = function(Value)
-        SilentAimButtonV2.Visible = Value
+local SharpShooterToggle = Tabs.Main:AddToggle("SharpShooterToggle", {
+    Title = "Sharp Shooter",
+    Default = false,
+    Callback = function(toggle)
+        SharpShooterEnabled = toggle
+        Fluent:Notify({
+            Title = "Sharp Shooter",
+            Content = toggle and "Sharp Shooter is now ENABLED." or "Sharp Shooter is now DISABLED.",
+            Duration = 3
+        })
     end
 })
 
-local SharpShooterToggle = MainTab:CreateToggle({
-    Name = "Sharp Shooter",
-    CurrentValue = false,
-    Flag = "SharpShooterToggle",
-    Callback = function(Value)
-        SharpShooterEnabled = Value
+local AutoGetGunDropToggle = Tabs.Main:AddToggle("AutoGetGunDropToggle", {
+    Title = "Auto Get Gun Drop",
+    Default = false,
+    Callback = function(toggle)
+        state.autoGetGunDropEnabled = toggle
     end
 })
 
-local AutoGetGunDropToggle = MainTab:CreateToggle({
-    Name = "Auto Get Gun Drop",
-    CurrentValue = false,
-    Flag = "AutoGetGunDropToggle",
-    Callback = function(Value)
-        state.autoGetGunDropEnabled = Value
-    end
-})
-
-local CoinAuraToggle = MainTab:CreateToggle({
-    Name = "Coin Aura",
-    CurrentValue = false,
-    Flag = "CoinAuraToggle",
-    Callback = function(Value)
-        if Value then
+local CoinAuraToggle = Tabs.Main:AddToggle("CoinAuraToggle", {
+    Title = "Coin Aura",
+    Default = false,
+    Callback = function(toggle)
+        if toggle then
             coinAuraConnection = RunService.Heartbeat:Connect(collectNearbyCoins)
         else
             if coinAuraConnection then
@@ -964,79 +972,118 @@ local CoinAuraToggle = MainTab:CreateToggle({
     end
 })
 
-local AutoNotifyToggle = MainTab:CreateToggle({
-    Name = "Auto Notify Murderers Perk",
-    CurrentValue = true,
-    Flag = "AutoNotifyToggle"
+local AutoNotifyToggle = Tabs.Main:AddToggle("AutoNotifyToggle", {
+    Title = "Auto Notify Murderers Perk",
+    Default = true,
 })
 
-local PredictionPingToggle = MainTab:CreateToggle({
-    Name = "Prediction Ping",
-    CurrentValue = false,
-    Flag = "PredictionPingToggle",
-    Callback = function(Value)
-        predictionState.pingEnabled = Value
-    end
+-- Prediction Ping Toggle
+local PredictionPingToggle = Tabs.Main:AddToggle("PredictionPingToggle", {
+   Title = "Prediction Ping",
+   Default = false,
+   Callback = function(toggle)
+       predictionState.pingEnabled = toggle
+       Fluent:Notify({
+           Title = "Prediction Ping",
+           Content = toggle and "Prediction Ping Enabled" or "Prediction Ping Disabled",
+           Duration = 3
+       })
+   end
 })
 
-local PingSlider = MainTab:CreateSlider({
-    Name = "Prediction Ping Value",
-    Range = {0, 300},
-    Increment = 1,
-    Suffix = "ms",
-    CurrentValue = 50,
-    Flag = "PingSlider",
-    Callback = function(Value)
-        predictionState.pingValue = Value
-    end
+-- Ping Slider
+local PingSlider = Tabs.Main:AddSlider("PingSlider", {
+   Title = "Prediction Ping Value",
+   Description = "Adjust ping",
+   Default = 50,
+   Min = 0,
+   Max = 300,
+   Rounding = 0,
+   Callback = function(value)
+       predictionState.pingValue = value
+   end
 })
 
-local AutoCoinToggle = MainTab:CreateToggle({
-    Name = "Auto Coin",
-    CurrentValue = false,
-    Flag = "AutoCoinToggle",
-    Callback = function(Value)
-        AutoCoin = Value
-        if not Value then
-            local character = game.Players.LocalPlayer.Character
-            if character then
-                for _, part in pairs(character:GetChildren()) do
-                    if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
-                        for _, child in pairs(part:GetChildren()) do
-                            if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
-                                child:Destroy()
-                            end
-                        end
-                    end
-                end
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end
+
+local AutoCoinToggle = Tabs.Main:AddToggle("AutoCoinToggle", {
+  Title = "Auto Coin",
+  Default = false,
+  Callback = function(toggle)
+      AutoCoin = toggle
+      if not toggle then
+          -- Stop farming immediately
+          local character = game.Players.LocalPlayer.Character
+          if character then
+              for _, part in pairs(character:GetChildren()) do
+                  if part:IsA("BasePart") and (part.Name == "Head" or part.Name:match("Torso")) then
+                      for _, child in pairs(part:GetChildren()) do
+                          if child.Name == "Auto Farm Gyro" or child.Name == "Auto Farm Velocity" then
+                              child:Destroy()
+                          end
+                      end
+                  end
+              end
+              local humanoid = character:FindFirstChildOfClass("Humanoid")
+              if humanoid then
+                  humanoid.PlatformStand = false -- Reset to standing when stopping
+              end
+          end
+      end
+  end
+})
+
+
+
+-- Discord Section Configuration
+local DiscordSection = Tabs.Discord:AddSection("Discord Community")
+
+Tabs.Discord:AddParagraph({
+   Title = "Join Our Community",
+   Content = "Join our Discord server and help us improve by suggesting new features for our script!"
+})
+
+local DiscordButton = Tabs.Discord:AddButton({
+    Title = "Click to Copy Discord Invite",
+    Name = "JoinDiscordButton", -- Internal identifier
+    Callback = function()
+        local discordLink = "https://discord.gg/3DR8b2pA2z"
+        
+        local success, err = pcall(function()
+            setclipboard(discordLink)
+        end)
+        
+        if success then
+            Fluent:Notify({
+                Title = "Success!",
+                Content = "Discord invite link copied to clipboard.",
+                Duration = 3
+            })
+        else
+            Fluent:Notify({
+                Title = "Error",
+                Content = "Failed to copy invite link. Please try again.",
+                Duration = 3
+            })
         end
     end
 })
 
--- Discord community tab implementation
-local DiscordTab = Window:CreateTab("Join Discord", 9734555168)
+-- Save and Interface Management
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("Imnotgayyounigger")
+SaveManager:SetFolder("notasingleshitcomingfromyourmouth")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
 
-local DiscordParagraph = DiscordTab:CreateParagraph({
-    Title = "Join Our Community",
-    Content = "Join our Discord server and help us improve by suggesting new features for our script!"
+Window:SelectTab(1)
+
+Fluent:Notify({
+   Title = "Murder Mystery By Azzakirms",
+   Content = "Script Initialized",
+   Duration = 5
 })
 
-local DiscordButton = DiscordTab:CreateButton({
-    Name = "Click to Copy Discord Invite",
-    Callback = function()
-        local discordLink = "https://discord.gg/3DR8b2pA2z"
-        setclipboard(discordLink)
-    end
-})
-
--- Initialize notification
-Rayfield:Notify({
-    Title = "Murder Mystery By Azzakirms",
-    Content = "Script Initialized",
-    Duration = 5
-})
+SaveManager:LoadAutoloadConfig()
