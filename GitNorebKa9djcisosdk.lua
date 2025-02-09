@@ -890,8 +890,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 local Window = Fluent:CreateWindow({
    Title = "OmniHub Script By Azzakirms",
    SubTitle = "V1.1.0",
-   TabWidth = 100,
-   Size = UDim2.fromOffset(580, 460),
+   TabWidth = 80,
+   Size = UDim2.fromOffset(480, 360),
    Acrylic = true,
    Theme = "Dark",
    MinimizeKey = Enum.KeyCode.LeftControl
@@ -915,10 +915,6 @@ Tabs.Main:AddParagraph({
 
 local MainSection = Tabs.Main:AddSection("User Information")
 
--- Initialize Service Variables
-local RunService = game:GetService("RunService")
-local Stats = game:GetService("Stats")
-
 -- User Information Display
 local UserInfo = Tabs.Main:AddParagraph({
     Title = "User Details",
@@ -930,56 +926,27 @@ local UserInfo = Tabs.Main:AddParagraph({
     )
 })
 
--- Performance Metrics Display
-local PerformanceLabel = Tabs.Main:AddParagraph({
-    Title = "Performance Metrics",
-    Content = "FPS: Calculating...\nPing: Calculating..."
-})
-
--- FPS and Ping Monitoring System
-local frameCount = 0
-local lastTime = tick()
-
-local function updatePerformanceMetrics()
-    frameCount = frameCount + 1
-    local currentTime = tick()
-    local elapsed = currentTime - lastTime
-    
-    if elapsed >= 1 then
-        local fps = math.floor(frameCount / elapsed)
-        local ping = math.floor(Stats:GetValue("NetworkPing") * 1000)
-        
-        PerformanceLabel:SetDesc(string.format(
-            "FPS: %d\nPing: %d ms",
-            fps,
-            ping
-        ))
-        
-        frameCount = 0
-        lastTime = currentTime
-    end
+-- FPS Cap System Implementation
+local setfpscap = setfpscap or function(fps)
+    local fps = math.clamp(fps, 0, 360)
+    if fps == 0 then fps = 9999 end
+    game:GetService("RunService"):Set3dRenderingEnabled(true)
+    game:GetService("RunService"):SetFPSCap(fps)
 end
 
-local performanceConnection = RunService.RenderStepped:Connect(updatePerformanceMetrics)
-
--- FPS Cap System
 local FPSCapSlider = Tabs.Main:AddSlider("FPSCapSlider", {
     Title = "FPS Cap",
     Description = "Set maximum FPS (0 = Unlimited)",
     Default = 60,
     Min = 0,
-    Max = 240,
+    Max = 360,
     Rounding = 0,
     Callback = function(Value)
-        if Value == 0 then
-            setfpscap(9999) -- Unlimited
-        else
-            setfpscap(Value)
-        end
+        setfpscap(Value)
     end
 })
 
--- Anti-Kick System
+-- Anti-Kick Protection System
 local AntiKickToggle = Tabs.Main:AddToggle("AntiKickToggle", {
     Title = "Anti-Kick Protection",
     Default = false,
@@ -991,22 +958,11 @@ local AntiKickToggle = Tabs.Main:AddToggle("AntiKickToggle", {
             
             mt.__namecall = newcclosure(function(self, ...)
                 local method = getnamecallmethod()
-                local args = {...}
-                
-                if method == "Kick" then
-                    return nil
-                end
-                
+                if method == "Kick" then return nil end
                 return oldNamecall(self, ...)
             end)
             
             setreadonly(mt, true)
-            
-            Fluent:Notify({
-                Title = "Protection Enabled",
-                Content = "Anti-Kick system is now active",
-                Duration = 3
-            })
         end
     end
 })
@@ -1014,55 +970,133 @@ local AntiKickToggle = Tabs.Main:AddToggle("AntiKickToggle", {
 -- Character Modifications Section
 local CharacterSection = Tabs.Main:AddSection("Character Modifications")
 
--- X-Ray System
+-- X-Ray System Implementation
+local xrayEnabled = false
+local defaultTransparency = {}
+
+local XRayToggle = Tabs.Main:AddToggle("XRayToggle", {
+    Title = "X-Ray",
+    Default = false,
+    Callback = function(toggle)
+        xrayEnabled = toggle
+        if toggle then
+            for _, part in pairs(workspace:GetDescendants()) do
+                if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
+                    defaultTransparency[part] = part.Transparency
+                    part.LocalTransparencyModifier = XRaySlider.Value / 100
+                end
+            end
+        else
+            for part, transparency in pairs(defaultTransparency) do
+                if part and part:IsA("BasePart") then
+                    part.LocalTransparencyModifier = 0
+                end
+            end
+            defaultTransparency = {}
+        end
+    end
+})
+
 local XRaySlider = Tabs.Main:AddSlider("XRaySlider", {
     Title = "X-Ray Transparency",
-    Description = "Adjust building transparency",
-    Default = 0,
+    Description = "Adjust X-Ray transparency level",
+    Default = 80,
     Min = 0,
     Max = 100,
     Rounding = 0,
     Callback = function(Value)
-        local transparency = Value / 100
-        for _, part in pairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") and 
-               not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
-                part.LocalTransparencyModifier = transparency
+        if XRayToggle.Value then
+            for _, part in pairs(workspace:GetDescendants()) do
+                if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
+                    part.LocalTransparencyModifier = Value / 100
+                end
             end
         end
     end
 })
 
--- Character Movement Controls
+-- Jump Power System
+local defaultJumpPower = 50
+local jumpPowerEnabled = false
+
+local JumpPowerToggle = Tabs.Main:AddToggle("JumpPowerToggle", {
+    Title = "Custom Jump Power",
+    Default = false
+})
+
 local JumpPowerSlider = Tabs.Main:AddSlider("JumpPowerSlider", {
-    Title = "Jump Power",
-    Description = "Adjust jump height",
+    Title = "Jump Power Value",
     Default = 50,
     Min = 0,
     Max = 200,
     Rounding = 0,
     Callback = function(Value)
-        if game.Players.LocalPlayer.Character and 
-           game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+        if JumpPowerToggle.Value and game.Players.LocalPlayer.Character then
+            local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+            humanoid.JumpPower = Value
         end
     end
 })
 
+-- Walk Speed System
+local defaultWalkSpeed = 16
+local walkSpeedEnabled = false
+
+local WalkSpeedToggle = Tabs.Main:AddToggle("WalkSpeedToggle", {
+    Title = "Custom Walk Speed",
+    Default = false
+})
+
 local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeedSlider", {
-    Title = "Walk Speed",
-    Description = "Adjust walking speed",
+    Title = "Walk Speed Value",
     Default = 16,
     Min = 0,
     Max = 200,
     Rounding = 0,
     Callback = function(Value)
-        if game.Players.LocalPlayer.Character and 
-           game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        if WalkSpeedToggle.Value and game.Players.LocalPlayer.Character then
+            local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+            humanoid.WalkSpeed = Value
         end
     end
 })
+
+-- Dynamic Character State Management
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    
+    if JumpPowerToggle.Value then
+        humanoid.JumpPower = JumpPowerSlider.Value
+    end
+    
+    if WalkSpeedToggle.Value then
+        humanoid.WalkSpeed = WalkSpeedSlider.Value
+    end
+end)
+
+-- Toggle State Handlers
+JumpPowerToggle:OnChanged(function(Value)
+    if game.Players.LocalPlayer.Character then
+        local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+        humanoid.JumpPower = Value and JumpPowerSlider.Value or defaultJumpPower
+    end
+end)
+
+WalkSpeedToggle:OnChanged(function(Value)
+    if game.Players.LocalPlayer.Character then
+        local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+        humanoid.WalkSpeed = Value and WalkSpeedSlider.Value or defaultWalkSpeed
+    end
+end)
+
+-- Workspace Update Handler for X-Ray
+workspace.DescendantAdded:Connect(function(descendant)
+    if XRayToggle.Value and descendant:IsA("BasePart") and 
+       not descendant:IsDescendantOf(game.Players.LocalPlayer.Character) then
+        defaultTransparency[descendant] = descendant.Transparency
+        descendant.LocalTransparencyModifier = XRaySlider.Value / 100
+    end
+end)
 
 -- Visuals Tab Content
 local ESPToggle = Tabs.Visuals:AddToggle("ESPToggle", {
