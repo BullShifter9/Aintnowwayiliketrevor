@@ -908,47 +908,39 @@ local Tabs = {
 }
 
 -- Main Tab Content
-local MainSection = Tabs.Main:AddSection("User Information")
-
--- Create Avatar Image
-local UserAvatar = Tabs.Main:AddImage({
-    Title = "User Avatar",
-    Description = game.Players.LocalPlayer.DisplayName,
-    Size = UDim2.fromOffset(150, 150)
+Tabs.Main:AddParagraph({
+    Title = "Development Notice",
+    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you ."
 })
 
--- Update avatar image using player's thumbnail
-local userId = game.Players.LocalPlayer.UserId
-local thumbType = Enum.ThumbnailType.HeadShot
-local thumbSize = Enum.ThumbnailSize.Size420x420
-local content = game.Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
-UserAvatar:SetImage(content)
+local MainSection = Tabs.Main:AddSection("User Information")
 
--- Add User Information
-Tabs.Main:AddParagraph({
+-- Initialize Service Variables
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+-- User Information Display
+local UserInfo = Tabs.Main:AddParagraph({
     Title = "User Details",
     Content = string.format(
-        "Username: %s\nDisplay Name: %s\nUser ID: %s\nGame ID: %s",
+        "Username: %s\nUser ID: %s\nServer ID: %s",
         game.Players.LocalPlayer.Name,
-        game.Players.LocalPlayer.DisplayName,
         game.Players.LocalPlayer.UserId,
-        game.PlaceId
+        game.JobId
     )
 })
 
--- FPS and Ping Counter
+-- Performance Metrics Display
 local PerformanceLabel = Tabs.Main:AddParagraph({
     Title = "Performance Metrics",
     Content = "FPS: Calculating...\nPing: Calculating..."
 })
 
--- Update FPS and Ping
-local RunService = game:GetService("RunService")
-local Stats = game:GetService("Stats")
+-- FPS and Ping Monitoring System
 local frameCount = 0
 local lastTime = tick()
 
-RunService.RenderStepped:Connect(function()
+local function updatePerformanceMetrics()
     frameCount = frameCount + 1
     local currentTime = tick()
     local elapsed = currentTime - lastTime
@@ -966,12 +958,63 @@ RunService.RenderStepped:Connect(function()
         frameCount = 0
         lastTime = currentTime
     end
-end)
+end
+
+local performanceConnection = RunService.RenderStepped:Connect(updatePerformanceMetrics)
+
+-- FPS Cap System
+local FPSCapSlider = Tabs.Main:AddSlider("FPSCapSlider", {
+    Title = "FPS Cap",
+    Description = "Set maximum FPS (0 = Unlimited)",
+    Default = 60,
+    Min = 0,
+    Max = 240,
+    Rounding = 0,
+    Callback = function(Value)
+        if Value == 0 then
+            setfpscap(9999) -- Unlimited
+        else
+            setfpscap(Value)
+        end
+    end
+})
+
+-- Anti-Kick System
+local AntiKickToggle = Tabs.Main:AddToggle("AntiKickToggle", {
+    Title = "Anti-Kick Protection",
+    Default = false,
+    Callback = function(toggle)
+        if toggle then
+            local mt = getrawmetatable(game)
+            local oldNamecall = mt.__namecall
+            setreadonly(mt, false)
+            
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if method == "Kick" then
+                    return nil
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+            
+            setreadonly(mt, true)
+            
+            Fluent:Notify({
+                Title = "Protection Enabled",
+                Content = "Anti-Kick system is now active",
+                Duration = 3
+            })
+        end
+    end
+})
 
 -- Character Modifications Section
 local CharacterSection = Tabs.Main:AddSection("Character Modifications")
 
--- X-Ray Transparency Slider
+-- X-Ray System
 local XRaySlider = Tabs.Main:AddSlider("XRaySlider", {
     Title = "X-Ray Transparency",
     Description = "Adjust building transparency",
@@ -982,14 +1025,15 @@ local XRaySlider = Tabs.Main:AddSlider("XRaySlider", {
     Callback = function(Value)
         local transparency = Value / 100
         for _, part in pairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
+            if part:IsA("BasePart") and 
+               not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
                 part.LocalTransparencyModifier = transparency
             end
         end
     end
 })
 
--- Jump Power Slider
+-- Character Movement Controls
 local JumpPowerSlider = Tabs.Main:AddSlider("JumpPowerSlider", {
     Title = "Jump Power",
     Description = "Adjust jump height",
@@ -1005,7 +1049,6 @@ local JumpPowerSlider = Tabs.Main:AddSlider("JumpPowerSlider", {
     end
 })
 
--- Walk Speed Slider
 local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeedSlider", {
     Title = "Walk Speed",
     Description = "Adjust walking speed",
@@ -1019,12 +1062,6 @@ local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeedSlider", {
             game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
         end
     end
-})
-
--- Development Notice (moved to bottom of Main tab)
-Tabs.Main:AddParagraph({
-    Title = "Development Notice",
-    Content = "OmniHub is still in early development. You may experience bugs during usage. If you have suggestions for improving our MM2 script, please join our Discord server Thank you."
 })
 
 -- Visuals Tab Content
