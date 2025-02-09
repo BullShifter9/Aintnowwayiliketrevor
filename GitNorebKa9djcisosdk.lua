@@ -883,8 +883,9 @@ end
 local coinAuraConnection = nil
 
 -- Fluent UI Integration
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/jensonhirst/Rayfield/refs/heads/main/source'))()
 
+-- Initialize core window with configuration
 local Window = Rayfield:CreateWindow({
     Name = "OmniHub Script By Azzakirms",
     LoadingTitle = "OmniHub Loading...",
@@ -897,6 +898,7 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 
+-- Main functionality tab implementation
 local MainTab = Window:CreateTab("Main", 9734555213)
 
 local NoticeParagraph = MainTab:CreateParagraph({
@@ -1016,6 +1018,7 @@ local AutoCoinToggle = MainTab:CreateToggle({
     end
 })
 
+-- Discord community tab implementation
 local DiscordTab = Window:CreateTab("Join Discord", 9734555168)
 
 local DiscordParagraph = DiscordTab:CreateParagraph({
@@ -1031,6 +1034,7 @@ local DiscordButton = DiscordTab:CreateButton({
     end
 })
 
+-- Initialize notification
 Rayfield:Notify({
     Title = "Murder Mystery By Azzakirms",
     Content = "Script Initialized",
