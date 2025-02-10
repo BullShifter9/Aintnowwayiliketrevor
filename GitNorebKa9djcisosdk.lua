@@ -1221,25 +1221,72 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
 local PREMIUM_GAMEPASS_ID = 675380494
 local PREDICTION_MODES = {
     Standard = {
+        -- Core timing
         TICK_RATE = 1/60,
+        MAX_PREDICTION_STEPS = 12,
+        
+        -- Advanced weighting
         VELOCITY_WEIGHT = 0.75,
-        ACCELERATION_FACTOR = 0.8,
-        PING_COMPENSATION = 0.6,
-        MAX_PREDICTION_STEPS = 12
+        MOMENTUM_WEIGHT = 0.65,
+        DIRECTION_WEIGHT = 0.35,
+        
+        -- Logarithmic constants
+        LOG_BASE = math.exp(1),
+        SCALE_FACTOR = 1.5,
+        MIN_LOG_VALUE = 0.1,
+        MAX_LOG_VALUE = 5.0,
+        
+        -- AI tuning parameters
+        PATTERN_RECOGNITION_WEIGHT = 0.4,
+        BEHAVIOR_PREDICTION_FACTOR = 0.6,
+        ADAPTIVE_THRESHOLD = 0.75,
+        
+        -- Movement constraints
+        ACCELERATION_CAP = 85,
+        DECELERATION_RATE = 0.82,
+        PREDICTION_SMOOTHING = 0.88,
+        
+        -- Network compensation
+        PING_COMPENSATION = 0.65,
+        LATENCY_SCALING = 0.7
     },
     Algorithm = {
         TICK_RATE = 1/90,
+        MAX_PREDICTION_STEPS = 16,
         VELOCITY_WEIGHT = 0.85,
-        ACCELERATION_FACTOR = 0.9,
-        PING_COMPENSATION = 0.8,
-        MAX_PREDICTION_STEPS = 16
+        MOMENTUM_WEIGHT = 0.75,
+        DIRECTION_WEIGHT = 0.4,
+        LOG_BASE = math.exp(1),
+        SCALE_FACTOR = 1.7,
+        MIN_LOG_VALUE = 0.08,
+        MAX_LOG_VALUE = 5.5,
+        PATTERN_RECOGNITION_WEIGHT = 0.5,
+        BEHAVIOR_PREDICTION_FACTOR = 0.7,
+        ADAPTIVE_THRESHOLD = 0.8,
+        ACCELERATION_CAP = 95,
+        DECELERATION_RATE = 0.85,
+        PREDICTION_SMOOTHING = 0.9,
+        PING_COMPENSATION = 0.75,
+        LATENCY_SCALING = 0.8
     },
     Precise = {
         TICK_RATE = 1/120,
+        MAX_PREDICTION_STEPS = 20,
         VELOCITY_WEIGHT = 0.95,
-        ACCELERATION_FACTOR = 0.95,
-        PING_COMPENSATION = 1.0,
-        MAX_PREDICTION_STEPS = 20
+        MOMENTUM_WEIGHT = 0.85,
+        DIRECTION_WEIGHT = 0.45,
+        LOG_BASE = math.exp(1),
+        SCALE_FACTOR = 1.9,
+        MIN_LOG_VALUE = 0.05,
+        MAX_LOG_VALUE = 6.0,
+        PATTERN_RECOGNITION_WEIGHT = 0.6,
+        BEHAVIOR_PREDICTION_FACTOR = 0.8,
+        ADAPTIVE_THRESHOLD = 0.85,
+        ACCELERATION_CAP = 105,
+        DECELERATION_RATE = 0.88,
+        PREDICTION_SMOOTHING = 0.92,
+        PING_COMPENSATION = 0.85,
+        LATENCY_SCALING = 0.9
     }
 }
 
@@ -1250,9 +1297,69 @@ local function calculatePingCompensation(mode)
     return math.clamp(ping * compensation / 1000, 0.1, 1.5)
 end
 
--- Premium prediction algorithm
-local function premiumPredict(murderer, mode)
-    local character = murderer.Character
+local function createAdaptiveWeighting(distance, time, complexity)
+    return {
+        spatial = math.exp(-distance * complexity),
+        temporal = math.exp(-time * complexity),
+        combined = function(base)
+            return math.exp(-distance * time * base)
+        end
+    }
+end
+
+local function applyAdvancedLogarithmicScale(value, min, max, settings, complexity)
+    local normalized = (value - min) / (max - min)
+    local logBase = settings.LOG_BASE + (complexity * 0.5)
+    local scaleFactor = settings.SCALE_FACTOR * (1 + complexity * 0.3)
+    
+    local logScaled = math.log(normalized * (logBase - 1) + 1) / math.log(logBase)
+    local adaptiveScale = math.pow(logScaled, 1 + complexity * 0.2)
+    
+    return min + adaptiveScale * (max - min)
+end
+
+local function computeJumpTrajectory(state, pattern, settings)
+    local jumpPower = state.jumpPower or 50
+    local timeInAir = jumpPower / (workspace.Gravity * settings.TICK_RATE)
+    
+    -- Scale jump power based on pattern complexity
+    local scaledJumpPower = applyAdvancedLogarithmicScale(
+        jumpPower,
+        0,
+        jumpPower * 1.5,
+        settings,
+        pattern.complexity
+    )
+    
+    return Vector3.new(
+        0,
+        scaledJumpPower * (1 - pattern.complexity * 0.3),
+        0
+    )
+end
+
+local function analyzeMovementPattern(state, history)
+    local patternScore = 0
+    local velocityTrend = Vector3.new()
+    local recentHistory = math.min(#history, 10)
+    
+    for i = #history, math.max(1, #history - recentHistory), -1 do
+        local record = history[i]
+        local weight = math.exp(-(recentHistory - i) * 0.2)
+        velocityTrend = velocityTrend + record.velocity * weight
+        patternScore = patternScore + record.acceleration.Magnitude * weight
+    end
+    
+    return {
+        trend = velocityTrend.Unit,
+        complexity = math.clamp(patternScore / recentHistory, 0, 1),
+        consistency = 1 - (velocityTrend.Magnitude / recentHistory)
+    }
+end
+
+-- Main prediction function
+local function premiumPredict(target, mode)
+    local character = target.Character
     if not character then return nil end
 
     local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -1262,56 +1369,110 @@ local function premiumPredict(murderer, mode)
     local settings = PREDICTION_MODES[mode]
     local pingFactor = calculatePingCompensation(mode)
 
-    -- Initialize state
+    -- Initialize state tracking
     local state = {
         position = rootPart.Position,
         velocity = rootPart.AssemblyLinearVelocity,
         moveDirection = humanoid.MoveDirection,
-        isJumping = humanoid.Jump,
-        walkSpeed = humanoid.WalkSpeed,
-        jumpPower = humanoid.JumpPower
+        acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
+        movementHistory = {},
+        jumpPower = humanoid.JumpPower,
+        timeSinceLastJump = 0,
+        groundedTime = 0
     }
 
-    -- AI-enhanced velocity calculation
-    local function computeAIVelocity()
+    -- Update movement history
+    table.insert(state.movementHistory, {
+        velocity = state.velocity,
+        acceleration = state.acceleration,
+        position = state.position
+    })
+    if #state.movementHistory > 10 then
+        table.remove(state.movementHistory, 1)
+    end
+
+    -- Calculate enhanced velocity
+    local function computeEnhancedVelocity(pattern)
         local baseVelocity = state.velocity
-        local inputVelocity = state.moveDirection * state.walkSpeed
+        local inputVelocity = state.moveDirection * humanoid.WalkSpeed
         
-        -- Apply algorithmic weighting
-        local weightedVelocity = (baseVelocity * settings.VELOCITY_WEIGHT) +
-                                (inputVelocity * (1 - settings.VELOCITY_WEIGHT))
+        -- Pattern-based prediction
+        local predictedDirection = pattern.trend * settings.PATTERN_RECOGNITION_WEIGHT +
+                                 state.moveDirection * (1 - settings.PATTERN_RECOGNITION_WEIGHT)
         
-        -- Ping compensation
-        return weightedVelocity * (1 + pingFactor)
+        -- Adaptive weighting
+        local adaptiveWeight = createAdaptiveWeighting(
+            (rootPart.Position - state.position).Magnitude,
+            state.groundedTime,
+            pattern.complexity
+        )
+        
+        -- Scale velocity
+        local scaledSpeed = applyAdvancedLogarithmicScale(
+            baseVelocity.Magnitude,
+            0,
+            settings.ACCELERATION_CAP,
+            settings,
+            pattern.complexity
+        )
+        
+        -- Momentum blending
+        local momentumVector = state.acceleration.Unit * scaledSpeed * settings.MOMENTUM_WEIGHT
+        local directionVector = predictedDirection * humanoid.WalkSpeed * (1 - settings.MOMENTUM_WEIGHT)
+        
+        local blendedVelocity = (momentumVector + directionVector) * 
+                               adaptiveWeight.combined(settings.ADAPTIVE_THRESHOLD)
+        
+        -- Behavioral adjustments
+        if pattern.consistency > settings.BEHAVIOR_PREDICTION_FACTOR then
+            blendedVelocity = blendedVelocity * (1 + pattern.consistency * 0.2)
+        end
+        
+        return blendedVelocity * (1 + pingFactor * settings.LATENCY_SCALING)
     end
 
     -- Main prediction loop
     local predictedPosition = state.position
-    local adjustedVelocity = computeAIVelocity()
+    local pattern = analyzeMovementPattern(state, state.movementHistory)
+    local enhancedVelocity = computeEnhancedVelocity(pattern)
 
     for step = 1, settings.MAX_PREDICTION_STEPS do
-        local stepWeight = step / settings.MAX_PREDICTION_STEPS
-        
-        -- Update position with velocity
-        predictedPosition = predictedPosition + 
-            (adjustedVelocity * settings.TICK_RATE * settings.ACCELERATION_FACTOR * stepWeight)
-
-        -- Jump trajectory calculation
-        if state.isJumping then
-            local jumpOffset = Vector3.new(
-                0,
-                state.jumpPower * settings.ACCELERATION_FACTOR * pingFactor * (1 - stepWeight),
-                0
-            )
-            predictedPosition = predictedPosition + jumpOffset
-        end
-
-        -- Apply gravity compensation
-        predictedPosition = predictedPosition + Vector3.new(
+        local stepWeight = applyAdvancedLogarithmicScale(
+            step / settings.MAX_PREDICTION_STEPS,
             0,
-            -workspace.Gravity * (settings.TICK_RATE ^ 2) * stepWeight,
-            0
+            1,
+            settings,
+            pattern.complexity
         )
+        
+        -- Position update
+        local nextPosition = predictedPosition + 
+            (enhancedVelocity * settings.TICK_RATE * stepWeight)
+        
+        -- Jump handling
+        if humanoid.Jump then
+            local jumpVector = computeJumpTrajectory(state, pattern, settings)
+            nextPosition = nextPosition + jumpVector * stepWeight
+        end
+        
+        -- Gravity
+        local gravityEffect = workspace.Gravity * 
+                            (settings.TICK_RATE ^ 2) * 
+                            stepWeight * 
+                            (1 + pattern.complexity * 0.3)
+        
+        nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
+        
+        -- Smoothing
+        local smoothingFactor = applyAdvancedLogarithmicScale(
+            settings.PREDICTION_SMOOTHING * stepWeight,
+            0,
+            1,
+            settings,
+            pattern.complexity
+        )
+        
+        predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
     end
 
     return predictedPosition
