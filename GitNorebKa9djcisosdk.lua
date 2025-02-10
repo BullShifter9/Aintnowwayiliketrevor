@@ -1218,7 +1218,7 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
     end
 })
 
-local PREMIUM_GAMEPASS_ID = 12345
+local PREMIUM_GAMEPASS_ID = 675380494
 local PREDICTION_MODES = {
     Standard = {
         TICK_RATE = 1/60,
