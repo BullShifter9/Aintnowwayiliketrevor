@@ -1285,7 +1285,8 @@ local PHYSICS = {
    AIR_RESISTANCE = 0.96,
    FLOOR_CHECK_DISTANCE = 10,
    AXIS_DAMPENING = 0.94,
-   VELOCITY_EPSILON = 0.01
+   VELOCITY_EPSILON = 0.01,
+   GRAVITY = 196.2
 }
 
 local GRAVITY_COMPENSATION = {
@@ -1301,14 +1302,6 @@ local DISTANCE_SCALING = {
    CLOSE_RANGE_MULTIPLIER = 1.2,
    LONG_RANGE_MULTIPLIER = 0.85
 }
-
-local RAY_CONFIG = {
-   FLOOR_RAY_LENGTH = 50,
-   RAY_FILTER = {workspace.Map},
-   RAY_PARAMS = RaycastParams.new()
-}
-RAY_CONFIG.RAY_PARAMS.FilterType = Enum.RaycastFilterType.Include
-RAY_CONFIG.RAY_PARAMS.FilterDescendantsInstances = RAY_CONFIG.RAY_FILTER
 
 local function calculatePingCompensation(mode)
    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
@@ -1337,8 +1330,8 @@ local function applyAdvancedLogarithmicScale(value, min, max, settings, complexi
    return min + adaptiveScale * (max - min)
 end
 
-local function simulateAxisVelocity(currentVel, moveDir, deltaTime, friction)
-   local targetVel = moveDir * (humanoid.WalkSpeed * deltaTime)
+local function simulateAxisVelocity(currentVel, moveDir, deltaTime, friction, walkSpeed)
+   local targetVel = moveDir * (walkSpeed * deltaTime)
    local currentSpeed = currentVel.Magnitude
    
    local frictionForce = Vector3.new(
@@ -1357,32 +1350,9 @@ local function simulateAxisVelocity(currentVel, moveDir, deltaTime, friction)
    return newVel
 end
 
-local function checkFloorIntercept(position)
-   local rayOrigin = position + Vector3.new(0, 2, 0)
-   local rayDirection = Vector3.new(0, -RAY_CONFIG.FLOOR_RAY_LENGTH, 0)
-   
-   local rayResult = workspace:Raycast(rayOrigin, rayDirection, RAY_CONFIG.RAY_PARAMS)
-   if rayResult then
-       return {
-           hit = true,
-           normal = rayResult.Normal,
-           material = rayResult.Material,
-           distance = (rayResult.Position - rayOrigin).Magnitude
-       }
-   end
-   
-   return {
-       hit = false,
-       normal = Vector3.new(0, 1, 0),
-       material = Enum.Material.Air,
-       distance = RAY_CONFIG.FLOOR_RAY_LENGTH
-   }
-end
-
 local function computeJumpTrajectory(state, pattern, settings)
    local jumpPower = state.jumpPower or 50
-   local gravity = workspace.Gravity
-   local timeInAir = jumpPower / (gravity * settings.TICK_RATE)
+   local timeInAir = jumpPower / (PHYSICS.GRAVITY * settings.TICK_RATE)
    
    local verticalVelocity = state.velocity.Y
    local isAscending = verticalVelocity > 0
@@ -1480,24 +1450,15 @@ local function premiumPredict(target, mode)
            currentVelocity.Z
        )
        
-       local floorData = checkFloorIntercept(state.position)
-       local frictionCoefficient = floorData.hit and 
-           (PHYSICS.FRICTION_COEFFICIENT * PHYSICS.SURFACE_FRICTION) or
-           PHYSICS.AIR_RESISTANCE
+       local frictionCoefficient = PHYSICS.FRICTION_COEFFICIENT * PHYSICS.SURFACE_FRICTION
        
        local simulatedVelocity = simulateAxisVelocity(
            axialVelocity,
            Vector3.new(moveDirection.X, 0, moveDirection.Z),
            settings.TICK_RATE,
-           frictionCoefficient
+           frictionCoefficient,
+           humanoid.WalkSpeed
        )
-       
-       if floorData.hit then
-           local normalInfluence = floorData.normal * 
-                                 (1 - math.abs(floorData.normal.Y))
-           simulatedVelocity = simulatedVelocity + 
-                              (normalInfluence * currentVelocity.Magnitude * 0.2)
-       end
        
        local distanceComp = calculateDistanceCompensation(rootPart.Position, state.position)
        
@@ -1548,14 +1509,8 @@ local function premiumPredict(target, mode)
            nextPosition = nextPosition + jumpVector * stepWeight
        end
        
-       local floorData = checkFloorIntercept(nextPosition)
-       if floorData.hit then
-           nextPosition = Vector3.new(
-               nextPosition.X,
-               floorData.distance + 2,
-               nextPosition.Z
-           )
-       end
+       local gravityEffect = PHYSICS.GRAVITY * math.pow(settings.TICK_RATE, 2) * stepWeight
+       nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
        
        if nextPosition.Y < state.position.Y - GRAVITY_COMPENSATION.TERMINAL_VELOCITY then
            nextPosition = Vector3.new(
@@ -1566,8 +1521,7 @@ local function premiumPredict(target, mode)
        end
        
        local smoothingFactor = applyAdvancedLogarithmicScale(
-           settings.PREDICTION_SMOOTHING * stepWeight * 
-           (floorData.hit and 1.2 or 1),
+           settings.PREDICTION_SMOOTHING * stepWeight,
            0,
            1,
            settings,
@@ -1579,6 +1533,8 @@ local function premiumPredict(target, mode)
 
    return predictedPosition
 end
+
+return premiumPredict
 
 local PremiumSilentAimGui = Instance.new("ScreenGui")
 local PremiumSilentAimButton = Instance.new("ImageButton")
