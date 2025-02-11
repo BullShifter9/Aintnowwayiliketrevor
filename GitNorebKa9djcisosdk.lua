@@ -1534,8 +1534,6 @@ local function premiumPredict(target, mode)
    return predictedPosition
 end
 
-return premiumPredict
-
 local PremiumSilentAimGui = Instance.new("ScreenGui")
 local PremiumSilentAimButton = Instance.new("ImageButton")
 
