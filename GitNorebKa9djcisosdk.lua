@@ -1220,262 +1220,364 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
 
 local PREMIUM_GAMEPASS_ID = 675380494
 local PREDICTION_MODES = {
-    Standard = {
-        -- Core timing
-        TICK_RATE = 1/60,
-        MAX_PREDICTION_STEPS = 12,
-        
-        -- Advanced weighting
-        VELOCITY_WEIGHT = 0.75,
-        MOMENTUM_WEIGHT = 0.65,
-        DIRECTION_WEIGHT = 0.35,
-        
-        -- Logarithmic constants
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.5,
-        MIN_LOG_VALUE = 0.1,
-        MAX_LOG_VALUE = 5.0,
-        
-        -- AI tuning parameters
-        PATTERN_RECOGNITION_WEIGHT = 0.4,
-        BEHAVIOR_PREDICTION_FACTOR = 0.6,
-        ADAPTIVE_THRESHOLD = 0.75,
-        
-        -- Movement constraints
-        ACCELERATION_CAP = 85,
-        DECELERATION_RATE = 0.82,
-        PREDICTION_SMOOTHING = 0.88,
-        
-        -- Network compensation
-        PING_COMPENSATION = 0.65,
-        LATENCY_SCALING = 0.7
-    },
-    Algorithm = {
-        TICK_RATE = 1/90,
-        MAX_PREDICTION_STEPS = 16,
-        VELOCITY_WEIGHT = 0.85,
-        MOMENTUM_WEIGHT = 0.75,
-        DIRECTION_WEIGHT = 0.4,
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.7,
-        MIN_LOG_VALUE = 0.08,
-        MAX_LOG_VALUE = 5.5,
-        PATTERN_RECOGNITION_WEIGHT = 0.5,
-        BEHAVIOR_PREDICTION_FACTOR = 0.7,
-        ADAPTIVE_THRESHOLD = 0.8,
-        ACCELERATION_CAP = 95,
-        DECELERATION_RATE = 0.85,
-        PREDICTION_SMOOTHING = 0.9,
-        PING_COMPENSATION = 0.75,
-        LATENCY_SCALING = 0.8
-    },
-    Precise = {
-        TICK_RATE = 1/120,
-        MAX_PREDICTION_STEPS = 20,
-        VELOCITY_WEIGHT = 0.95,
-        MOMENTUM_WEIGHT = 0.85,
-        DIRECTION_WEIGHT = 0.45,
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.9,
-        MIN_LOG_VALUE = 0.05,
-        MAX_LOG_VALUE = 6.0,
-        PATTERN_RECOGNITION_WEIGHT = 0.6,
-        BEHAVIOR_PREDICTION_FACTOR = 0.8,
-        ADAPTIVE_THRESHOLD = 0.85,
-        ACCELERATION_CAP = 105,
-        DECELERATION_RATE = 0.88,
-        PREDICTION_SMOOTHING = 0.92,
-        PING_COMPENSATION = 0.85,
-        LATENCY_SCALING = 0.9
-    }
+   Standard = {
+       TICK_RATE = 1/60,
+       MAX_PREDICTION_STEPS = 12,
+       VELOCITY_WEIGHT = 0.75,
+       MOMENTUM_WEIGHT = 0.65,
+       DIRECTION_WEIGHT = 0.35,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 1.5,
+       MIN_LOG_VALUE = 0.1,
+       MAX_LOG_VALUE = 5.0,
+       PATTERN_RECOGNITION_WEIGHT = 0.4,
+       BEHAVIOR_PREDICTION_FACTOR = 0.6,
+       ADAPTIVE_THRESHOLD = 0.75,
+       ACCELERATION_CAP = 85,
+       DECELERATION_RATE = 0.82,
+       PREDICTION_SMOOTHING = 0.88,
+       PING_COMPENSATION = 0.65,
+       LATENCY_SCALING = 0.7
+   },
+   Algorithm = {
+       TICK_RATE = 1/90,
+       MAX_PREDICTION_STEPS = 16,
+       VELOCITY_WEIGHT = 0.85,
+       MOMENTUM_WEIGHT = 0.75,
+       DIRECTION_WEIGHT = 0.4,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 1.7,
+       MIN_LOG_VALUE = 0.08,
+       MAX_LOG_VALUE = 5.5,
+       PATTERN_RECOGNITION_WEIGHT = 0.5,
+       BEHAVIOR_PREDICTION_FACTOR = 0.7,
+       ADAPTIVE_THRESHOLD = 0.8,
+       ACCELERATION_CAP = 95,
+       DECELERATION_RATE = 0.85,
+       PREDICTION_SMOOTHING = 0.9,
+       PING_COMPENSATION = 0.75,
+       LATENCY_SCALING = 0.8
+   },
+   Precise = {
+       TICK_RATE = 1/120,
+       MAX_PREDICTION_STEPS = 20,
+       VELOCITY_WEIGHT = 0.95,
+       MOMENTUM_WEIGHT = 0.85,
+       DIRECTION_WEIGHT = 0.45,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 1.9,
+       MIN_LOG_VALUE = 0.05,
+       MAX_LOG_VALUE = 6.0,
+       PATTERN_RECOGNITION_WEIGHT = 0.6,
+       BEHAVIOR_PREDICTION_FACTOR = 0.8,
+       ADAPTIVE_THRESHOLD = 0.85,
+       ACCELERATION_CAP = 105,
+       DECELERATION_RATE = 0.88,
+       PREDICTION_SMOOTHING = 0.92,
+       PING_COMPENSATION = 0.85,
+       LATENCY_SCALING = 0.9
+   }
 }
 
--- Utility functions
+local PHYSICS = {
+   FRICTION_COEFFICIENT = 0.92,
+   SURFACE_FRICTION = 0.88,
+   AIR_RESISTANCE = 0.96,
+   FLOOR_CHECK_DISTANCE = 10,
+   AXIS_DAMPENING = 0.94,
+   VELOCITY_EPSILON = 0.01
+}
+
+local GRAVITY_COMPENSATION = {
+   JUMP_PREDICTION_WEIGHT = 0.85,
+   VERTICAL_MOMENTUM_DECAY = 0.92,
+   HEIGHT_COMPENSATION_FACTOR = 1.2,
+   TERMINAL_VELOCITY = -196.2
+}
+
+local DISTANCE_SCALING = {
+   NEAR_THRESHOLD = 15,
+   FAR_THRESHOLD = 100,
+   CLOSE_RANGE_MULTIPLIER = 1.2,
+   LONG_RANGE_MULTIPLIER = 0.85
+}
+
+local RAY_CONFIG = {
+   FLOOR_RAY_LENGTH = 50,
+   RAY_FILTER = {workspace.Map},
+   RAY_PARAMS = RaycastParams.new()
+}
+RAY_CONFIG.RAY_PARAMS.FilterType = Enum.RaycastFilterType.Include
+RAY_CONFIG.RAY_PARAMS.FilterDescendantsInstances = RAY_CONFIG.RAY_FILTER
+
 local function calculatePingCompensation(mode)
-    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-    local compensation = PREDICTION_MODES[mode].PING_COMPENSATION
-    return math.clamp(ping * compensation / 1000, 0.1, 1.5)
+   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+   local compensation = PREDICTION_MODES[mode].PING_COMPENSATION
+   return math.clamp(ping * compensation / 1000, 0.1, 1.5)
 end
 
 local function createAdaptiveWeighting(distance, time, complexity)
-    return {
-        spatial = math.exp(-distance * complexity),
-        temporal = math.exp(-time * complexity),
-        combined = function(base)
-            return math.exp(-distance * time * base)
-        end
-    }
+   return {
+       spatial = math.exp(-distance * complexity),
+       temporal = math.exp(-time * complexity),
+       combined = function(base)
+           return math.exp(-distance * time * base)
+       end
+   }
 end
 
 local function applyAdvancedLogarithmicScale(value, min, max, settings, complexity)
-    local normalized = (value - min) / (max - min)
-    local logBase = settings.LOG_BASE + (complexity * 0.5)
-    local scaleFactor = settings.SCALE_FACTOR * (1 + complexity * 0.3)
-    
-    local logScaled = math.log(normalized * (logBase - 1) + 1) / math.log(logBase)
-    local adaptiveScale = math.pow(logScaled, 1 + complexity * 0.2)
-    
-    return min + adaptiveScale * (max - min)
+   local normalized = (value - min) / (max - min)
+   local logBase = settings.LOG_BASE + (complexity * 0.5)
+   local scaleFactor = settings.SCALE_FACTOR * (1 + complexity * 0.3)
+   
+   local logScaled = math.log(normalized * (logBase - 1) + 1) / math.log(logBase)
+   local adaptiveScale = math.pow(logScaled, 1 + complexity * 0.2)
+   
+   return min + adaptiveScale * (max - min)
+end
+
+local function simulateAxisVelocity(currentVel, moveDir, deltaTime, friction)
+   local targetVel = moveDir * (humanoid.WalkSpeed * deltaTime)
+   local currentSpeed = currentVel.Magnitude
+   
+   local frictionForce = Vector3.new(
+       math.sign(currentVel.X) * math.min(math.abs(currentVel.X), friction),
+       0,
+       math.sign(currentVel.Z) * math.min(math.abs(currentVel.Z), friction)
+   )
+   
+   local acceleration = (targetVel - currentVel) * PHYSICS.AXIS_DAMPENING
+   local newVel = currentVel + acceleration - frictionForce
+   
+   if newVel.Magnitude < PHYSICS.VELOCITY_EPSILON then
+       return Vector3.new()
+   end
+   
+   return newVel
+end
+
+local function checkFloorIntercept(position)
+   local rayOrigin = position + Vector3.new(0, 2, 0)
+   local rayDirection = Vector3.new(0, -RAY_CONFIG.FLOOR_RAY_LENGTH, 0)
+   
+   local rayResult = workspace:Raycast(rayOrigin, rayDirection, RAY_CONFIG.RAY_PARAMS)
+   if rayResult then
+       return {
+           hit = true,
+           normal = rayResult.Normal,
+           material = rayResult.Material,
+           distance = (rayResult.Position - rayOrigin).Magnitude
+       }
+   end
+   
+   return {
+       hit = false,
+       normal = Vector3.new(0, 1, 0),
+       material = Enum.Material.Air,
+       distance = RAY_CONFIG.FLOOR_RAY_LENGTH
+   }
 end
 
 local function computeJumpTrajectory(state, pattern, settings)
-    local jumpPower = state.jumpPower or 50
-    local timeInAir = jumpPower / (workspace.Gravity * settings.TICK_RATE)
-    
-    -- Scale jump power based on pattern complexity
-    local scaledJumpPower = applyAdvancedLogarithmicScale(
-        jumpPower,
-        0,
-        jumpPower * 1.5,
-        settings,
-        pattern.complexity
-    )
-    
-    return Vector3.new(
-        0,
-        scaledJumpPower * (1 - pattern.complexity * 0.3),
-        0
-    )
+   local jumpPower = state.jumpPower or 50
+   local gravity = workspace.Gravity
+   local timeInAir = jumpPower / (gravity * settings.TICK_RATE)
+   
+   local verticalVelocity = state.velocity.Y
+   local isAscending = verticalVelocity > 0
+   local jumpPhase = math.abs(verticalVelocity) / jumpPower
+   
+   local scaledJumpPower = jumpPower * (1 + pattern.complexity * 0.2)
+   if isAscending then
+       scaledJumpPower = scaledJumpPower * GRAVITY_COMPENSATION.JUMP_PREDICTION_WEIGHT
+   else
+       scaledJumpPower = scaledJumpPower * GRAVITY_COMPENSATION.VERTICAL_MOMENTUM_DECAY
+   end
+   
+   return Vector3.new(
+       0,
+       scaledJumpPower * (1 - jumpPhase * 0.4),
+       0
+   )
+end
+
+local function calculateDistanceCompensation(currentPos, targetPos)
+   local distance = (currentPos - targetPos).Magnitude
+   local compensation = 1
+   
+   if distance < DISTANCE_SCALING.NEAR_THRESHOLD then
+       compensation = DISTANCE_SCALING.CLOSE_RANGE_MULTIPLIER
+   elseif distance > DISTANCE_SCALING.FAR_THRESHOLD then
+       compensation = DISTANCE_SCALING.LONG_RANGE_MULTIPLIER
+   else
+       local t = (distance - DISTANCE_SCALING.NEAR_THRESHOLD) / 
+                (DISTANCE_SCALING.FAR_THRESHOLD - DISTANCE_SCALING.NEAR_THRESHOLD)
+       compensation = DISTANCE_SCALING.CLOSE_RANGE_MULTIPLIER * (1 - t) +
+                     DISTANCE_SCALING.LONG_RANGE_MULTIPLIER * t
+   end
+   
+   return compensation
 end
 
 local function analyzeMovementPattern(state, history)
-    local patternScore = 0
-    local velocityTrend = Vector3.new()
-    local recentHistory = math.min(#history, 10)
-    
-    for i = #history, math.max(1, #history - recentHistory), -1 do
-        local record = history[i]
-        local weight = math.exp(-(recentHistory - i) * 0.2)
-        velocityTrend = velocityTrend + record.velocity * weight
-        patternScore = patternScore + record.acceleration.Magnitude * weight
-    end
-    
-    return {
-        trend = velocityTrend.Unit,
-        complexity = math.clamp(patternScore / recentHistory, 0, 1),
-        consistency = 1 - (velocityTrend.Magnitude / recentHistory)
-    }
+   local patternScore = 0
+   local velocityTrend = Vector3.new()
+   local recentHistory = math.min(#history, 10)
+   
+   for i = #history, math.max(1, #history - recentHistory), -1 do
+       local record = history[i]
+       local weight = math.exp(-(recentHistory - i) * 0.2)
+       velocityTrend = velocityTrend + record.velocity * weight
+       patternScore = patternScore + record.acceleration.Magnitude * weight
+   end
+   
+   return {
+       trend = velocityTrend.Unit,
+       complexity = math.clamp(patternScore / recentHistory, 0, 1),
+       consistency = 1 - (velocityTrend.Magnitude / recentHistory)
+   }
 end
 
--- Main prediction function
 local function premiumPredict(target, mode)
-    local character = target.Character
-    if not character then return nil end
+   local character = target.Character
+   if not character then return nil end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not rootPart or not humanoid then return nil end
 
-    local settings = PREDICTION_MODES[mode]
-    local pingFactor = calculatePingCompensation(mode)
+   local settings = PREDICTION_MODES[mode]
+   local pingFactor = calculatePingCompensation(mode)
 
-    -- Initialize state tracking
-    local state = {
-        position = rootPart.Position,
-        velocity = rootPart.AssemblyLinearVelocity,
-        moveDirection = humanoid.MoveDirection,
-        acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
-        movementHistory = {},
-        jumpPower = humanoid.JumpPower,
-        timeSinceLastJump = 0,
-        groundedTime = 0
-    }
+   local state = {
+       position = rootPart.Position,
+       velocity = rootPart.AssemblyLinearVelocity,
+       moveDirection = humanoid.MoveDirection,
+       acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
+       movementHistory = {},
+       jumpPower = humanoid.JumpPower,
+       timeSinceLastJump = 0,
+       groundedTime = 0
+   }
 
-    -- Update movement history
-    table.insert(state.movementHistory, {
-        velocity = state.velocity,
-        acceleration = state.acceleration,
-        position = state.position
-    })
-    if #state.movementHistory > 10 then
-        table.remove(state.movementHistory, 1)
-    end
+   table.insert(state.movementHistory, {
+       velocity = state.velocity,
+       acceleration = state.acceleration,
+       position = state.position
+   })
+   if #state.movementHistory > 10 then
+       table.remove(state.movementHistory, 1)
+   end
 
-    -- Calculate enhanced velocity
-    local function computeEnhancedVelocity(pattern)
-        local baseVelocity = state.velocity
-        local inputVelocity = state.moveDirection * humanoid.WalkSpeed
-        
-        -- Pattern-based prediction
-        local predictedDirection = pattern.trend * settings.PATTERN_RECOGNITION_WEIGHT +
-                                 state.moveDirection * (1 - settings.PATTERN_RECOGNITION_WEIGHT)
-        
-        -- Adaptive weighting
-        local adaptiveWeight = createAdaptiveWeighting(
-            (rootPart.Position - state.position).Magnitude,
-            state.groundedTime,
-            pattern.complexity
-        )
-        
-        -- Scale velocity
-        local scaledSpeed = applyAdvancedLogarithmicScale(
-            baseVelocity.Magnitude,
-            0,
-            settings.ACCELERATION_CAP,
-            settings,
-            pattern.complexity
-        )
-        
-        -- Momentum blending
-        local momentumVector = state.acceleration.Unit * scaledSpeed * settings.MOMENTUM_WEIGHT
-        local directionVector = predictedDirection * humanoid.WalkSpeed * (1 - settings.MOMENTUM_WEIGHT)
-        
-        local blendedVelocity = (momentumVector + directionVector) * 
-                               adaptiveWeight.combined(settings.ADAPTIVE_THRESHOLD)
-        
-        -- Behavioral adjustments
-        if pattern.consistency > settings.BEHAVIOR_PREDICTION_FACTOR then
-            blendedVelocity = blendedVelocity * (1 + pattern.consistency * 0.2)
-        end
-        
-        return blendedVelocity * (1 + pingFactor * settings.LATENCY_SCALING)
-    end
+   local function computeEnhancedVelocity(pattern)
+       local moveDirection = state.moveDirection
+       local currentVelocity = state.velocity
+       
+       local axialVelocity = Vector3.new(
+           currentVelocity.X,
+           0,
+           currentVelocity.Z
+       )
+       
+       local floorData = checkFloorIntercept(state.position)
+       local frictionCoefficient = floorData.hit and 
+           (PHYSICS.FRICTION_COEFFICIENT * PHYSICS.SURFACE_FRICTION) or
+           PHYSICS.AIR_RESISTANCE
+       
+       local simulatedVelocity = simulateAxisVelocity(
+           axialVelocity,
+           Vector3.new(moveDirection.X, 0, moveDirection.Z),
+           settings.TICK_RATE,
+           frictionCoefficient
+       )
+       
+       if floorData.hit then
+           local normalInfluence = floorData.normal * 
+                                 (1 - math.abs(floorData.normal.Y))
+           simulatedVelocity = simulatedVelocity + 
+                              (normalInfluence * currentVelocity.Magnitude * 0.2)
+       end
+       
+       local distanceComp = calculateDistanceCompensation(rootPart.Position, state.position)
+       
+       local verticalVelocity = state.velocity.Y
+       local verticalComp = 1
+       if verticalVelocity ~= 0 then
+           verticalComp = math.clamp(
+               1 + math.abs(verticalVelocity) / humanoid.JumpPower * 
+               GRAVITY_COMPENSATION.HEIGHT_COMPENSATION_FACTOR,
+               0.8,
+               1.5
+           )
+       end
+       
+       local finalVelocity = Vector3.new(
+           simulatedVelocity.X * (1 + pattern.complexity * 0.3),
+           currentVelocity.Y * verticalComp,
+           simulatedVelocity.Z * (1 + pattern.complexity * 0.3)
+       )
+       
+       local patternModifier = math.rad(
+           math.ceil(pattern.consistency * 90)
+       )
+       
+       finalVelocity = finalVelocity * (1 + math.sin(patternModifier) * 0.2) * distanceComp
+       
+       return finalVelocity * (1 + pingFactor * settings.LATENCY_SCALING)
+   end
 
-    -- Main prediction loop
-    local predictedPosition = state.position
-    local pattern = analyzeMovementPattern(state, state.movementHistory)
-    local enhancedVelocity = computeEnhancedVelocity(pattern)
+   local predictedPosition = state.position
+   local pattern = analyzeMovementPattern(state, state.movementHistory)
+   local enhancedVelocity = computeEnhancedVelocity(pattern)
 
-    for step = 1, settings.MAX_PREDICTION_STEPS do
-        local stepWeight = applyAdvancedLogarithmicScale(
-            step / settings.MAX_PREDICTION_STEPS,
-            0,
-            1,
-            settings,
-            pattern.complexity
-        )
-        
-        -- Position update
-        local nextPosition = predictedPosition + 
-            (enhancedVelocity * settings.TICK_RATE * stepWeight)
-        
-        -- Jump handling
-        if humanoid.Jump then
-            local jumpVector = computeJumpTrajectory(state, pattern, settings)
-            nextPosition = nextPosition + jumpVector * stepWeight
-        end
-        
-        -- Gravity
-        local gravityEffect = workspace.Gravity * 
-                            (settings.TICK_RATE ^ 2) * 
-                            stepWeight * 
-                            (1 + pattern.complexity * 0.3)
-        
-        nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
-        
-        -- Smoothing
-        local smoothingFactor = applyAdvancedLogarithmicScale(
-            settings.PREDICTION_SMOOTHING * stepWeight,
-            0,
-            1,
-            settings,
-            pattern.complexity
-        )
-        
-        predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
-    end
+   for step = 1, settings.MAX_PREDICTION_STEPS do
+       local stepWeight = applyAdvancedLogarithmicScale(
+           step / settings.MAX_PREDICTION_STEPS,
+           0,
+           1,
+           settings,
+           pattern.complexity
+       )
+       
+       local nextPosition = predictedPosition + 
+           (enhancedVelocity * settings.TICK_RATE * stepWeight)
+       
+       if humanoid.Jump then
+           local jumpVector = computeJumpTrajectory(state, pattern, settings)
+           nextPosition = nextPosition + jumpVector * stepWeight
+       end
+       
+       local floorData = checkFloorIntercept(nextPosition)
+       if floorData.hit then
+           nextPosition = Vector3.new(
+               nextPosition.X,
+               floorData.distance + 2,
+               nextPosition.Z
+           )
+       end
+       
+       if nextPosition.Y < state.position.Y - GRAVITY_COMPENSATION.TERMINAL_VELOCITY then
+           nextPosition = Vector3.new(
+               nextPosition.X,
+               state.position.Y - GRAVITY_COMPENSATION.TERMINAL_VELOCITY,
+               nextPosition.Z
+           )
+       end
+       
+       local smoothingFactor = applyAdvancedLogarithmicScale(
+           settings.PREDICTION_SMOOTHING * stepWeight * 
+           (floorData.hit and 1.2 or 1),
+           0,
+           1,
+           settings,
+           pattern.complexity
+       )
+       
+       predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
+   end
 
-    return predictedPosition
+   return predictedPosition
 end
 
 local PremiumSilentAimGui = Instance.new("ScreenGui")
