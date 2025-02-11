@@ -1220,283 +1220,331 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
 
 local PREMIUM_GAMEPASS_ID = 675380494
 local PREDICTION_MODES = {
-    Standard = {
-        -- Core timing
-        TICK_RATE = 1/60,
-        MAX_PREDICTION_STEPS = 12,
-        
-        -- Advanced weighting
-        VELOCITY_WEIGHT = 0.75,
-        MOMENTUM_WEIGHT = 0.65,
-        DIRECTION_WEIGHT = 0.35,
-        
-        -- Logarithmic constants
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.5,
-        MIN_LOG_VALUE = 0.1,
-        MAX_LOG_VALUE = 5.0,
-        
-        -- AI tuning parameters
-        PATTERN_RECOGNITION_WEIGHT = 0.4,
-        BEHAVIOR_PREDICTION_FACTOR = 0.6,
-        ADAPTIVE_THRESHOLD = 0.75,
-        
-        -- Movement constraints
-        ACCELERATION_CAP = 85,
-        DECELERATION_RATE = 0.82,
-        PREDICTION_SMOOTHING = 0.88,
-        
-        -- Network compensation
-        PING_COMPENSATION = 0.65,
-        LATENCY_SCALING = 0.7
-    },
-    Algorithm = {
-        TICK_RATE = 1/90,
-        MAX_PREDICTION_STEPS = 16,
-        VELOCITY_WEIGHT = 0.85,
-        MOMENTUM_WEIGHT = 0.75,
-        DIRECTION_WEIGHT = 0.4,
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.7,
-        MIN_LOG_VALUE = 0.08,
-        MAX_LOG_VALUE = 5.5,
-        PATTERN_RECOGNITION_WEIGHT = 0.5,
-        BEHAVIOR_PREDICTION_FACTOR = 0.7,
-        ADAPTIVE_THRESHOLD = 0.8,
-        ACCELERATION_CAP = 95,
-        DECELERATION_RATE = 0.85,
-        PREDICTION_SMOOTHING = 0.9,
-        PING_COMPENSATION = 0.75,
-        LATENCY_SCALING = 0.8
-    },
-    Precise = {
-        TICK_RATE = 1/120,
-        MAX_PREDICTION_STEPS = 20,
-        VELOCITY_WEIGHT = 0.95,
-        MOMENTUM_WEIGHT = 0.85,
-        DIRECTION_WEIGHT = 0.45,
-        LOG_BASE = math.exp(1),
-        SCALE_FACTOR = 1.9,
-        MIN_LOG_VALUE = 0.05,
-        MAX_LOG_VALUE = 6.0,
-        PATTERN_RECOGNITION_WEIGHT = 0.6,
-        BEHAVIOR_PREDICTION_FACTOR = 0.8,
-        ADAPTIVE_THRESHOLD = 0.85,
-        ACCELERATION_CAP = 105,
-        DECELERATION_RATE = 0.88,
-        PREDICTION_SMOOTHING = 0.92,
-        PING_COMPENSATION = 0.85,
-        LATENCY_SCALING = 0.9
-    }
+   Standard = {
+       TICK_RATE = 1/60,
+       MAX_PREDICTION_STEPS = 12,
+       VELOCITY_WEIGHT = 0.75,
+       MOMENTUM_WEIGHT = 0.65,
+       DIRECTION_WEIGHT = 0.35,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 1.5,
+       MIN_LOG_VALUE = 0.1,
+       MAX_LOG_VALUE = 5.0,
+       PATTERN_RECOGNITION_WEIGHT = 0.4,
+       BEHAVIOR_PREDICTION_FACTOR = 0.6,
+       ADAPTIVE_THRESHOLD = 0.75,
+       ACCELERATION_CAP = 85,
+       DECELERATION_RATE = 0.82,
+       PREDICTION_SMOOTHING = 0.88,
+       PING_COMPENSATION = 0.65,
+       LATENCY_SCALING = 0.7
+   },
+   Algorithm = {
+       TICK_RATE = 1/90,
+       MAX_PREDICTION_STEPS = 16,
+       VELOCITY_WEIGHT = 0.85,
+       MOMENTUM_WEIGHT = 0.75,
+       DIRECTION_WEIGHT = 0.4,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 1.7,
+       MIN_LOG_VALUE = 0.08,
+       MAX_LOG_VALUE = 5.5,
+       PATTERN_RECOGNITION_WEIGHT = 0.5,
+       BEHAVIOR_PREDICTION_FACTOR = 0.7,
+       ADAPTIVE_THRESHOLD = 0.8,
+       ACCELERATION_CAP = 95,
+       DECELERATION_RATE = 0.85,
+       PREDICTION_SMOOTHING = 0.9,
+       PING_COMPENSATION = 0.75,
+       LATENCY_SCALING = 0.8
+   },
+   Precise = {
+       TICK_RATE = 1/144,
+       MAX_PREDICTION_STEPS = 24,
+       VELOCITY_WEIGHT = 0.98,
+       MOMENTUM_WEIGHT = 0.92,
+       DIRECTION_WEIGHT = 0.55,
+       LOG_BASE = math.exp(1),
+       SCALE_FACTOR = 2.1,
+       MIN_LOG_VALUE = 0.03,
+       MAX_LOG_VALUE = 6.5,
+       PATTERN_RECOGNITION_WEIGHT = 0.75,
+       BEHAVIOR_PREDICTION_FACTOR = 0.85,
+       ADAPTIVE_THRESHOLD = 0.9,
+       ACCELERATION_CAP = 115,
+       DECELERATION_RATE = 0.92,
+       PREDICTION_SMOOTHING = 0.95,
+       PING_COMPENSATION = 0.92,
+       LATENCY_SCALING = 0.95
+   }
 }
 
--- Utility functions
 local function calculatePingCompensation(mode)
-    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-    local compensation = PREDICTION_MODES[mode].PING_COMPENSATION
-    return math.clamp(ping * compensation / 1000, 0.1, 1.5)
-end
-
-local function createAdaptiveWeighting(distance, time, complexity)
-    return {
-        spatial = math.exp(-distance * complexity),
-        temporal = math.exp(-time * complexity),
-        combined = function(base)
-            return math.exp(-distance * time * base)
-        end
-    }
-end
-
-local function applyAdvancedLogarithmicScale(value, min, max, settings, complexity)
-    local normalized = (value - min) / (max - min)
-    local logBase = settings.LOG_BASE + (complexity * 0.5)
-    local scaleFactor = settings.SCALE_FACTOR * (1 + complexity * 0.3)
-    
-    local logScaled = math.log(normalized * (logBase - 1) + 1) / math.log(logBase)
-    local adaptiveScale = math.pow(logScaled, 1 + complexity * 0.2)
-    
-    return min + adaptiveScale * (max - min)
-end
-
-local function computeJumpTrajectory(state, pattern, settings)
-    local jumpPower = state.jumpPower or 50
-    local timeInAir = jumpPower / (workspace.Gravity * settings.TICK_RATE)
-    
-    -- Scale jump power based on pattern complexity
-    local scaledJumpPower = applyAdvancedLogarithmicScale(
-        jumpPower,
-        0,
-        jumpPower * 1.5,
-        settings,
-        pattern.complexity
-    )
-    
-    return Vector3.new(
-        0,
-        scaledJumpPower * (1 - pattern.complexity * 0.3),
-        0
-    )
+   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+   local compensation = PREDICTION_MODES[mode].PING_COMPENSATION
+   return math.clamp(ping * compensation / 1000, 0.1, 1.5)
 end
 
 local function analyzeMovementPattern(state, history)
-    local patternScore = 0
-    local velocityTrend = Vector3.new()
-    local recentHistory = math.min(#history, 10)
-    
-    for i = #history, math.max(1, #history - recentHistory), -1 do
-        local record = history[i]
-        local weight = math.exp(-(recentHistory - i) * 0.2)
-        velocityTrend = velocityTrend + record.velocity * weight
-        patternScore = patternScore + record.acceleration.Magnitude * weight
-    end
-    
-    return {
-        trend = velocityTrend.Unit,
-        complexity = math.clamp(patternScore / recentHistory, 0, 1),
-        consistency = 1 - (velocityTrend.Magnitude / recentHistory)
-    }
+   local velocityTrend = Vector3.new()
+   local accelerationPattern = Vector3.new()
+   local patternComplexity = 0
+   local behaviorScore = 0
+   local lastDirection = nil
+   local directionChanges = 0
+   
+   for i = #history, 1, -1 do
+       local record = history[i]
+       local timeWeight = math.exp(-(#history - i) * 0.12)
+       
+       velocityTrend = velocityTrend + record.velocity * timeWeight
+       accelerationPattern = accelerationPattern + record.acceleration * timeWeight
+       
+       local currentDirection = record.velocity.Unit
+       if lastDirection then
+           local dotProduct = currentDirection:Dot(lastDirection)
+           if dotProduct < 0.7 then
+               directionChanges = directionChanges + 1
+           end
+       end
+       lastDirection = currentDirection
+       
+       local velocityChange = i > 1 and (record.velocity - history[i-1].velocity).Magnitude or 0
+       behaviorScore = behaviorScore + velocityChange * timeWeight
+   end
+   
+   local trendStrength = velocityTrend.Magnitude / #history
+   local accelerationVariance = accelerationPattern.Magnitude / #history
+   patternComplexity = math.clamp(behaviorScore / (50 * 2), 0, 1)
+   
+   return {
+       trend = velocityTrend.Unit,
+       complexity = patternComplexity,
+       consistency = 1 - (accelerationVariance / 50),
+       predictability = math.exp(-patternComplexity * 2),
+       trendStrength = trendStrength
+   }
 end
 
--- Main prediction function
+local function advancedLogarithmicScale(value, min, max, pattern)
+   local normalized = (value - min) / (max - min)
+   local adaptiveBase = 1 + (pattern.complexity * 0.8)
+   local adaptiveScale = 1 + (pattern.predictability * 0.5)
+   
+   local logStage1 = math.log(normalized * (adaptiveBase - 1) + 1, adaptiveBase)
+   local logStage2 = math.pow(logStage1, adaptiveScale)
+   
+   local correctionFactor = 1 + (pattern.trendStrength * 0.3)
+   local scaledValue = logStage2 * correctionFactor
+   
+   return min + math.clamp(scaledValue, 0, 1) * (max - min)
+end
+
+local function computeEnhancedPrediction(state, pattern, settings)
+   local adaptiveWeight = math.exp(-pattern.complexity * 0.7)
+   local confidenceWeight = pattern.predictability * 0.9 + 0.1
+   local momentumWeight = math.clamp(state.velocity.Magnitude / 50, 0.2, 0.8)
+   
+   local weights = {
+       position = adaptiveWeight * confidenceWeight,
+       velocity = momentumWeight * pattern.trendStrength,
+       direction = pattern.consistency * adaptiveWeight,
+       acceleration = (1 - pattern.complexity) * confidenceWeight
+   }
+   
+   local predictedVelocity = state.velocity * weights.velocity +
+                            state.moveDirection * 50 * weights.direction +
+                            state.acceleration * weights.acceleration
+   
+   local scaledSpeed = advancedLogarithmicScale(
+       predictedVelocity.Magnitude,
+       settings.MIN_LOG_VALUE,
+       settings.ACCELERATION_CAP,
+       pattern
+   )
+   
+   local correctionVector = pattern.trend * pattern.predictability * scaledSpeed
+   predictedVelocity = predictedVelocity + correctionVector
+   
+   return predictedVelocity * (1 + state.pingFactor * settings.LATENCY_SCALING)
+end
+
 local function premiumPredict(target, mode)
-    local character = target.Character
-    if not character then return nil end
+   local character = target.Character
+   if not character then return nil end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not rootPart or not humanoid then return nil end
 
-    local settings = PREDICTION_MODES[mode]
-    local pingFactor = calculatePingCompensation(mode)
+   local settings = PREDICTION_MODES[mode]
+   local pingFactor = calculatePingCompensation(mode)
 
-    -- Initialize state tracking
-    local state = {
-        position = rootPart.Position,
-        velocity = rootPart.AssemblyLinearVelocity,
-        moveDirection = humanoid.MoveDirection,
-        acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
-        movementHistory = {},
-        jumpPower = humanoid.JumpPower,
-        timeSinceLastJump = 0,
-        groundedTime = 0
-    }
+   local state = {
+       position = rootPart.Position,
+       velocity = rootPart.AssemblyLinearVelocity,
+       moveDirection = humanoid.MoveDirection,
+       acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
+       movementHistory = {},
+       jumpPower = humanoid.JumpPower,
+       timeSinceLastJump = 0,
+       groundedTime = 0,
+       pingFactor = pingFactor
+   }
 
-    -- Update movement history
-    table.insert(state.movementHistory, {
-        velocity = state.velocity,
-        acceleration = state.acceleration,
-        position = state.position
-    })
-    if #state.movementHistory > 10 then
-        table.remove(state.movementHistory, 1)
-    end
+   table.insert(state.movementHistory, {
+       velocity = state.velocity,
+       acceleration = state.acceleration,
+       position = state.position
+   })
+   
+   if #state.movementHistory > 10 then
+       table.remove(state.movementHistory, 1)
+   end
 
-    -- Calculate enhanced velocity
-    local function computeEnhancedVelocity(pattern)
-        local baseVelocity = state.velocity
-        local inputVelocity = state.moveDirection * humanoid.WalkSpeed
-        
-        -- Pattern-based prediction
-        local predictedDirection = pattern.trend * settings.PATTERN_RECOGNITION_WEIGHT +
-                                 state.moveDirection * (1 - settings.PATTERN_RECOGNITION_WEIGHT)
-        
-        -- Adaptive weighting
-        local adaptiveWeight = createAdaptiveWeighting(
-            (rootPart.Position - state.position).Magnitude,
-            state.groundedTime,
-            pattern.complexity
-        )
-        
-        -- Scale velocity
-        local scaledSpeed = applyAdvancedLogarithmicScale(
-            baseVelocity.Magnitude,
-            0,
-            settings.ACCELERATION_CAP,
-            settings,
-            pattern.complexity
-        )
-        
-        -- Momentum blending
-        local momentumVector = state.acceleration.Unit * scaledSpeed * settings.MOMENTUM_WEIGHT
-        local directionVector = predictedDirection * humanoid.WalkSpeed * (1 - settings.MOMENTUM_WEIGHT)
-        
-        local blendedVelocity = (momentumVector + directionVector) * 
-                               adaptiveWeight.combined(settings.ADAPTIVE_THRESHOLD)
-        
-        -- Behavioral adjustments
-        if pattern.consistency > settings.BEHAVIOR_PREDICTION_FACTOR then
-            blendedVelocity = blendedVelocity * (1 + pattern.consistency * 0.2)
-        end
-        
-        return blendedVelocity * (1 + pingFactor * settings.LATENCY_SCALING)
-    end
+   local pattern = analyzeMovementPattern(state, state.movementHistory)
+   local predictedVelocity = computeEnhancedPrediction(state, pattern, settings)
+   local predictedPosition = state.position
 
-    -- Main prediction loop
-    local predictedPosition = state.position
-    local pattern = analyzeMovementPattern(state, state.movementHistory)
-    local enhancedVelocity = computeEnhancedVelocity(pattern)
+   for step = 1, settings.MAX_PREDICTION_STEPS do
+       local stepWeight = advancedLogarithmicScale(
+           step / settings.MAX_PREDICTION_STEPS,
+           0,
+           1,
+           pattern
+       )
+       
+       local nextPosition = predictedPosition + 
+           (predictedVelocity * settings.TICK_RATE * stepWeight)
+       
+       if humanoid.Jump then
+           local jumpVector = Vector3.new(0, state.jumpPower * (1 - pattern.complexity * 0.3), 0)
+           nextPosition = nextPosition + jumpVector * stepWeight
+       end
+       
+       local gravityEffect = workspace.Gravity * 
+                           (settings.TICK_RATE ^ 2) * 
+                           stepWeight * 
+                           (1 + pattern.complexity * 0.3)
+       
+       nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
+       
+       local smoothingFactor = pattern.predictability * settings.PREDICTION_SMOOTHING
+       predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
+   end
 
-    for step = 1, settings.MAX_PREDICTION_STEPS do
-        local stepWeight = applyAdvancedLogarithmicScale(
-            step / settings.MAX_PREDICTION_STEPS,
-            0,
-            1,
-            settings,
-            pattern.complexity
-        )
-        
-        -- Position update
-        local nextPosition = predictedPosition + 
-            (enhancedVelocity * settings.TICK_RATE * stepWeight)
-        
-        -- Jump handling
-        if humanoid.Jump then
-            local jumpVector = computeJumpTrajectory(state, pattern, settings)
-            nextPosition = nextPosition + jumpVector * stepWeight
-        end
-        
-        -- Gravity
-        local gravityEffect = workspace.Gravity * 
-                            (settings.TICK_RATE ^ 2) * 
-                            stepWeight * 
-                            (1 + pattern.complexity * 0.3)
-        
-        nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
-        
-        -- Smoothing
-        local smoothingFactor = applyAdvancedLogarithmicScale(
-            settings.PREDICTION_SMOOTHING * stepWeight,
-            0,
-            1,
-            settings,
-            pattern.complexity
-        )
-        
-        predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
-    end
-
-    return predictedPosition
+   return predictedPosition
 end
 
+-- Create a more polished GUI design
 local PremiumSilentAimGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local ButtonFrame = Instance.new("Frame")
 local PremiumSilentAimButton = Instance.new("ImageButton")
+local UICorner = Instance.new("UICorner")
+local UIGradient = Instance.new("UIGradient")
+local Highlight = Instance.new("Frame")
+local UICorner_2 = Instance.new("UICorner")
+local Shadow = Instance.new("Frame")
+local UICorner_3 = Instance.new("UICorner")
 
+-- Set up hierarchy
 PremiumSilentAimGui.Parent = game.CoreGui
-PremiumSilentAimButton.Parent = PremiumSilentAimGui
-PremiumSilentAimButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-PremiumSilentAimButton.BackgroundTransparency = 0.2
-PremiumSilentAimButton.BorderColor3 = Color3.fromRGB(255, 215, 0)
-PremiumSilentAimButton.BorderSizePixel = 2
-PremiumSilentAimButton.Position = UDim2.new(0.897, 0, 0.3)
-PremiumSilentAimButton.Size = UDim2.new(0.1, 0, 0.2)
-PremiumSilentAimButton.Image = "rbxassetid://11162755592"
-PremiumSilentAimButton.Draggable = true
-PremiumSilentAimButton.Visible = false
+MainFrame.Parent = PremiumSilentAimGui
+ButtonFrame.Parent = MainFrame
+PremiumSilentAimButton.Parent = ButtonFrame
+Highlight.Parent = ButtonFrame
+Shadow.Parent = ButtonFrame
 
-local UIStroke = Instance.new("UIStroke", PremiumSilentAimButton)
-UIStroke.Color = Color3.fromRGB(255, 215, 0)
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.3
+-- Configure MainFrame
+MainFrame.BackgroundTransparency = 1
+MainFrame.Size = UDim2.new(0, 80, 0, 80)
+MainFrame.Position = UDim2.new(0.897, 0, 0.3)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+-- Configure ButtonFrame
+ButtonFrame.Size = UDim2.new(1, 0, 1, 0)
+ButtonFrame.BackgroundTransparency = 1
+ButtonFrame.ZIndex = 2
+
+-- Configure PremiumSilentAimButton
+PremiumSilentAimButton.Size = UDim2.new(1, 0, 1, 0)
+PremiumSilentAimButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+PremiumSilentAimButton.Image = "rbxassetid://11162755592"
+PremiumSilentAimButton.ImageTransparency = 0.1
+PremiumSilentAimButton.ZIndex = 3
+
+-- Add gradient effect
+UIGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 200, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+})
+UIGradient.Rotation = 45
+UIGradient.Parent = PremiumSilentAimButton
+
+-- Configure highlight effect
+Highlight.Size = UDim2.new(1, 2, 1, 2)
+Highlight.Position = UDim2.new(0, -1, 0, -1)
+Highlight.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+Highlight.BackgroundTransparency = 0.8
+Highlight.ZIndex = 1
+
+-- Configure shadow effect
+Shadow.Size = UDim2.new(1, 4, 1, 4)
+Shadow.Position = UDim2.new(0, -2, 0, -2)
+Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.BackgroundTransparency = 0.7
+Shadow.ZIndex = 0
+
+-- Add rounded corners
+UICorner.CornerRadius = UDim.new(0.2, 0)
+UICorner.Parent = PremiumSilentAimButton
+UICorner_2.CornerRadius = UDim.new(0.2, 0)
+UICorner_2.Parent = Highlight
+UICorner_3.CornerRadius = UDim.new(0.2, 0)
+UICorner_3.Parent = Shadow
+
+-- Add hover effect
+local TweenService = game:GetService("TweenService")
+local hoverInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+PremiumSilentAimButton.MouseEnter:Connect(function()
+    local scaleTween = TweenService:Create(ButtonFrame, hoverInfo, {
+        Size = UDim2.new(1.1, 0, 1.1, 0),
+        Position = UDim2.new(-0.05, 0, -0.05, 0)
+    })
+    scaleTween:Play()
+end)
+
+PremiumSilentAimButton.MouseLeave:Connect(function()
+    local scaleTween = TweenService:Create(ButtonFrame, hoverInfo, {
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0)
+    })
+    scaleTween:Play()
+end)
+
+-- Add click animation
+PremiumSilentAimButton.MouseButton1Down:Connect(function()
+    local clickTween = TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
+        Size = UDim2.new(0.9, 0, 0.9, 0),
+        Position = UDim2.new(0.05, 0, 0.05, 0)
+    })
+    clickTween:Play()
+end)
+
+PremiumSilentAimButton.MouseButton1Up:Connect(function()
+    local releaseTween = TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0)
+    })
+    releaseTween:Play()
+end)
+
+-- Set initial visibility
+PremiumSilentAimButton.Visible = false
 
 local function createPremiumTab()
     local function checkPremium()
