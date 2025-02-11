@@ -1639,6 +1639,72 @@ local function createPremiumTab()
     end
 end
 
+local function notify(text, duration)
+   StarterGui:SetCore("SendNotification", {
+       Title = "MM2",
+       Text = text,
+       Duration = duration,
+       Icon = "rbxassetid://11162755592"
+   })
+end
+
+local function checkRole()
+   if not isRoleNotificationsEnabled then return end
+   
+   local success, playerData = pcall(function()
+       return GetPlayerData:InvokeServer()
+   end)
+   
+   if not success then
+       warn("Failed to get player data:", playerData)
+       return
+   end
+   
+   local currentRole = playerData and playerData.Role
+   
+   if currentRole and currentRole ~= lastRole then
+       lastRole = currentRole
+       
+       if currentRole == "Murderer" then
+           notify("You are the Murderer!", NotificationTime)
+           
+       elseif currentRole == "Sheriff" then
+           notify("You are the Sheriff!", NotificationTime)
+           
+       elseif currentRole == "Innocent" then
+           notify("You are Innocent!", NotificationTime)
+       end
+       
+       pcall(function()
+           RoleSelect:FireServer(currentRole)
+       end)
+   end
+end
+
+local RoleToggle = Tabs.Main:AddToggle("RoleNotifier", {
+   Title = "Role Notifications",
+   Default = false,
+   Callback = function(Value)
+       isRoleNotificationsEnabled = Value
+       if Value then
+           checkRole() -- Initial check when enabled
+           
+           -- Start continuous role checking
+           spawn(function()
+               while isRoleNotificationsEnabled and wait(RoleCheckInterval) do
+                   local success, err = pcall(function()
+                       checkRole()
+                   end)
+                   
+                   if not success then
+                       warn("Error in role check loop:", err)
+                       wait(5)
+                   end
+               end
+           end)
+       end
+   end
+})
 
 -- Discord Section Configuration
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
