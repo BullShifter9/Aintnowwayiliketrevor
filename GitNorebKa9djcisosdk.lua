@@ -1414,36 +1414,6 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
     end
 })
 
-local PREMIUM_GAMEPASS_ID = 6969696230
-local function createPremiumTab()
-    local function checkPremium()
-        local hasPass = game:GetService("MarketplaceService"):UserOwnsGamePassAsync(
-            game.Players.LocalPlayer.UserId, 
-            PREMIUM_GAMEPASS_ID
-        )
-        
-        if not hasPass then
-            Tabs.Premium:AddParagraph({
-                Title = "🌟 Premium",
-                Content = "Soon."
-            })
-            
-            Tabs.Premium:AddButton({
-                Title = "Copy Discord Invite",
-                Callback = function()
-                    setclipboard("https://discord.gg/3DR8b2pA2z")
-                    Fluent:Notify({
-                        Title = "Discord Invite Copied!",
-                        Content = "Join our server to purchase Premium",
-                        Duration = 3
-                    })
-                end
-            })
-            return false
-        end
-        return true
-   end
-
 -- Discord Section Configuration
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
 
