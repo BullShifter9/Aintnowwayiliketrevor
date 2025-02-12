@@ -1310,7 +1310,7 @@ local SilentAimToggleV3 = Tabs.Combat:AddToggle("SilentAimToggleV3", {
 
 -- Algorithm Type Dropdown
 local SelectedAlgorithm = "Algorithm" -- Default algorithm
-local SilentAimChoice = Tabs.Combatbat:AddDropdown("SilentAimChoice", {
+local SilentAimChoice = Tabs.Combat:AddDropdown("SilentAimChoice", {
     Title = "Algorithm Type",
     Values = {"Algorithm", "Jet"},
     Default = "Algorithm",
