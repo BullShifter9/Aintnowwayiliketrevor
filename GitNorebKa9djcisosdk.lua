@@ -820,28 +820,190 @@ Workspace.DescendantRemoving:Connect(function(descendant)
 end)
 
 
+local function predictMurderV3(murderer, algorithmType)
+    local character = murderer.Character
+    if not character then return nil end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not rootPart or not humanoid then return nil end
 
-local function BreakAllGuns()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= Players.LocalPlayer then
-            -- Check if the player has a gun in their Backpack
-            if v.Backpack:FindFirstChild("Gun") then
-                local gun = v.Backpack:FindFirstChild("Gun")
-                if gun:FindFirstChild("KnifeServer") and gun.KnifeServer:FindFirstChild("ShootGun") then
-                    gun.KnifeServer.ShootGun:InvokeServer(1, 0, "AH")
+    -- Constants for prediction
+    local Interval = 0.1 -- Fixed interval for prediction
+    local Gravity = 196.2 -- Standard Roblox gravity
+    local FrictionDeceleration = 10 -- Deceleration due to friction
+    local JumpPower = humanoid.JumpPower -- Jump power of the humanoid
+    local MaxVerticalOffset = 5 -- Maximum vertical offset to avoid shooting into the ground
+    local MaxPredictionTime = 0.5 -- Maximum time to predict future position
+    local AirResistance = 0.1 -- Air resistance factor
+
+    -- Simulate position and velocity
+    local SimulatedPosition = rootPart.Position
+    local SimulatedVelocity = rootPart.AssemblyLinearVelocity
+    local MoveDirection = humanoid.MoveDirection
+
+    -- Function to predict jump height
+    local function predictJumpHeight(jumpPower, gravity, interval)
+        local initialVelocity = jumpPower / 100
+        local time = 0
+        local peakHeight = 0
+        while true do
+            local height = initialVelocity * time - 0.5 * gravity * time^2
+            if height <= 0 then break end
+            peakHeight = height
+            time = time + interval
+        end
+        return peakHeight
+    end
+
+    -- Predict jump if the humanoid is jumping
+    if humanoid.Jump then
+        local jumpHeight = predictJumpHeight(JumpPower, Gravity, Interval)
+        SimulatedPosition = SimulatedPosition + Vector3.new(0, jumpHeight, 0)
+        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, JumpPower / 100, 0)
+    end
+
+    -- Apply air resistance
+    SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
+
+    -- Algorithm-specific adjustments
+    if algorithmType == "Algorithm" then
+        -- Apply probability-based adjustments to movement direction (deterministic approach)
+        local DirectionFactor = 1
+        if humanoid.Jump or SimulatedVelocity.Magnitude > 50 then
+            DirectionFactor = -1 -- Reverse direction if jumping or moving fast
+        end
+
+        -- Predict movement with refined acceleration handling
+        local totalPredictionTime = 0
+        while totalPredictionTime < MaxPredictionTime do
+            SimulatedPosition = SimulatedPosition + Vector3.new(
+                SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2 * DirectionFactor,
+                SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+                SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2 * DirectionFactor
+            )
+
+            -- Adjust velocity based on movement direction with better deceleration
+            local Axes = {"X", "Z"}
+            for _, Axis in ipairs(Axes) do
+                local Goal = MoveDirection[Axis] * 16.2001
+                local CurrentVelocity = SimulatedVelocity[Axis]
+                if math.abs(CurrentVelocity) > math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0
+                    )
+                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0
+                    )
                 end
             end
 
-            -- Check if the player has a gun in their Character
-            if v.Character and v.Character:FindFirstChild("Gun") then
-                local gun = v.Character:FindFirstChild("Gun")
-                if gun:FindFirstChild("KnifeServer") and gun.KnifeServer:FindFirstChild("ShootGun") then
-                    gun.KnifeServer.ShootGun:InvokeServer(1, 0, "AH")
+            -- Apply gravity with slight dampening for realism
+            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
+
+            -- Apply air resistance
+            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
+
+            totalPredictionTime = totalPredictionTime + Interval
+        end
+
+    elseif algorithmType == "Jet" then
+        -- Jet mode is an aggressive version of Algorithm with faster speeds and sharper changes
+        local JetFactor = 2.5 -- Multiplier for jet-like movement
+        local JetHeightFactor = humanoid.Jump and 8 or 0 -- Higher jump height for jet-like behavior
+
+        -- Predict movement with enhanced speed and vertical adjustment
+        local totalPredictionTime = 0
+        while totalPredictionTime < MaxPredictionTime do
+            SimulatedPosition = SimulatedPosition + Vector3.new(
+                SimulatedVelocity.X * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
+                JetHeightFactor + SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
+                SimulatedVelocity.Z * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
+            )
+
+            -- Adjust velocity with higher friction for sharp stops/starts
+            local Axes = {"X", "Z"}
+            for _, Axis in ipairs(Axes) do
+                local Goal = MoveDirection[Axis] * 25 -- Higher goal speed for jet mode
+                local CurrentVelocity = SimulatedVelocity[Axis]
+                if math.abs(CurrentVelocity) > math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0
+                    )
+                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
+                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
+                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0,
+                        0,
+                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0
+                    )
                 end
             end
+
+            -- Apply gravity with reduced dampening for faster falls
+            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
+
+            -- Apply air resistance
+            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
+
+            totalPredictionTime = totalPredictionTime + Interval
         end
     end
+
+    -- Raycast to check for floor or ceiling
+    local RaycastParams = RaycastParams.new()
+    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    RaycastParams.FilterDescendantsInstances = {character}
+
+    local FloorCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, -MaxVerticalOffset, 0), RaycastParams)
+    local CeilingCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, MaxVerticalOffset, 0), RaycastParams)
+
+    -- Adjust position based on raycast results
+    if FloorCheck then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, FloorCheck.Position.Y + 3, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on landing
+    elseif CeilingCheck then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, CeilingCheck.Position.Y - 2, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on hitting ceiling
+    end
+
+    -- Clamp vertical position to avoid shooting into the ground
+    if SimulatedPosition.Y < rootPart.Position.Y - MaxVerticalOffset then
+        SimulatedPosition = Vector3.new(SimulatedPosition.X, rootPart.Position.Y - MaxVerticalOffset, SimulatedPosition.Z)
+        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on ground
+    end
+
+    return SimulatedPosition
 end
+
+-- Silent Aim V3 GUI Button
+local SilentAimGuiV3 = Instance.new("ScreenGui")
+local SilentAimButtonV3 = Instance.new("ImageButton")
+
+SilentAimGuiV3.Name = "SilentAimGuiV3"
+SilentAimGuiV3.Parent = game.CoreGui
+
+SilentAimButtonV3.Name = "SilentAimButtonV3"
+SilentAimButtonV3.Parent = SilentAimGuiV3
+SilentAimButtonV3.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SilentAimButtonV3.BackgroundTransparency = 0.3
+SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
+SilentAimButtonV3.BorderSizePixel = 2
+SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5, 0)
+SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2, 0)
+SilentAimButtonV3.Image = "rbxassetid://11162755592"
+SilentAimButtonV3.Draggable = true
+SilentAimButtonV3.Visible = false
+
+local UIStroke = Instance.new("UIStroke", SilentAimButtonV3)
+UIStroke.Color = Color3.fromRGB(255, 100, 0)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.5
 
 local COIN_AURA_RANGE = 5
 local COLLECTION_COOLDOWN = 0.1
@@ -890,8 +1052,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 local Window = Fluent:CreateWindow({
    Title = "OmniHub Script By Azzakirms",
    SubTitle = "V1.1.0",
-   TabWidth = 80,
-   Size = UDim2.fromOffset(480, 360),
+   TabWidth = 100,
+   Size = UDim2.fromOffset(380, 260),
    Acrylic = true,
    Theme = "Dark",
    MinimizeKey = Enum.KeyCode.LeftControl
@@ -1138,6 +1300,40 @@ local SharpShooterToggle = Tabs.Combat:AddToggle("SharpShooterToggle", {
     end
 })
 
+local SilentAimToggleV3 = Tabs.Combat:AddToggle("SilentAimToggleV3", {
+    Title = "Silent Aim2",
+    Default = false,
+    Callback = function(toggle)
+        SilentAimButtonV3.Visible = toggle
+    end
+})
+
+-- Algorithm Type Dropdown
+local SelectedAlgorithm = "Algorithm" -- Default algorithm
+local SilentAimChoice = Tabs.Combatbat:AddDropdown("SilentAimChoice", {
+    Title = "Algorithm Type",
+    Values = {"Algorithm", "Jet"},
+    Default = "Algorithm",
+    Callback = function(choice)
+        SelectedAlgorithm = choice
+    end
+})
+
+-- Silent Aim V3 Button Click Event
+SilentAimButtonV3.MouseButton1Click:Connect(function()
+    local localPlayer = game.Players.LocalPlayer
+    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
+    if not gun then return end
+    local murderer = GetMurderer() -- Assume this function exists and returns the murderer
+    if not murderer then return end
+    localPlayer.Character.Humanoid:EquipTool(gun)
+    -- Use the selected algorithm type
+    local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
+    if predictedPos then
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
+    end
+end)
+
 local PredictionPingToggle = Tabs.Combat:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
    Default = false,
@@ -1217,435 +1413,6 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
         state.autoGetGunDropEnabled = toggle
     end
 })
-
-local PREMIUM_GAMEPASS_ID = 675380494
-local PREDICTION_MODES = {
-   Standard = {
-       TICK_RATE = 1/60,
-       MAX_PREDICTION_STEPS = 12,
-       VELOCITY_WEIGHT = 0.75,
-       MOMENTUM_WEIGHT = 0.65,
-       DIRECTION_WEIGHT = 0.35,
-       LOG_BASE = math.exp(1),
-       SCALE_FACTOR = 1.5,
-       MIN_LOG_VALUE = 0.1,
-       MAX_LOG_VALUE = 5.0,
-       PATTERN_RECOGNITION_WEIGHT = 0.4,
-       BEHAVIOR_PREDICTION_FACTOR = 0.6,
-       ADAPTIVE_THRESHOLD = 0.75,
-       ACCELERATION_CAP = 85,
-       DECELERATION_RATE = 0.82,
-       PREDICTION_SMOOTHING = 0.88,
-       PING_COMPENSATION = 0.65,
-       LATENCY_SCALING = 0.7
-   },
-   Algorithm = {
-       TICK_RATE = 1/90,
-       MAX_PREDICTION_STEPS = 16,
-       VELOCITY_WEIGHT = 0.85,
-       MOMENTUM_WEIGHT = 0.75,
-       DIRECTION_WEIGHT = 0.4,
-       LOG_BASE = math.exp(1),
-       SCALE_FACTOR = 1.7,
-       MIN_LOG_VALUE = 0.08,
-       MAX_LOG_VALUE = 5.5,
-       PATTERN_RECOGNITION_WEIGHT = 0.5,
-       BEHAVIOR_PREDICTION_FACTOR = 0.7,
-       ADAPTIVE_THRESHOLD = 0.8,
-       ACCELERATION_CAP = 95,
-       DECELERATION_RATE = 0.85,
-       PREDICTION_SMOOTHING = 0.9,
-       PING_COMPENSATION = 0.75,
-       LATENCY_SCALING = 0.8
-   },
-   Precise = {
-       TICK_RATE = 1/120,
-       MAX_PREDICTION_STEPS = 20,
-       VELOCITY_WEIGHT = 0.95,
-       MOMENTUM_WEIGHT = 0.85,
-       DIRECTION_WEIGHT = 0.45,
-       LOG_BASE = math.exp(1),
-       SCALE_FACTOR = 1.9,
-       MIN_LOG_VALUE = 0.05,
-       MAX_LOG_VALUE = 6.0,
-       PATTERN_RECOGNITION_WEIGHT = 0.6,
-       BEHAVIOR_PREDICTION_FACTOR = 0.8,
-       ADAPTIVE_THRESHOLD = 0.85,
-       ACCELERATION_CAP = 105,
-       DECELERATION_RATE = 0.88,
-       PREDICTION_SMOOTHING = 0.92,
-       PING_COMPENSATION = 0.85,
-       LATENCY_SCALING = 0.9
-   }
-}
-
-local PHYSICS = {
-   FRICTION_COEFFICIENT = 0.92,
-   SURFACE_FRICTION = 0.88,
-   AIR_RESISTANCE = 0.96,
-   FLOOR_CHECK_DISTANCE = 10,
-   AXIS_DAMPENING = 0.94,
-   VELOCITY_EPSILON = 0.01,
-   GRAVITY = 196.2
-}
-
-local GRAVITY_COMPENSATION = {
-   JUMP_PREDICTION_WEIGHT = 0.85,
-   VERTICAL_MOMENTUM_DECAY = 0.92,
-   HEIGHT_COMPENSATION_FACTOR = 1.2,
-   TERMINAL_VELOCITY = -196.2
-}
-
-local DISTANCE_SCALING = {
-   NEAR_THRESHOLD = 15,
-   FAR_THRESHOLD = 100,
-   CLOSE_RANGE_MULTIPLIER = 1.2,
-   LONG_RANGE_MULTIPLIER = 0.85
-}
-
-local function calculatePingCompensation(mode)
-   local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-   local compensation = PREDICTION_MODES[mode].PING_COMPENSATION
-   return math.clamp(ping * compensation / 1000, 0.1, 1.5)
-end
-
-local function createAdaptiveWeighting(distance, time, complexity)
-   return {
-       spatial = math.exp(-distance * complexity),
-       temporal = math.exp(-time * complexity),
-       combined = function(base)
-           return math.exp(-distance * time * base)
-       end
-   }
-end
-
-local function applyAdvancedLogarithmicScale(value, min, max, settings, complexity)
-   local normalized = (value - min) / (max - min)
-   local logBase = settings.LOG_BASE + (complexity * 0.5)
-   local scaleFactor = settings.SCALE_FACTOR * (1 + complexity * 0.3)
-   
-   local logScaled = math.log(normalized * (logBase - 1) + 1) / math.log(logBase)
-   local adaptiveScale = math.pow(logScaled, 1 + complexity * 0.2)
-   
-   return min + adaptiveScale * (max - min)
-end
-
-local function simulateAxisVelocity(currentVel, moveDir, deltaTime, friction, walkSpeed)
-   local targetVel = moveDir * (walkSpeed * deltaTime)
-   local currentSpeed = currentVel.Magnitude
-   
-   local frictionForce = Vector3.new(
-       math.sign(currentVel.X) * math.min(math.abs(currentVel.X), friction),
-       0,
-       math.sign(currentVel.Z) * math.min(math.abs(currentVel.Z), friction)
-   )
-   
-   local acceleration = (targetVel - currentVel) * PHYSICS.AXIS_DAMPENING
-   local newVel = currentVel + acceleration - frictionForce
-   
-   if newVel.Magnitude < PHYSICS.VELOCITY_EPSILON then
-       return Vector3.new()
-   end
-   
-   return newVel
-end
-
-local function computeJumpTrajectory(state, pattern, settings)
-   local jumpPower = state.jumpPower or 50
-   local timeInAir = jumpPower / (PHYSICS.GRAVITY * settings.TICK_RATE)
-   
-   local verticalVelocity = state.velocity.Y
-   local isAscending = verticalVelocity > 0
-   local jumpPhase = math.abs(verticalVelocity) / jumpPower
-   
-   local scaledJumpPower = jumpPower * (1 + pattern.complexity * 0.2)
-   if isAscending then
-       scaledJumpPower = scaledJumpPower * GRAVITY_COMPENSATION.JUMP_PREDICTION_WEIGHT
-   else
-       scaledJumpPower = scaledJumpPower * GRAVITY_COMPENSATION.VERTICAL_MOMENTUM_DECAY
-   end
-   
-   return Vector3.new(
-       0,
-       scaledJumpPower * (1 - jumpPhase * 0.4),
-       0
-   )
-end
-
-local function calculateDistanceCompensation(currentPos, targetPos)
-   local distance = (currentPos - targetPos).Magnitude
-   local compensation = 1
-   
-   if distance < DISTANCE_SCALING.NEAR_THRESHOLD then
-       compensation = DISTANCE_SCALING.CLOSE_RANGE_MULTIPLIER
-   elseif distance > DISTANCE_SCALING.FAR_THRESHOLD then
-       compensation = DISTANCE_SCALING.LONG_RANGE_MULTIPLIER
-   else
-       local t = (distance - DISTANCE_SCALING.NEAR_THRESHOLD) / 
-                (DISTANCE_SCALING.FAR_THRESHOLD - DISTANCE_SCALING.NEAR_THRESHOLD)
-       compensation = DISTANCE_SCALING.CLOSE_RANGE_MULTIPLIER * (1 - t) +
-                     DISTANCE_SCALING.LONG_RANGE_MULTIPLIER * t
-   end
-   
-   return compensation
-end
-
-local function analyzeMovementPattern(state, history)
-   local patternScore = 0
-   local velocityTrend = Vector3.new()
-   local recentHistory = math.min(#history, 10)
-   
-   for i = #history, math.max(1, #history - recentHistory), -1 do
-       local record = history[i]
-       local weight = math.exp(-(recentHistory - i) * 0.2)
-       velocityTrend = velocityTrend + record.velocity * weight
-       patternScore = patternScore + record.acceleration.Magnitude * weight
-   end
-   
-   return {
-       trend = velocityTrend.Unit,
-       complexity = math.clamp(patternScore / recentHistory, 0, 1),
-       consistency = 1 - (velocityTrend.Magnitude / recentHistory)
-   }
-end
-
-local function premiumPredict(target, mode)
-   local character = target.Character
-   if not character then return nil end
-
-   local rootPart = character:FindFirstChild("HumanoidRootPart")
-   local humanoid = character:FindFirstChild("Humanoid")
-   if not rootPart or not humanoid then return nil end
-
-   local settings = PREDICTION_MODES[mode]
-   local pingFactor = calculatePingCompensation(mode)
-
-   local state = {
-       position = rootPart.Position,
-       velocity = rootPart.AssemblyLinearVelocity,
-       moveDirection = humanoid.MoveDirection,
-       acceleration = rootPart.AssemblyLinearVelocity - (state and state.velocity or Vector3.new()),
-       movementHistory = {},
-       jumpPower = humanoid.JumpPower,
-       timeSinceLastJump = 0,
-       groundedTime = 0
-   }
-
-   table.insert(state.movementHistory, {
-       velocity = state.velocity,
-       acceleration = state.acceleration,
-       position = state.position
-   })
-   if #state.movementHistory > 10 then
-       table.remove(state.movementHistory, 1)
-   end
-
-   local function computeEnhancedVelocity(pattern)
-       local moveDirection = state.moveDirection
-       local currentVelocity = state.velocity
-       
-       local axialVelocity = Vector3.new(
-           currentVelocity.X,
-           0,
-           currentVelocity.Z
-       )
-       
-       local frictionCoefficient = PHYSICS.FRICTION_COEFFICIENT * PHYSICS.SURFACE_FRICTION
-       
-       local simulatedVelocity = simulateAxisVelocity(
-           axialVelocity,
-           Vector3.new(moveDirection.X, 0, moveDirection.Z),
-           settings.TICK_RATE,
-           frictionCoefficient,
-           humanoid.WalkSpeed
-       )
-       
-       local distanceComp = calculateDistanceCompensation(rootPart.Position, state.position)
-       
-       local verticalVelocity = state.velocity.Y
-       local verticalComp = 1
-       if verticalVelocity ~= 0 then
-           verticalComp = math.clamp(
-               1 + math.abs(verticalVelocity) / humanoid.JumpPower * 
-               GRAVITY_COMPENSATION.HEIGHT_COMPENSATION_FACTOR,
-               0.8,
-               1.5
-           )
-       end
-       
-       local finalVelocity = Vector3.new(
-           simulatedVelocity.X * (1 + pattern.complexity * 0.3),
-           currentVelocity.Y * verticalComp,
-           simulatedVelocity.Z * (1 + pattern.complexity * 0.3)
-       )
-       
-       local patternModifier = math.rad(
-           math.ceil(pattern.consistency * 90)
-       )
-       
-       finalVelocity = finalVelocity * (1 + math.sin(patternModifier) * 0.2) * distanceComp
-       
-       return finalVelocity * (1 + pingFactor * settings.LATENCY_SCALING)
-   end
-
-   local predictedPosition = state.position
-   local pattern = analyzeMovementPattern(state, state.movementHistory)
-   local enhancedVelocity = computeEnhancedVelocity(pattern)
-
-   for step = 1, settings.MAX_PREDICTION_STEPS do
-       local stepWeight = applyAdvancedLogarithmicScale(
-           step / settings.MAX_PREDICTION_STEPS,
-           0,
-           1,
-           settings,
-           pattern.complexity
-       )
-       
-       local nextPosition = predictedPosition + 
-           (enhancedVelocity * settings.TICK_RATE * stepWeight)
-       
-       if humanoid.Jump then
-           local jumpVector = computeJumpTrajectory(state, pattern, settings)
-           nextPosition = nextPosition + jumpVector * stepWeight
-       end
-       
-       local gravityEffect = PHYSICS.GRAVITY * math.pow(settings.TICK_RATE, 2) * stepWeight
-       nextPosition = nextPosition + Vector3.new(0, -gravityEffect, 0)
-       
-       if nextPosition.Y < state.position.Y - GRAVITY_COMPENSATION.TERMINAL_VELOCITY then
-           nextPosition = Vector3.new(
-               nextPosition.X,
-               state.position.Y - GRAVITY_COMPENSATION.TERMINAL_VELOCITY,
-               nextPosition.Z
-           )
-       end
-       
-       local smoothingFactor = applyAdvancedLogarithmicScale(
-           settings.PREDICTION_SMOOTHING * stepWeight,
-           0,
-           1,
-           settings,
-           pattern.complexity
-       )
-       
-       predictedPosition = predictedPosition:Lerp(nextPosition, smoothingFactor)
-   end
-
-   return predictedPosition
-end
-
-local PremiumSilentAimGui = Instance.new("ScreenGui")
-local PremiumSilentAimButton = Instance.new("ImageButton")
-
-PremiumSilentAimGui.Parent = game.CoreGui
-PremiumSilentAimButton.Parent = PremiumSilentAimGui
-PremiumSilentAimButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-PremiumSilentAimButton.BackgroundTransparency = 0.2
-PremiumSilentAimButton.BorderColor3 = Color3.fromRGB(255, 215, 0)
-PremiumSilentAimButton.BorderSizePixel = 2
-PremiumSilentAimButton.Position = UDim2.new(0.897, 0, 0.3)
-PremiumSilentAimButton.Size = UDim2.new(0.1, 0, 0.2)
-PremiumSilentAimButton.Image = "rbxassetid://11162755592"
-PremiumSilentAimButton.Draggable = true
-PremiumSilentAimButton.Visible = false
-
-local UIStroke = Instance.new("UIStroke", PremiumSilentAimButton)
-UIStroke.Color = Color3.fromRGB(255, 215, 0)
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.3
-
-local function createPremiumTab()
-    local function checkPremium()
-        local hasPass = game:GetService("MarketplaceService"):UserOwnsGamePassAsync(
-            game.Players.LocalPlayer.UserId, 
-            PREMIUM_GAMEPASS_ID
-        )
-        
-        if not hasPass then
-            Tabs.Premium:AddParagraph({
-                Title = "🌟 Premium Features",
-                Content = "Join our Discord to purchase Premium access!\n\n" ..
-                         "Premium Includes:\n" ..
-                         "•  Algorithm Prediction Methods\n" ..
-                         "• Ping-Based Compensation\n" ..
-                         "• 80-97% Accuracy Algorithms\n" ..
-                         "• Premium-Only Updates"
-            })
-            
-            Tabs.Premium:AddButton({
-                Title = "Copy Discord Invite",
-                Callback = function()
-                    setclipboard("https://discord.gg/3DR8b2pA2z")
-                    Fluent:Notify({
-                        Title = "Discord Invite Copied!",
-                        Content = "Join our server to purchase Premium",
-                        Duration = 3
-                    })
-                end
-            })
-            return false
-        end
-        return true
-    end
-    
-    if checkPremium() then
-        -- Premium Section
-        local PremiumSection = Tabs.Premium:AddSection("Premium Silent Aim")
-        
-        -- Mode Selection
-        local currentMode = "Standard"
-        local PremiumModeDropdown = Tabs.Premium:AddDropdown("PredictionMode", {
-            Title = "Prediction Algorithm",
-            Values = {"Standard", "Algorithm", "Precise"},
-            Default = "Standard",
-            Multi = false,
-            Callback = function(value)
-                currentMode = value
-                Fluent:Notify({
-                    Title = "Algorithm Updated",
-                    Content = "Now using " .. value .. " prediction",
-                    Duration = 2
-                })
-            end
-        })
-
-        -- Premium Silent Aim Toggle
-        local PremiumSilentAimToggle = Tabs.Premium:AddToggle("PremiumSilentAim", {
-            Title = "Premium Silent Aim",
-            Default = false,
-            Callback = function(toggle)
-                PremiumSilentAimButton.Visible = toggle
-            end
-        })
-
-        -- Premium Button Click Handler
-        PremiumSilentAimButton.MouseButton1Click:Connect(function()
-            local localPlayer = game.Players.LocalPlayer
-            local gun = localPlayer.Character:FindFirstChild("Gun") or 
-                       localPlayer.Backpack:FindFirstChild("Gun")
-
-            if not gun then return end
-
-            local murderer = GetMurderer()
-            if not murderer then return end
-
-            localPlayer.Character.Humanoid:EquipTool(gun)
-
-            local predictedPosition = premiumPredict(murderer, currentMode)
-            if predictedPosition then
-                gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
-            end
-        end)
-
-        -- Algorithm Information
-        Tabs.Premium:AddParagraph({
-            Title = "Prediction Modes",
-            Content = "Standard: Balanced prediction with moderate compensation\n" ..
-                     "Algorithm: Enhanced accuracy with improved handling\n" ..
-                     "Precise: Maximum precision with full compensation"
-        })
-    end
-end
 
 
 -- Discord Section Configuration
