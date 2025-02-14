@@ -546,7 +546,7 @@ local function NotifyMurdererPerk()
 
     if detectedPerk then
         Fluent:Notify({
-            Title = "🔪 Murderer Perk Detected",
+            Title = " Murderer Perk Detected",
             Content = string.format(
                 "%s is using the %s Perk!", 
                 murdererPlayer.Name, 
@@ -556,7 +556,7 @@ local function NotifyMurdererPerk()
         })
     else
         Fluent:Notify({
-            Title = "🕵️ Murderer Found",
+            Title = " Murderer Found",
             Content = murdererPlayer.Name .. " detected, but no perk information available.",
             Duration = 4
         })
@@ -564,7 +564,7 @@ local function NotifyMurdererPerk()
 end
 
 GameplayEvents.RoundStart.OnClientEvent:Connect(function()
-    task.wait(1)
+    task.wait(0.5)
     NotifyMurdererPerk()
 end)
 
@@ -819,230 +819,183 @@ Workspace.DescendantRemoving:Connect(function(descendant)
     end
 end)
 
+local AimGui = Instance.new("ScreenGui")
+local AimButton = Instance.new("ImageButton")
 
-local function predictMurderV3(murderer, algorithmType)
-    local character = murderer.Character
-    if not character then return nil end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
+AimGui.Parent = game.CoreGui
+AimButton.Parent = AimGui
+AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimButton.BackgroundTransparency = 0.3
+AimButton.BorderColor3 = Color3.fromRGB(255, 100, 0)
+AimButton.BorderSizePixel = 2
+AimButton.Position = UDim2.new(0.897, 0, 0.3)
+AimButton.Size = UDim2.new(0.1, 0, 0.2)
+AimButton.Image = "rbxassetid://11162755592"
+AimButton.Draggable = true
+AimButton.Visible = false
 
-    -- Constants for prediction
-    local Interval = 0.1 -- Fixed interval for prediction
-    local Gravity = 196.2 -- Standard Roblox gravity
-    local FrictionDeceleration = 10 -- Deceleration due to friction
-    local JumpPower = humanoid.JumpPower -- Jump power of the humanoid
-    local MaxVerticalOffset = 5 -- Maximum vertical offset to avoid shooting into the ground
-    local MaxPredictionTime = 0.5 -- Maximum time to predict future position
-    local AirResistance = 0.1 -- Air resistance factor
-
-    -- Simulate position and velocity
-    local SimulatedPosition = rootPart.Position
-    local SimulatedVelocity = rootPart.AssemblyLinearVelocity
-    local MoveDirection = humanoid.MoveDirection
-
-    -- Function to predict jump height
-    local function predictJumpHeight(jumpPower, gravity, interval)
-        local initialVelocity = jumpPower / 100
-        local time = 0
-        local peakHeight = 0
-        while true do
-            local height = initialVelocity * time - 0.5 * gravity * time^2
-            if height <= 0 then break end
-            peakHeight = height
-            time = time + interval
-        end
-        return peakHeight
-    end
-
-    -- Predict jump if the humanoid is jumping
-    if humanoid.Jump then
-        local jumpHeight = predictJumpHeight(JumpPower, Gravity, Interval)
-        SimulatedPosition = SimulatedPosition + Vector3.new(0, jumpHeight, 0)
-        SimulatedVelocity = SimulatedVelocity + Vector3.new(0, JumpPower / 100, 0)
-    end
-
-    -- Apply air resistance
-    SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
-
-    -- Algorithm-specific adjustments
-    if algorithmType == "Algorithm" then
-        -- Apply probability-based adjustments to movement direction (deterministic approach)
-        local DirectionFactor = 1
-        if humanoid.Jump or SimulatedVelocity.Magnitude > 50 then
-            DirectionFactor = -1 -- Reverse direction if jumping or moving fast
-        end
-
-        -- Predict movement with refined acceleration handling
-        local totalPredictionTime = 0
-        while totalPredictionTime < MaxPredictionTime do
-            SimulatedPosition = SimulatedPosition + Vector3.new(
-                SimulatedVelocity.X * Interval + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2 * DirectionFactor,
-                SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
-                SimulatedVelocity.Z * Interval + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2 * DirectionFactor
-            )
-
-            -- Adjust velocity based on movement direction with better deceleration
-            local Axes = {"X", "Z"}
-            for _, Axis in ipairs(Axes) do
-                local Goal = MoveDirection[Axis] * 16.2001
-                local CurrentVelocity = SimulatedVelocity[Axis]
-                if math.abs(CurrentVelocity) > math.abs(Goal) then
-                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
-                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0,
-                        0,
-                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 0.8) or 0
-                    )
-                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
-                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
-                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0,
-                        0,
-                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 0.8) or 0
-                    )
-                end
-            end
-
-            -- Apply gravity with slight dampening for realism
-            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.95, 0)
-
-            -- Apply air resistance
-            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
-
-            totalPredictionTime = totalPredictionTime + Interval
-        end
-
-    elseif algorithmType == "Jet" then
-        -- Jet mode is an aggressive version of Algorithm with faster speeds and sharper changes
-        local JetFactor = 2.5 -- Multiplier for jet-like movement
-        local JetHeightFactor = humanoid.Jump and 8 or 0 -- Higher jump height for jet-like behavior
-
-        -- Predict movement with enhanced speed and vertical adjustment
-        local totalPredictionTime = 0
-        while totalPredictionTime < MaxPredictionTime do
-            SimulatedPosition = SimulatedPosition + Vector3.new(
-                SimulatedVelocity.X * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.X * Interval^2,
-                JetHeightFactor + SimulatedVelocity.Y * Interval - 0.5 * Gravity * Interval^2,
-                SimulatedVelocity.Z * Interval * JetFactor + 0.5 * FrictionDeceleration * MoveDirection.Z * Interval^2
-            )
-
-            -- Adjust velocity with higher friction for sharp stops/starts
-            local Axes = {"X", "Z"}
-            for _, Axis in ipairs(Axes) do
-                local Goal = MoveDirection[Axis] * 25 -- Higher goal speed for jet mode
-                local CurrentVelocity = SimulatedVelocity[Axis]
-                if math.abs(CurrentVelocity) > math.abs(Goal) then
-                    SimulatedVelocity = SimulatedVelocity - Vector3.new(
-                        Axis == "X" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0,
-                        0,
-                        Axis == "Z" and (FrictionDeceleration * math.sign(CurrentVelocity) * Interval * 1.2) or 0
-                    )
-                elseif math.abs(CurrentVelocity) < math.abs(Goal) then
-                    SimulatedVelocity = SimulatedVelocity + Vector3.new(
-                        Axis == "X" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0,
-                        0,
-                        Axis == "Z" and (FrictionDeceleration * math.sign(Goal) * Interval * 1.2) or 0
-                    )
-                end
-            end
-
-            -- Apply gravity with reduced dampening for faster falls
-            SimulatedVelocity = SimulatedVelocity + Vector3.new(0, -Gravity * Interval * 0.85, 0)
-
-            -- Apply air resistance
-            SimulatedVelocity = SimulatedVelocity * (1 - AirResistance * Interval)
-
-            totalPredictionTime = totalPredictionTime + Interval
-        end
-    end
-
-    -- Raycast to check for floor or ceiling
-    local RaycastParams = RaycastParams.new()
-    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    RaycastParams.FilterDescendantsInstances = {character}
-
-    local FloorCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, -MaxVerticalOffset, 0), RaycastParams)
-    local CeilingCheck = workspace:Raycast(SimulatedPosition, Vector3.new(0, MaxVerticalOffset, 0), RaycastParams)
-
-    -- Adjust position based on raycast results
-    if FloorCheck then
-        SimulatedPosition = Vector3.new(SimulatedPosition.X, FloorCheck.Position.Y + 3, SimulatedPosition.Z)
-        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on landing
-    elseif CeilingCheck then
-        SimulatedPosition = Vector3.new(SimulatedPosition.X, CeilingCheck.Position.Y - 2, SimulatedPosition.Z)
-        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on hitting ceiling
-    end
-
-    -- Clamp vertical position to avoid shooting into the ground
-    if SimulatedPosition.Y < rootPart.Position.Y - MaxVerticalOffset then
-        SimulatedPosition = Vector3.new(SimulatedPosition.X, rootPart.Position.Y - MaxVerticalOffset, SimulatedPosition.Z)
-        SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z) -- Reset vertical velocity on ground
-    end
-
-    return SimulatedPosition
-end
-
--- Silent Aim V3 GUI Button
-local SilentAimGuiV3 = Instance.new("ScreenGui")
-local SilentAimButtonV3 = Instance.new("ImageButton")
-
-SilentAimGuiV3.Name = "SilentAimGuiV3"
-SilentAimGuiV3.Parent = game.CoreGui
-
-SilentAimButtonV3.Name = "SilentAimButtonV3"
-SilentAimButtonV3.Parent = SilentAimGuiV3
-SilentAimButtonV3.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SilentAimButtonV3.BackgroundTransparency = 0.3
-SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
-SilentAimButtonV3.BorderSizePixel = 2
-SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5, 0)
-SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2, 0)
-SilentAimButtonV3.Image = "rbxassetid://11162755592"
-SilentAimButtonV3.Draggable = true
-SilentAimButtonV3.Visible = false
-
-local UIStroke = Instance.new("UIStroke", SilentAimButtonV3)
+local UIStroke = Instance.new("UIStroke", AimButton)
 UIStroke.Color = Color3.fromRGB(255, 100, 0)
 UIStroke.Thickness = 2
 UIStroke.Transparency = 0.5
 
-local COIN_AURA_RANGE = 5
-local COLLECTION_COOLDOWN = 0.1
+-- Prediction Configuration
+local PREDICTION_CONFIG = {
+    JUMP_PREDICT = true,
+    MOVEMENT_PREDICT = true,
+    JUMP_FORCE = 50,
+    JUMP_DECAY = 0.64,
+    DIRECTION_WEIGHT = 0.7,
+    AIR_RESISTANCE = 0.84,
+    MAX_JUMP_HEIGHT = 7.2,
+    TURN_SPEED = 0.15
+}
 
--- Function to get nearest coin
-local function getNearestCoin(character)
-    local nearestCoin = nil
-    local shortestDistance = COIN_AURA_RANGE
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+-- Movement History Cache
+local MovementCache = {}
+
+
+-- Helper Functions
+local function predictJumpArc(pos, vel, timeStep)
+    if vel.Y <= 0 then return pos.Y, vel.Y end
     
-    if not humanoidRootPart then return nil end
+    local jumpHeight = math.min(
+        pos.Y + (vel.Y * timeStep) - (PREDICTION_CONFIG.JUMP_DECAY * timeStep^2),
+        pos.Y + PREDICTION_CONFIG.MAX_JUMP_HEIGHT
+    )
+    local newVelY = vel.Y * PREDICTION_CONFIG.AIR_RESISTANCE
     
-    for _, coin in pairs(workspace:GetChildren()) do
-        if coin:IsA("BasePart") and coin.Name == "Coin_Server" then
-            local distance = (coin.Position - humanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                nearestCoin = coin
-            end
+    return jumpHeight, newVelY
+end
+
+local function predictDirectionChange(moveDir, lastDir)
+    if not lastDir then return moveDir end
+    
+    local predictedDir = moveDir:Lerp(lastDir, PREDICTION_CONFIG.DIRECTION_WEIGHT)
+    local turnAngle = math.atan2(moveDir.Z, moveDir.X) - math.atan2(lastDir.Z, lastDir.X)
+    
+    if math.abs(turnAngle) > 0.01 then
+        predictedDir = CFrame.fromEulerAnglesY(turnAngle * PREDICTION_CONFIG.TURN_SPEED) * predictedDir
+    end
+    
+    return predictedDir
+end
+
+-- Main Prediction Function
+local function getPredictedPosition(target)
+    if not target or not target.Character then return nil end
+    
+    local humanoid = target.Character:FindFirstChild("Humanoid")
+    local rootPart = target.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return nil end
+
+    -- Initialize movement cache for target
+    if not MovementCache[target] then
+        MovementCache[target] = {
+            lastPos = rootPart.Position,
+            lastDir = humanoid.MoveDirection,
+            lastUpdate = tick()
+        }
+    end
+
+    local currentPos = rootPart.Position
+    local currentVel = rootPart.AssemblyLinearVelocity
+    local moveDir = humanoid.MoveDirection
+    
+    -- Calculate prediction parameters
+    local simDivider = predictionState.simulationDividerEnabled and (predictionState.simulationDividerValue / 100) or 1
+    local predInterval = predictionState.predictionIntervalEnabled and (predictionState.predictionIntervalValue / 100) or 0.1
+    local pingValue = predictionState.predictionPingEnabled and (predictionState.predictionPingValue / 1000) or 0.1
+
+    local GRAVITY = workspace.Gravity * simDivider
+    local MAX_SPEED = 150 * simDivider
+    local ACCEL = 4000 * simDivider
+    
+    local timeStep = 0.016 * predInterval
+    local iterations = math.floor(pingValue / timeStep)
+    
+    local predictedPos = currentPos
+    local predictedVel = currentVel
+
+    -- Main prediction loop
+    for i = 1, iterations do
+        -- Direction prediction
+        if PREDICTION_CONFIG.MOVEMENT_PREDICT then
+            moveDir = predictDirectionChange(moveDir, MovementCache[target].lastDir)
+        end
+
+        -- Calculate movement forces
+        local moveForce = moveDir * ACCEL * timeStep
+        predictedVel = predictedVel + Vector3.new(
+            moveForce.X,
+            -GRAVITY * timeStep,
+            moveForce.Z
+        )
+        
+        -- Jump prediction
+        if PREDICTION_CONFIG.JUMP_PREDICT and humanoid.Jump then
+            local jumpHeight, newVelY = predictJumpArc(predictedPos, predictedVel, timeStep)
+            predictedPos = Vector3.new(predictedPos.X, jumpHeight, predictedPos.Z)
+            predictedVel = Vector3.new(predictedVel.X, newVelY, predictedVel.Z)
+        end
+        
+        -- Apply velocity constraints
+        predictedVel = Vector3.new(
+            math.clamp(predictedVel.X, -MAX_SPEED, MAX_SPEED),
+            math.clamp(predictedVel.Y, -MAX_SPEED * 2, MAX_SPEED),
+            math.clamp(predictedVel.Z, -MAX_SPEED, MAX_SPEED)
+        )
+        
+        predictedPos = predictedPos + (predictedVel * timeStep)
+        
+        -- Ground collision check
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        rayParams.FilterDescendantsInstances = {target.Character}
+        
+        local groundRay = workspace:Raycast(predictedPos, Vector3.new(0, -humanoid.HipHeight * 2, 0), rayParams)
+        if groundRay then
+            predictedPos = Vector3.new(
+                predictedPos.X,
+                groundRay.Position.Y + humanoid.HipHeight,
+                predictedPos.Z
+            )
+            predictedVel = Vector3.new(predictedVel.X, 0, predictedVel.Z)
         end
     end
+
+    -- Update movement cache
+    MovementCache[target].lastPos = currentPos
+    MovementCache[target].lastDir = moveDir
+    MovementCache[target].lastUpdate = tick()
     
-    return nearestCoin
+    return predictedPos
 end
 
--- Coin collection logic
-local function collectNearbyCoins()
-    local player = Players.LocalPlayer
-    local character = player.Character
-    if not character then return end
+-- Button Click Handler
+AimButton.MouseButton1Click:Connect(function()
+    local localPlayer = game.Players.LocalPlayer
+    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
     
-    local nearestCoin = getNearestCoin(character)
-    if nearestCoin then
-        ReplicatedStorage.Remotes.Gameplay.CoinCollected:FireServer(nearestCoin)
+    if not gun then return end
+    
+    local murderer = GetMurderer() -- Assuming this function exists in your environment
+    if not murderer then return end
+    
+    localPlayer.Character.Humanoid:EquipTool(gun)
+    
+    local predictedPos = getPredictedPosition(murderer)
+    if predictedPos then
+        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
     end
-end
+end)
 
--- Coin aura connection
-local coinAuraConnection = nil
+-- Clean up movement cache when players leave
+game.Players.PlayerRemoving:Connect(function(player)
+    if MovementCache[player] then
+        MovementCache[player] = nil
+    end
+end)
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -1130,136 +1083,7 @@ local AntiKickToggle = Tabs.Main:AddToggle("AntiKickToggle", {
     end
 })
 
--- Character Modifications Section
-local CharacterSection = Tabs.Main:AddSection("Character Modifications")
 
--- X-Ray System Implementation
-local xrayEnabled = false
-local defaultTransparency = {}
-
-local XRayToggle = Tabs.Main:AddToggle("XRayToggle", {
-    Title = "X-Ray",
-    Default = false,
-    Callback = function(toggle)
-        xrayEnabled = toggle
-        if toggle then
-            for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
-                    defaultTransparency[part] = part.Transparency
-                    part.LocalTransparencyModifier = XRaySlider.Value / 100
-                end
-            end
-        else
-            for part, transparency in pairs(defaultTransparency) do
-                if part and part:IsA("BasePart") then
-                    part.LocalTransparencyModifier = 0
-                end
-            end
-            defaultTransparency = {}
-        end
-    end
-})
-
-local XRaySlider = Tabs.Main:AddSlider("XRaySlider", {
-    Title = "X-Ray Transparency",
-    Description = "Adjust X-Ray transparency level",
-    Default = 80,
-    Min = 0,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(Value)
-        if XRayToggle.Value then
-            for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part:IsDescendantOf(game.Players.LocalPlayer.Character) then
-                    part.LocalTransparencyModifier = Value / 100
-                end
-            end
-        end
-    end
-})
-
--- Jump Power System
-local defaultJumpPower = 50
-local jumpPowerEnabled = false
-
-local JumpPowerToggle = Tabs.Main:AddToggle("JumpPowerToggle", {
-    Title = "Custom Jump Power",
-    Default = false
-})
-
-local JumpPowerSlider = Tabs.Main:AddSlider("JumpPowerSlider", {
-    Title = "Jump Power Value",
-    Default = 50,
-    Min = 0,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(Value)
-        if JumpPowerToggle.Value and game.Players.LocalPlayer.Character then
-            local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-            humanoid.JumpPower = Value
-        end
-    end
-})
-
--- Walk Speed System
-local defaultWalkSpeed = 16
-local walkSpeedEnabled = false
-
-local WalkSpeedToggle = Tabs.Main:AddToggle("WalkSpeedToggle", {
-    Title = "Custom Walk Speed",
-    Default = false
-})
-
-local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeedSlider", {
-    Title = "Walk Speed Value",
-    Default = 16,
-    Min = 0,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(Value)
-        if WalkSpeedToggle.Value and game.Players.LocalPlayer.Character then
-            local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-            humanoid.WalkSpeed = Value
-        end
-    end
-})
-
--- Dynamic Character State Management
-game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    
-    if JumpPowerToggle.Value then
-        humanoid.JumpPower = JumpPowerSlider.Value
-    end
-    
-    if WalkSpeedToggle.Value then
-        humanoid.WalkSpeed = WalkSpeedSlider.Value
-    end
-end)
-
--- Toggle State Handlers
-JumpPowerToggle:OnChanged(function(Value)
-    if game.Players.LocalPlayer.Character then
-        local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-        humanoid.JumpPower = Value and JumpPowerSlider.Value or defaultJumpPower
-    end
-end)
-
-WalkSpeedToggle:OnChanged(function(Value)
-    if game.Players.LocalPlayer.Character then
-        local humanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-        humanoid.WalkSpeed = Value and WalkSpeedSlider.Value or defaultWalkSpeed
-    end
-end)
-
--- Workspace Update Handler for X-Ray
-workspace.DescendantAdded:Connect(function(descendant)
-    if XRayToggle.Value and descendant:IsA("BasePart") and 
-       not descendant:IsDescendantOf(game.Players.LocalPlayer.Character) then
-        defaultTransparency[descendant] = descendant.Transparency
-        descendant.LocalTransparencyModifier = XRaySlider.Value / 100
-    end
-end)
 
 -- Visuals Tab Content
 local ESPToggle = Tabs.Visuals:AddToggle("ESPToggle", {
@@ -1300,39 +1124,62 @@ local SharpShooterToggle = Tabs.Combat:AddToggle("SharpShooterToggle", {
     end
 })
 
-local SilentAimToggleV3 = Tabs.Combat:AddToggle("SilentAimToggleV3", {
-    Title = "Silent Aim2",
-    Default = false,
-    Callback = function(toggle)
-        SilentAimButtonV3.Visible = toggle
-    end
+local predictionState = {
+   simulationDividerEnabled = false,
+   simulationDividerValue = 50,
+   predictionIntervalEnabled = false, 
+   predictionIntervalValue = 50,
+   predictionPingEnabled = false,
+   predictionPingValue = 100
+}
+
+local SilentAimToggle2 = Tabs.Main:AddToggle("SilentAimToggle2", {
+   Title = "Silent Aim2",
+   Default = false,
+   Callback = function(toggle)
+       AimButton.Visible = toggle
+   end
 })
 
--- Algorithm Type Dropdown
-local SelectedAlgorithm = "Algorithm" -- Default algorithm
-local SilentAimChoice = Tabs.Combat:AddDropdown("SilentAimChoice", {
-    Title = "Algorithm Type",
-    Values = {"Algorithm", "Jet"},
-    Default = "Algorithm",
-    Callback = function(choice)
-        SelectedAlgorithm = choice
-    end
+local SimulationDividerToggle = Tabs.Combat:AddToggle("SimulationDividerToggle", {
+   Title = "Simulation Divider",
+   Default = false,
+   Callback = function(toggle)
+       predictionState.simulationDividerEnabled = toggle
+   end
 })
 
--- Silent Aim V3 Button Click Event
-SilentAimButtonV3.MouseButton1Click:Connect(function()
-    local localPlayer = game.Players.LocalPlayer
-    local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
-    if not gun then return end
-    local murderer = GetMurderer() -- Assume this function exists and returns the murderer
-    if not murderer then return end
-    localPlayer.Character.Humanoid:EquipTool(gun)
-    -- Use the selected algorithm type
-    local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
-    if predictedPos then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
-    end
-end)
+local SimulationDividerSlider = Tabs.Combat:AddSlider("SimulationDividerSlider", {
+   Title = "Simulation Divider Value",
+   Description = "Adjust simulation intensity",
+   Default = 50,
+   Min = 0,
+   Max = 100,
+   Rounding = 0,
+   Callback = function(value)
+       predictionState.simulationDividerValue = value
+   end
+})
+
+local PredictionIntervalToggle = Tabs.Combat:AddToggle("PredictionIntervalToggle", {
+   Title = "Prediction Interval",
+   Default = false,
+   Callback = function(toggle)
+       predictionState.predictionIntervalEnabled = toggle
+   end
+})
+
+local PredictionIntervalSlider = Tabs.Combat:AddSlider("PredictionIntervalSlider", {
+   Title = "Prediction Interval Value",
+   Description = "Adjust interval rate",
+   Default = 50,
+   Min = 0,
+   Max = 100,
+   Rounding = 0,
+   Callback = function(value)
+       predictionState.predictionIntervalValue = value
+   end
+})
 
 local PredictionPingToggle = Tabs.Combat:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
@@ -1391,20 +1238,6 @@ local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
     end
 })
 
-local CoinAuraToggle = Tabs.Farming:AddToggle("CoinAuraToggle", {
-    Title = "Coin Aura",
-    Default = false,
-    Callback = function(toggle)
-        if toggle then
-            coinAuraConnection = RunService.Heartbeat:Connect(collectNearbyCoins)
-        else
-            if coinAuraConnection then
-                coinAuraConnection:Disconnect()
-                coinAuraConnection = nil
-            end
-        end
-    end
-})
 
 local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
     Title = "Auto Get Gun Drop",
@@ -1413,6 +1246,7 @@ local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
         state.autoGetGunDropEnabled = toggle
     end
 })
+
 
 -- Discord Section Configuration
 local DiscordSection = Tabs.Discord:AddSection("Discord Community")
