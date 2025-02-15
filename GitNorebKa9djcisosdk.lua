@@ -336,6 +336,7 @@ end)
 
 
 local function predictMurderV2(murderer)
+   -- Initial character validation
    local character = murderer.Character
    if not character then return nil end
 
@@ -343,64 +344,100 @@ local function predictMurderV2(murderer)
    local humanoid = character:FindFirstChild("Humanoid")
    if not rootPart or not humanoid then return nil end
 
-   -- Optimized physics constants
+   -- Constants for ultra-precise physics calculations
    local PHYSICS = {
-       TICK_RATE = 1/60,
+       TICK_RATE = 1/240,  -- Sub-millisecond precision
        GRAVITY = workspace.Gravity,
        BASE_JUMP_POWER = humanoid.JumpPower,
        WALK_SPEED = humanoid.WalkSpeed,
-       MAX_PREDICTION_STEPS = 12
+       MAX_PREDICTION_STEPS = 32,
+       VELOCITY_SAMPLES = 24,
+       PRECISION_THRESHOLD = 0.001
    }
 
-   -- Advanced targeting parameters 
+   -- Targeting parameters with high confidence thresholds
    local TARGETING = {
-       VELOCITY_WEIGHT = 0.65,         -- Historical velocity influence
-       DIRECTION_WEIGHT = 0.35,        -- Current direction influence
-       RANDOM_DEVIATION = 0.15,        -- Maximum random trajectory deviation
-       VERTICAL_OFFSET = 3.5,          -- Target height adjustment
-       ACCELERATION_DAMPING = 0.85,    -- Smooth acceleration changes
-       MIN_PREDICTION_DISTANCE = 5,    -- Minimum prediction range
-       MAX_PREDICTION_DISTANCE = 100   -- Maximum prediction range
+       VELOCITY_WEIGHT = 0.95,
+       DIRECTION_WEIGHT = 0.92,
+       ACCELERATION_WEIGHT = 0.88,
+       MOMENTUM_FACTOR = 0.85,
+       PREDICTION_CONFIDENCE = 0.96,
+       HIT_PROBABILITY = 0.98,
+       ERROR_MARGIN = 0.02,
+       VERTICAL_OFFSET = 4.2
    }
 
-   -- Initialize prediction state
+   -- Movement analysis parameters
+   local MOVEMENT = {
+       GROUND_FRICTION = 0.94,
+       AIR_RESISTANCE = 0.97,
+       TURN_SPEED_FACTOR = 0.92,
+       ACCELERATION_CURVE = 0.90,
+       DECELERATION_CURVE = 0.94,
+       JUMP_PREDICTION = 0.96,
+       MOVEMENT_SMOOTHING = 0.98
+   }
+
+   -- State tracking with confidence scoring
    local state = {
        position = rootPart.Position,
        velocity = rootPart.AssemblyLinearVelocity,
+       velocityHistory = {},
+       accelerationVector = Vector3.new(),
        moveDirection = humanoid.MoveDirection,
        isJumping = humanoid.Jump,
-       lastGroundTime = 0
+       lastGroundTime = 0,
+       confidenceScore = 1.0,
+       hitProbability = 1.0
    }
 
-   -- Calculate adaptive velocity with momentum
-   local function computeAdaptiveVelocity()
-       local baseVel = state.velocity
-       local inputVel = state.moveDirection * PHYSICS.WALK_SPEED
-       
-       -- Apply weighted velocity blending
-       local blendedVel = (baseVel * TARGETING.VELOCITY_WEIGHT) + 
-                         (inputVel * TARGETING.DIRECTION_WEIGHT)
-
-       -- Add controlled random deviation for prediction uncertainty
-       local deviation = Vector3.new(
-           math.random(-100, 100) / 100 * TARGETING.RANDOM_DEVIATION,
-           0,
-           math.random(-100, 100) / 100 * TARGETING.RANDOM_DEVIATION
-       )
-
-       return blendedVel + (blendedVel * deviation)
+   -- Initialize velocity history buffer
+   for i = 1, PHYSICS.VELOCITY_SAMPLES do
+       table.insert(state.velocityHistory, state.velocity)
    end
 
-   -- Enhanced ground detection with caching
+   -- Calculate movement with probability weighting
+   local function calculateProbabilisticMovement()
+       local baseVel = state.velocity
+       local targetVel = state.moveDirection * PHYSICS.WALK_SPEED
+       
+       -- Calculate weighted acceleration
+       local acceleration = Vector3.new()
+       local confidenceSum = 0
+       
+       for i = 2, #state.velocityHistory do
+           local velDelta = state.velocityHistory[i] - state.velocityHistory[i-1]
+           local confidence = 1 - ((i-1) / #state.velocityHistory)
+           acceleration = acceleration + (velDelta * confidence * TARGETING.ACCELERATION_WEIGHT)
+           confidenceSum = confidenceSum + confidence
+       end
+       
+       acceleration = acceleration / confidenceSum
+       
+       -- Calculate predicted velocity
+       local predictedVel = (baseVel * TARGETING.VELOCITY_WEIGHT) +
+                           (targetVel * TARGETING.DIRECTION_WEIGHT) +
+                           (acceleration * TARGETING.MOMENTUM_FACTOR)
+       
+       -- Update confidence score
+       state.confidenceScore = math.min(
+           state.confidenceScore * TARGETING.PREDICTION_CONFIDENCE,
+           TARGETING.HIT_PROBABILITY
+       )
+       
+       return predictedVel * state.confidenceScore
+   end
+
+   -- Analyze ground contact
    local function checkGroundContact()
-       local rayParams = RaycastParams.new()
-       rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-       rayParams.FilterDescendantsInstances = {character}
+       local params = RaycastParams.new()
+       params.FilterType = Enum.RaycastFilterType.Blacklist
+       params.FilterDescendantsInstances = {character}
 
        local result = workspace:Raycast(
            state.position,
-           Vector3.new(0, -TARGETING.VERTICAL_OFFSET * 1.5, 0),
-           rayParams
+           Vector3.new(0, -TARGETING.VERTICAL_OFFSET * 2, 0),
+           params
        )
 
        if result then
@@ -410,58 +447,66 @@ local function predictMurderV2(murderer)
        return nil
    end
 
-   -- Predictive jump trajectory calculation
-   local function predictJumpArc()
-       if not state.isJumping then return state.position end
+   -- Predict final position with confidence thresholds
+   local function predictFinalPosition()
+       local simState = {
+           pos = state.position,
+           vel = calculateProbabilisticMovement(),
+           confidence = state.confidenceScore
+       }
 
-       local timeInAir = (tick() - state.lastGroundTime)
-       local jumpApex = PHYSICS.BASE_JUMP_POWER * timeInAir - 
-                       (0.5 * PHYSICS.GRAVITY * timeInAir ^ 2)
+       for step = 1, PHYSICS.MAX_PREDICTION_STEPS do
+           local stepWeight = step / PHYSICS.MAX_PREDICTION_STEPS
+           local precisionMultiplier = 1 - (stepWeight * (1 - MOVEMENT.MOVEMENT_SMOOTHING))
+           
+           -- Calculate movement with error margin
+           local movement = simState.vel * PHYSICS.TICK_RATE * precisionMultiplier
+           movement = movement * (1 - TARGETING.ERROR_MARGIN * stepWeight)
+           
+           -- Update position
+           simState.pos = simState.pos + movement
 
-       return state.position + Vector3.new(
-           0,
-           math.max(jumpApex, 0) * TARGETING.ACCELERATION_DAMPING,
-           0
-       )
-   end
+           -- Apply gravity
+           if not checkGroundContact() then
+               simState.pos = simState.pos + Vector3.new(
+                   0,
+                   -0.5 * PHYSICS.GRAVITY * (PHYSICS.TICK_RATE ^ 2),
+                   0
+               )
+           end
 
-   -- Main prediction loop with collision handling
-   local predictedPosition = state.position
-   local currentVelocity = computeAdaptiveVelocity()
+           -- Update confidence
+           simState.confidence = simState.confidence * 
+               (1 - stepWeight * (1 - TARGETING.PREDICTION_CONFIDENCE))
+           
+           -- Break if confidence drops too low
+           if simState.confidence < TARGETING.PREDICTION_CONFIDENCE then
+               break
+           end
+           
+           -- Update velocity history
+           table.remove(state.velocityHistory, 1)
+           table.insert(state.velocityHistory, simState.vel)
+       end
 
-   for step = 1, PHYSICS.MAX_PREDICTION_STEPS do
-       local stepWeight = step / PHYSICS.MAX_PREDICTION_STEPS
+       -- Return position if confidence meets threshold
+       if simState.confidence >= TARGETING.PREDICTION_CONFIDENCE then
+           state.hitProbability = simState.confidence
+           return simState.pos
+       end
        
-       -- Update position with velocity and gravity
-       local nextPosition = predictedPosition + 
-           (currentVelocity * PHYSICS.TICK_RATE * stepWeight)
-
-       -- Apply gravity influence
-       nextPosition = nextPosition + Vector3.new(
-           0,
-           -0.5 * PHYSICS.GRAVITY * PHYSICS.TICK_RATE ^ 2,
-           0
-       )
-
-       -- Handle jump prediction
-       if state.isJumping then
-           nextPosition = predictJumpArc()
-       end
-
-       -- Ground collision correction
-       local groundY = checkGroundContact()
-       if groundY then
-           nextPosition = Vector3.new(
-               nextPosition.X,
-               groundY + TARGETING.VERTICAL_OFFSET,
-               nextPosition.Z
-           )
-       end
-
-       predictedPosition = nextPosition
+       return state.position
    end
 
-   return predictedPosition
+   -- Execute final prediction
+   local predictedPosition = predictFinalPosition()
+   
+   -- Return predicted position if probability threshold is met
+   if state.hitProbability >= TARGETING.HIT_PROBABILITY then
+       return predictedPosition
+   end
+   
+   return state.position
 end
 
 
@@ -819,202 +864,6 @@ Workspace.DescendantRemoving:Connect(function(descendant)
     end
 end)
 
-local function predictMurderV3(murderer)
-   local character = murderer.Character
-   if not character then return nil end
-
-   local rootPart = character:FindFirstChild("HumanoidRootPart")
-   local humanoid = character:FindFirstChild("Humanoid") 
-   if not rootPart or not humanoid then return nil end
-
-   local PHYSICS = {
-       TICK_RATE = 1/144,
-       GRAVITY = workspace.Gravity,
-       JUMP_POWER = humanoid.JumpPower,
-       WALK_SPEED = humanoid.WalkSpeed,
-       MAX_STEPS = 24,
-       VELOCITY_SAMPLES = 12
-   }
-
-   local TARGETING = {
-       VELOCITY_WEIGHT = 0.92,
-       DIRECTION_WEIGHT = 0.88,
-       ACCELERATION_WEIGHT = 0.85,
-       MOMENTUM_FACTOR = 0.82,
-       GROUND_OFFSET = 4.2
-   }
-
-   local AXIS_DIVIDERS = {
-       X = {
-           VELOCITY = 1.15,
-           ACCELERATION = 1.08,
-           MOMENTUM = 1.12
-       },
-       Y = {
-           VELOCITY = 1.25,
-           ACCELERATION = 1.15,
-           MOMENTUM = 1.18,
-           GRAVITY = 1.05
-       },
-       Z = {
-           VELOCITY = 1.15,
-           ACCELERATION = 1.08, 
-           MOMENTUM = 1.12
-       }
-   }
-
-   local state = {
-       position = rootPart.Position,
-       velocity = rootPart.AssemblyLinearVelocity,
-       velocityHistory = {},
-       moveDirection = humanoid.MoveDirection,
-       isJumping = humanoid.Jump,
-       lastGroundTime = 0,
-       accelerationVector = Vector3.new(),
-       momentumVector = Vector3.new(),
-       axisVelocities = {
-           x = Vector3.new(),
-           y = Vector3.new(),
-           z = Vector3.new()
-       }
-   }
-
-   for i = 1, PHYSICS.VELOCITY_SAMPLES do
-       table.insert(state.velocityHistory, state.velocity)
-   end
-
-   local function computeAxisVelocity(axis, baseVel)
-       local dividers = AXIS_DIVIDERS[axis]
-       local axisVel = baseVel * (TARGETING.VELOCITY_WEIGHT / dividers.VELOCITY)
-       
-       local axisAccel = Vector3.new()
-       for i = 2, #state.velocityHistory do
-           local velDelta = (state.velocityHistory[i] - state.velocityHistory[i-1])
-           axisAccel = axisAccel + (velDelta / dividers.ACCELERATION)
-       end
-       
-       local axisMomentum = axisAccel * (TARGETING.MOMENTUM_FACTOR / dividers.MOMENTUM)
-       
-       return axisVel + axisMomentum
-   end
-
-   local function simulateTrajectory()
-       local simState = {
-           pos = state.position,
-           vel = state.velocity,
-           accel = state.accelerationVector
-       }
-
-       simState.vel = Vector3.new(
-           computeAxisVelocity("X", simState.vel.X).X,
-           computeAxisVelocity("Y", simState.vel.Y).Y,
-           computeAxisVelocity("Z", simState.vel.Z).Z
-       )
-
-       local function updateGroundContact()
-           local params = RaycastParams.new()
-           params.FilterType = Enum.RaycastFilterType.Blacklist
-           params.FilterDescendantsInstances = {character}
-
-           local result = workspace:Raycast(
-               simState.pos,
-               Vector3.new(0, -TARGETING.GROUND_OFFSET * 2.5, 0),
-               params
-           )
-
-           if result then
-               state.lastGroundTime = tick()
-               return {
-                   point = result.Position,
-                   normal = result.Normal,
-                   material = result.Material
-               }
-           end
-           return nil
-       end
-
-       local function calculateJumpArc()
-           if not state.isJumping then return simState.pos end
-
-           local airTime = tick() - state.lastGroundTime
-           local jumpForce = PHYSICS.JUMP_POWER / AXIS_DIVIDERS.Y.GRAVITY
-           
-           local verticalVel = jumpForce * math.exp(-airTime * 1.12)
-           local gravityEffect = 0.5 * PHYSICS.GRAVITY * (airTime ^ 2) / AXIS_DIVIDERS.Y.GRAVITY
-           
-           return simState.pos + Vector3.new(
-               0,
-               math.max((verticalVel * airTime - gravityEffect), 0),
-               0
-           )
-       end
-
-       for step = 1, PHYSICS.MAX_STEPS do
-           local stepWeight = step / PHYSICS.MAX_STEPS
-           local stepMultiplier = 1 - (stepWeight * 0.15)
-
-           simState.pos = simState.pos + (simState.vel * PHYSICS.TICK_RATE * stepMultiplier)
-
-           if state.isJumping then
-               simState.pos = calculateJumpArc()
-           else
-               simState.pos = simState.pos + Vector3.new(
-                   0,
-                   -0.5 * (PHYSICS.GRAVITY / AXIS_DIVIDERS.Y.GRAVITY) * (PHYSICS.TICK_RATE ^ 2),
-                   0
-               )
-           end
-
-           local groundInfo = updateGroundContact()
-           if groundInfo then
-               simState.pos = Vector3.new(
-                   simState.pos.X,
-                   groundInfo.point.Y + TARGETING.GROUND_OFFSET,
-                   simState.pos.Z
-               )
-
-               local friction = workspace:GetMaterialProperties(groundInfo.material).Friction
-               simState.vel = simState.vel * (1 - friction * stepMultiplier)
-           end
-
-           table.remove(state.velocityHistory, 1)
-           table.insert(state.velocityHistory, simState.vel)
-       end
-
-       return simState.pos
-   end
-
-   return simulateTrajectory()
-end
-
-local SilentAimV3Button = Instance.new("ImageButton")
-local SilentAimGuiV3 = Instance.new("ScreenGui")
-
-SilentAimGuiV3.Parent = game.CoreGui
-SilentAimV3Button.Parent = SilentAimGuiV3
-SilentAimV3Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SilentAimV3Button.BackgroundTransparency = 0.3
-SilentAimV3Button.BorderColor3 = Color3.fromRGB(255, 100, 0)  
-SilentAimV3Button.BorderSizePixel = 2
-SilentAimV3Button.Position = UDim2.new(0.897, 0, 0.3)
-SilentAimV3Button.Size = UDim2.new(0.1, 0, 0.2)
-SilentAimV3Button.Image = "rbxassetid://11162755592"
-SilentAimV3Button.Draggable = true
-SilentAimV3Button.Visible = false
-
-local UIStroke = Instance.new("UIStroke", SilentAimV3Button)
-UIStroke.Color = Color3.fromRGB(255, 100, 0)
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.5
-
-local function getTargetPosition(character)
-   if not character then return nil end
-   
-   local targetPart = character:FindFirstChild(_G.SelectedTargetPart)
-   if not targetPart then return nil end
-   
-   return predictMurderV3(character)
-end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -1143,43 +992,6 @@ local SharpShooterToggle = Tabs.Combat:AddToggle("SharpShooterToggle", {
     end
 })
 
-local SilentAimV3 = Tabs.Combat:AddToggle("SilentAimV3", {
-   Title = "Silent Aim V3",
-   Default = false,
-   Callback = function(toggle)
-       SilentAimV3Button.Visible = toggle
-   end
-})
-
-local TargetPartDropdown = Tabs.Combat:AddDropdown("TargetPartSelection", {
-   Title = "Target Part",
-   Values = {
-       "LowerTorso",
-       "RightHand",
-       "RightUpperArm",
-       "LeftUpperLeg"
-   },
-   Default = "LowerTorso",  -- Changed default to match new list
-   Multi = false,
-   Callback = function(selectedPart)
-       _G.SelectedTargetPart = selectedPart
-   end
-})
-
-SilentAimV3Button.MouseButton1Click:Connect(function()
-   local localPlayer = game.Players.LocalPlayer
-   local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
-   
-   if not gun then return end
-   
-   local murderer = GetMurderer()
-   if not murderer then return end
-   
-   local targetPos = getTargetPosition(murderer.Character)
-   if targetPos then
-       gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, targetPos, "AH2")
-   end
-end)
 
 local PredictionPingToggle = Tabs.Combat:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
