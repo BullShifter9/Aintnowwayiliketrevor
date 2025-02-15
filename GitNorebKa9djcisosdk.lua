@@ -1154,15 +1154,12 @@ local SilentAimV3 = Tabs.Combat:AddToggle("SilentAimV3", {
 local TargetPartDropdown = Tabs.Combat:AddDropdown("TargetPartSelection", {
    Title = "Target Part",
    Values = {
-       "Head",
-       "UpperTorso", 
-       "HumanoidRootPart",
-       "LeftUpperArm",
-       "RightUpperArm", 
-       "LeftUpperLeg",
-       "RightUpperLeg"
+       "LowerTorso",
+       "RightHand",
+       "RightUpperArm",
+       "LeftUpperLeg"
    },
-   Default = "HumanoidRootPart",
+   Default = "LowerTorso",  -- Changed default to match new list
    Multi = false,
    Callback = function(selectedPart)
        _G.SelectedTargetPart = selectedPart
