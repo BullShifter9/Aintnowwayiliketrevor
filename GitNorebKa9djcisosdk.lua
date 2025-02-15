@@ -970,6 +970,97 @@ ESPToggle:OnChanged(function()
    end
 end)
 
+-- Create the timer GUI
+local TimerGui = Instance.new("ScreenGui")
+local TimerFrame = Instance.new("Frame")
+local TimerLabel = Instance.new("TextLabel")
+
+-- Configure the GUI hierarchy and properties
+TimerGui.Name = "RoundTimerGui"
+TimerGui.ResetOnSpawn = false
+TimerGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+TimerFrame.Name = "TimerFrame"
+TimerFrame.Size = UDim2.new(0, 150, 0, 40)
+TimerFrame.Position = UDim2.new(0.5, -75, 0, 10) -- Centered at top
+TimerFrame.BackgroundTransparency = 0.3
+TimerFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TimerFrame.Parent = TimerGui
+
+-- Add rounded corners for better aesthetics
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = TimerFrame
+
+-- Configure the timer label
+TimerLabel.Name = "TimerText"
+TimerLabel.Size = UDim2.new(1, 0, 1, 0)
+TimerLabel.BackgroundTransparency = 1
+TimerLabel.Font = Enum.Font.GothamBold
+TimerLabel.TextSize = 24
+TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TimerLabel.Parent = TimerFrame
+
+-- Add a shadow effect for better visibility
+local TextShadow = Instance.new("TextLabel")
+TextShadow.Size = UDim2.new(1, 0, 1, 0)
+TextShadow.Position = UDim2.new(0, 2, 0, 2)
+TextShadow.BackgroundTransparency = 1
+TextShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextShadow.TextTransparency = 0.6
+TextShadow.Font = Enum.Font.GothamBold
+TextShadow.TextSize = 24
+TextShadow.ZIndex = 1
+TextShadow.Parent = TimerFrame
+
+-- Function to format time
+local function formatTime(seconds)
+    local minutes = math.floor(seconds / 60)
+    local remainingSeconds = seconds % 60
+    
+    if minutes > 0 then
+        return string.format("%d:%02d", minutes, remainingSeconds)
+    else
+        return string.format("%ds", remainingSeconds)
+    end
+end
+
+-- Timer update loop
+local timerRemote = game:GetService("ReplicatedStorage").Remotes.Extras.GetTimer
+
+-- Create settings in your UI library
+local TimerToggle = Tabs.Visuals:AddToggle("ShowTimer", {
+    Title = "Show Round Timer",
+    Default = true,
+    Callback = function(Value)
+        TimerGui.Enabled = Value
+    end
+})
+
+-- Update timer
+game:GetService("RunService").RenderStepped:Connect(function()
+    if TimerGui.Enabled then
+        local success, timeLeft = pcall(function()
+            return timerRemote:InvokeServer()
+        end)
+        
+        if success and timeLeft then
+            local formattedTime = formatTime(timeLeft)
+            TimerLabel.Text = formattedTime
+            TextShadow.Text = formattedTime
+            
+            -- Color changes based on time remaining
+            if timeLeft <= 10 then
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red for last 10 seconds
+            elseif timeLeft <= 30 then
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange for last 30 seconds
+            else
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White for normal time
+            end
+        end
+    end
+end)
+
 -- Combat Tab Content
 local SilentAimToggle = Tabs.Combat:AddToggle("SilentAimToggle", {
     Title = "Silent Aim",
