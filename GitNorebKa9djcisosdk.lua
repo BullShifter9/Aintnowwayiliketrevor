@@ -1203,6 +1203,5 @@ Fluent:Notify({
    Duration = 5
 })
 
--- Initialize Premium Tab
-createPremiumTab()
+
 SaveManager:LoadAutoloadConfig()
