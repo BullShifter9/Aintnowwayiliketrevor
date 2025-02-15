@@ -810,60 +810,6 @@ local function predictMurderSharpShooter(murderer)
    return predictedPosition
 end
 
-local function isMurdererNear(position)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Name == state.murder then
-            local murdererCharacter = player.Character
-            if murdererCharacter and murdererCharacter:FindFirstChild("HumanoidRootPart") then
-                local distance = (position - murdererCharacter.HumanoidRootPart.Position).magnitude
-                if distance <= state.murdererNearDistance then
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
-local function collectGunDrop()
-    if not state.autoGetGunDropEnabled or not state.gunDrop then return end
-    
-    local gunDropPosition = state.gunDrop.Position
-    local originalPosition = LocalPlayer.Character.HumanoidRootPart.Position
-    state.originalPosition = originalPosition
-    
-    if isMurdererNear(gunDropPosition) then
-        return
-    end
-    
-    -- Move to gun drop position
-    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(gunDropPosition)
-    
-    -- Wait for a short duration to ensure the gun is picked up
-    wait(1)
-    
-    -- Return to original position
-    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
-end
-
--- Connect Events
-RunService.Heartbeat:Connect(function()
-    if state.autoGetGunDropEnabled then
-        collectGunDrop()
-    end
-end)
-
-Workspace.DescendantAdded:Connect(function(descendant)
-    if descendant.Name == "GunDrop" then
-        state.gunDrop = descendant
-    end
-end)
-
-Workspace.DescendantRemoving:Connect(function(descendant)
-    if descendant.Name == "GunDrop" then
-        state.gunDrop = nil
-    end
-end)
 
 
 -- Fluent UI Integration
@@ -875,7 +821,7 @@ local Window = Fluent:CreateWindow({
    Title = "OmniHub Script By Azzakirms",
    SubTitle = "V1.1.0",
    TabWidth = 100,
-   Size = UDim2.fromOffset(380, 260),
+   Size = UDim2.fromOffset(380, 360),
    Acrylic = true,
    Theme = "Dark",
    MinimizeKey = Enum.KeyCode.LeftControl
@@ -1157,7 +1103,7 @@ local AutoNotifyToggle = Tabs.Combat:AddToggle("AutoNotifyToggle", {
 
 -- Farming Tab Content
 local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
-    Title = "Auto Coin",
+    Title = "Auto Farm Coin",
     Default = false,
     Callback = function(toggle)
         AutoCoin = toggle
@@ -1183,13 +1129,78 @@ local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
 })
 
 
-local AutoGetGunDropToggle = Tabs.Farming:AddToggle("AutoGetGunDropToggle", {
+local AutoGetGunDropToggle = Tabs.Combat:AddToggle("AutoGetGunDropToggle", {
     Title = "Auto Get Gun Drop",
     Default = false,
     Callback = function(toggle)
         state.autoGetGunDropEnabled = toggle
     end
 })
+
+local function isMurdererNear(position)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name == state.murder then
+            local murdererCharacter = player.Character
+            if murdererCharacter and murdererCharacter:FindFirstChild("HumanoidRootPart") then
+                local distance = (position - murdererCharacter.HumanoidRootPart.Position).magnitude
+                if distance <= state.murdererNearDistance then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function collectGunDrop()
+    if not state.autoGetGunDropEnabled or not state.gunDrop then return end
+    
+    local gunDrop = state.gunDrop
+    local gunDropPosition = gunDrop.Position
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    -- Store original position
+    state.originalPosition = character.HumanoidRootPart.Position
+
+    if isMurdererNear(gunDropPosition) then
+        return
+    end
+
+    -- Move to gun instantly
+    character.HumanoidRootPart.CFrame = CFrame.new(gunDropPosition)
+
+    -- Simulate touch to pick up gun instantly
+    firetouchinterest(character.HumanoidRootPart, gunDrop, 0)
+    firetouchinterest(character.HumanoidRootPart, gunDrop, 1)
+
+    -- Wait a brief moment to ensure gun is collected
+    task.wait(0.1)
+
+    -- Return to original position instantly
+    character.HumanoidRootPart.CFrame = CFrame.new(state.originalPosition)
+end
+
+-- Event to detect gun drop in the game
+Workspace.DescendantAdded:Connect(function(descendant)
+    if descendant.Name == "GunDrop" then
+        state.gunDrop = descendant
+    end
+end)
+
+Workspace.DescendantRemoving:Connect(function(descendant)
+    if descendant.Name == "GunDrop" then
+        state.gunDrop = nil
+    end
+end)
+
+-- Auto-execute function on every frame
+RunService.Heartbeat:Connect(function()
+    if state.autoGetGunDropEnabled then
+        collectGunDrop()
+    end
+end)
+
 
 
 -- Discord Section Configuration
