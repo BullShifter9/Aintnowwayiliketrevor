@@ -904,11 +904,11 @@ local TweenService = game:GetService("TweenService")
 
 local function animateLoader()
    local loadingStages = {
-       {"Checking premium status...", 0.2},
-       {"Loading dependencies...", 0.4},
-       {"Configuring settings...", 0.6},
-       {"Initializing features...", 0.8},
-       {"Finalizing...", 1}
+       {"Checking premium status...", 6},
+       {"Loading dependencies...", 6},
+       {"Configuring settings...", 7},
+       {"Initializing features...", 8},
+       {"Finalizing...", 5}
    }
 
    for _, stage in ipairs(loadingStages) do
