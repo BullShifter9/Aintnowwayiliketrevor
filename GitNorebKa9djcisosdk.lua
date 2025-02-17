@@ -817,6 +817,8 @@ local function predictMurderSharpShooter(murderer)
    return predictedPosition
 end
 
+
+
 local Loader = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
@@ -828,6 +830,8 @@ local UICorner_2 = Instance.new("UICorner")
 local UICorner_3 = Instance.new("UICorner")
 local StatusText = Instance.new("TextLabel")
 local GlowEffect = Instance.new("ImageLabel")
+
+task.wait(3)
 
 -- Set up hierarchy
 Loader.Name = "OmniLoader"
