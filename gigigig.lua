@@ -854,7 +854,151 @@ local function predictMurderSharpShooter(murderer)
    return predictedPosition
 end
 
+local Loader = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local LoaderTitle = Instance.new("TextLabel") 
+local Subtitle = Instance.new("TextLabel")
+local LoadingBar = Instance.new("Frame")
+local LoadingBarFill = Instance.new("Frame")
+local UICorner_2 = Instance.new("UICorner")
+local UICorner_3 = Instance.new("UICorner")
+local StatusText = Instance.new("TextLabel")
+local GlowEffect = Instance.new("ImageLabel")
 
+-- Set up hierarchy with enhanced dimensions
+Loader.Name = "OmniLoader"
+Loader.Parent = game.CoreGui
+
+MainFrame.Name = "LoaderFrame"
+MainFrame.Parent = Loader
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25) -- Slightly darker for better contrast
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150) -- Adjusted for larger size
+MainFrame.Size = UDim2.new(0, 400, 0, 300) -- Increased size
+MainFrame.ClipsDescendants = true
+
+UICorner.CornerRadius = UDim.new(0, 12) -- Slightly larger corners
+UICorner.Parent = MainFrame
+
+GlowEffect.Name = "Glow"
+GlowEffect.Parent = MainFrame
+GlowEffect.BackgroundTransparency = 1
+GlowEffect.Position = UDim2.new(0, -20, 0, -20)
+GlowEffect.Size = UDim2.new(1, 40, 1, 40)
+GlowEffect.Image = "rbxassetid://5028857084"
+GlowEffect.ImageColor3 = Color3.fromRGB(255, 215, 0)
+GlowEffect.ImageTransparency = 0.7 -- Slightly more visible glow
+
+-- Enhanced text styling
+LoaderTitle.Name = "Title"
+LoaderTitle.Parent = MainFrame
+LoaderTitle.BackgroundTransparency = 1
+LoaderTitle.Position = UDim2.new(0, 0, 0.15, 0)
+LoaderTitle.Size = UDim2.new(1, 0, 0, 40)
+LoaderTitle.Font = Enum.Font.GothamBold
+LoaderTitle.Text = "OmniHub"
+LoaderTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+LoaderTitle.TextSize = 32 -- Larger text
+LoaderTitle.TextStrokeTransparency = 0.8 -- Added subtle text stroke
+LoaderTitle.TextStrokeColor3 = Color3.fromRGB(255, 215, 0)
+
+Subtitle.Name = "Subtitle"
+Subtitle.Parent = MainFrame
+Subtitle.BackgroundTransparency = 1
+Subtitle.Position = UDim2.new(0, 0, 0.35, 0)
+Subtitle.Size = UDim2.new(1, 0, 0, 25)
+Subtitle.Font = Enum.Font.GothamSemibold -- Changed to semibold
+Subtitle.Text = "Join My Discord Bbg"
+Subtitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+Subtitle.TextSize = 18
+
+-- Enhanced loading bar
+LoadingBar.Name = "LoadingBar"
+LoadingBar.Parent = MainFrame
+LoadingBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+LoadingBar.Position = UDim2.new(0.1, 0, 0.65, 0)
+LoadingBar.Size = UDim2.new(0.8, 0, 0, 8) -- Slightly thicker
+
+LoadingBarFill.Name = "Fill"
+LoadingBarFill.Parent = LoadingBar
+LoadingBarFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+LoadingBarFill.Size = UDim2.new(0, 0, 1, 0)
+
+UICorner_2.CornerRadius = UDim.new(0, 4)
+UICorner_2.Parent = LoadingBar
+
+UICorner_3.CornerRadius = UDim.new(0, 4)
+UICorner_3.Parent = LoadingBarFill
+
+StatusText.Name = "Status"
+StatusText.Parent = MainFrame
+StatusText.BackgroundTransparency = 1
+StatusText.Position = UDim2.new(0, 0, 0.8, 0)
+StatusText.Size = UDim2.new(1, 0, 0, 25)
+StatusText.Font = Enum.Font.GothamMedium
+StatusText.Text = "Initializing..."
+StatusText.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusText.TextSize = 16
+
+-- Enhanced loading sequence
+local TweenService = game:GetService("TweenService")
+
+local function animateLoader()
+   local loadingStages = {
+       {"Verifying premium access...", 0.2},
+       {"Loading core modules...", 0.4},
+       {"Optimizing performance...", 0.6},
+       {"Preparing user interface...", 0.8},
+       {"Ready to launch...", 1}
+   }
+
+   for _, stage in ipairs(loadingStages) do
+       StatusText.Text = stage[1]
+       
+       local fillTween = TweenService:Create(LoadingBarFill, 
+           TweenInfo.new(5, Enum.EasingStyle.Linear), -- Changed to 5 seconds with Linear style
+           {Size = UDim2.new(stage[2], 0, 1, 0)}
+       )
+       fillTween:Play()
+       fillTween.Completed:Wait()
+       task.wait(0.3) -- Small pause between stages
+   end
+
+   task.wait(0.6)
+   
+   -- Fade out animation remains the same
+   local fadeOut = TweenService:Create(MainFrame,
+       TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+       {BackgroundTransparency = 1}
+   )
+   
+   for _, element in ipairs(MainFrame:GetDescendants()) do
+       if element:IsA("TextLabel") then
+           TweenService:Create(element,
+               TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+               {TextTransparency = 1}
+           ):Play()
+       elseif element:IsA("Frame") and element.Name ~= "LoaderFrame" then
+           TweenService:Create(element,
+               TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+               {BackgroundTransparency = 1}
+           ):Play()
+       elseif element:IsA("ImageLabel") then
+           TweenService:Create(element,
+               TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+               {ImageTransparency = 1}
+           ):Play()
+       end
+   end
+   
+   fadeOut:Play()
+   fadeOut.Completed:Wait()
+   
+   Loader:Destroy()
+end
+
+-- Start the loading sequence
+animateLoader()
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
