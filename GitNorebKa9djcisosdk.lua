@@ -904,24 +904,26 @@ StatusText.TextSize = 14
 -- Animation and loading sequence
 local TweenService = game:GetService("TweenService")
 
-local loadingStages = {
-    {"Checking premium status...", 5},
-    {"Loading dependencies...", 4},
-    {"Configuring settings...", 6},
-    {"Initializing features...", 8},
-    {"Finalizing...", 5}
-}
+local function animateLoader()
+   local loadingStages = {
+       {"Checking premium status...", 0.2},
+       {"Loading dependencies...", 0.4},
+       {"Configuring settings...", 0.6},
+       {"Initializing features...", 0.8},
+       {"Finalizing...", 1}
+   }
 
-for _, stage in ipairs(loadingStages) do
-    StatusText.Text = stage[1]
-    
-    local fillTween = TweenService:Create(LoadingBarFill, 
-        TweenInfo.new(stage[2], Enum.EasingStyle.Quad), 
-        {Size = UDim2.new(stage[2] / 8, 0, 1, 0)} -- Adjusted to fit max duration
-    )
-    fillTween:Play()
-    fillTween.Completed:Wait()
-end
+   for _, stage in ipairs(loadingStages) do
+       StatusText.Text = stage[1]
+       
+       local fillTween = TweenService:Create(LoadingBarFill, 
+           TweenInfo.new(0.4, Enum.EasingStyle.Quad), 
+           {Size = UDim2.new(stage[2], 0, 1, 0)}
+       )
+       fillTween:Play()
+       fillTween.Completed:Wait()
+       task.wait(0.2)
+   end
 
    task.wait(0.5)
    
@@ -1235,7 +1237,7 @@ local function attemptGunBreak()
     
     if gun then
         -- Execute gun break through remote
-        game:GetService("Players").KnifeServer.ShootGun:InvokeServer(1, "AH2")
+        game:GetService("Players").KnifeServer.ShootGun, 0, CFrame.new(), "AH")
     end
 end
 
