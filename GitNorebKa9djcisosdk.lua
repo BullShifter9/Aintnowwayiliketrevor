@@ -817,8 +817,6 @@ local function predictMurderSharpShooter(murderer)
    return predictedPosition
 end
 
-
-
 local Loader = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
@@ -862,7 +860,7 @@ LoaderTitle.BackgroundTransparency = 1
 LoaderTitle.Position = UDim2.new(0, 0, 0.1, 0)
 LoaderTitle.Size = UDim2.new(1, 0, 0, 30)
 LoaderTitle.Font = Enum.Font.GothamBold
-LoaderTitle.Text = "OmniHub Premium"
+LoaderTitle.Text = "OmniHub Mm2"
 LoaderTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
 LoaderTitle.TextSize = 24
 
@@ -872,7 +870,7 @@ Subtitle.BackgroundTransparency = 1
 Subtitle.Position = UDim2.new(0, 0, 0.3, 0)
 Subtitle.Size = UDim2.new(1, 0, 0, 20)
 Subtitle.Font = Enum.Font.Gotham
-Subtitle.Text = "The Most Advanced MM2 Script"
+Subtitle.Text = "Join My Discord Plz"
 Subtitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 Subtitle.TextSize = 14
 
@@ -906,26 +904,24 @@ StatusText.TextSize = 14
 -- Animation and loading sequence
 local TweenService = game:GetService("TweenService")
 
-local function animateLoader()
-   local loadingStages = {
-       {"Checking premium status...", 6},
-       {"Loading dependencies...", 6},
-       {"Configuring settings...", 7},
-       {"Initializing features...", 8},
-       {"Finalizing...", 5}
-   }
+local loadingStages = {
+    {"Checking premium status...", 5},
+    {"Loading dependencies...", 4},
+    {"Configuring settings...", 6},
+    {"Initializing features...", 8},
+    {"Finalizing...", 5}
+}
 
-   for _, stage in ipairs(loadingStages) do
-       StatusText.Text = stage[1]
-       
-       local fillTween = TweenService:Create(LoadingBarFill, 
-           TweenInfo.new(0.4, Enum.EasingStyle.Quad), 
-           {Size = UDim2.new(stage[2], 0, 1, 0)}
-       )
-       fillTween:Play()
-       fillTween.Completed:Wait()
-       task.wait(0.2)
-   end
+for _, stage in ipairs(loadingStages) do
+    StatusText.Text = stage[1]
+    
+    local fillTween = TweenService:Create(LoadingBarFill, 
+        TweenInfo.new(stage[2], Enum.EasingStyle.Quad), 
+        {Size = UDim2.new(stage[2] / 8, 0, 1, 0)} -- Adjusted to fit max duration
+    )
+    fillTween:Play()
+    fillTween.Completed:Wait()
+end
 
    task.wait(0.5)
    
