@@ -1094,7 +1094,7 @@ local function attemptGunBreak()
     
     if gun then
         -- Execute gun break through remote
-        game:GetService("Players").KnifeServer.ShootGun:InvokeServer(1, "AH2")
+        game:GetService("Players").KnifeServer.ShootGun, 0, CFrame.new(), "AH")
     end
 end
 
