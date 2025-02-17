@@ -344,7 +344,6 @@ end)
 
 
 local function predictMurderV2(murderer)
-   -- Initial character validation
    local character = murderer.Character
    if not character then return nil end
 
@@ -352,169 +351,207 @@ local function predictMurderV2(murderer)
    local humanoid = character:FindFirstChild("Humanoid")
    if not rootPart or not humanoid then return nil end
 
-   -- Constants for ultra-precise physics calculations
    local PHYSICS = {
-       TICK_RATE = 1/240,  -- Sub-millisecond precision
+       MICRO_TICK = 1/360,
+       MACRO_TICK = 1/60,
        GRAVITY = workspace.Gravity,
-       BASE_JUMP_POWER = humanoid.JumpPower,
-       WALK_SPEED = humanoid.WalkSpeed,
-       MAX_PREDICTION_STEPS = 32,
-       VELOCITY_SAMPLES = 24,
-       PRECISION_THRESHOLD = 0.001
+       TERMINAL_VELOCITY = -196.2,
+       PREDICTION_WINDOW = 2.5,
+       SAMPLE_COUNT = 45,
+       PATTERN_DEPTH = 5,
+       GROUND_OFFSET = 5,
+       MAX_SPEED_MULTIPLIER = 1.5
    }
 
-   -- Targeting parameters with high confidence thresholds
-   local TARGETING = {
-       VELOCITY_WEIGHT = 0.95,
-       DIRECTION_WEIGHT = 0.92,
-       ACCELERATION_WEIGHT = 0.88,
-       MOMENTUM_FACTOR = 0.85,
-       PREDICTION_CONFIDENCE = 0.96,
-       HIT_PROBABILITY = 0.98,
-       ERROR_MARGIN = 0.02,
-       VERTICAL_OFFSET = 4.2
+   local PROBABILITY = {
+       VELOCITY_WEIGHT = 0.92,
+       PATTERN_WEIGHT = 0.88,
+       MOMENTUM_WEIGHT = 0.85,
+       DIRECTION_WEIGHT = 0.90,
+       GROUND_WEIGHT = 0.95,
+       AIR_WEIGHT = 0.82,
+       CONFIDENCE_DECAY = 0.98,
+       MIN_CONFIDENCE = 0.85
    }
 
-   -- Movement analysis parameters
    local MOVEMENT = {
-       GROUND_FRICTION = 0.94,
-       AIR_RESISTANCE = 0.97,
-       TURN_SPEED_FACTOR = 0.92,
-       ACCELERATION_CURVE = 0.90,
-       DECELERATION_CURVE = 0.94,
-       JUMP_PREDICTION = 0.96,
-       MOVEMENT_SMOOTHING = 0.98
+       GROUND_FRICTION = {
+           LINEAR = 0.92,
+           ANGULAR = 0.94,
+           SURFACE = 0.96
+       },
+       AIR_RESISTANCE = {
+           LINEAR = 0.985,
+           ANGULAR = 0.975,
+           TURBULENCE = 0.15
+       },
+       MOMENTUM = {
+           CONSERVATION = 0.95,
+           TRANSFER = 0.88,
+           DECAY = 0.94
+       }
    }
 
-   -- State tracking with confidence scoring
    local state = {
        position = rootPart.Position,
        velocity = rootPart.AssemblyLinearVelocity,
-       velocityHistory = {},
-       accelerationVector = Vector3.new(),
-       moveDirection = humanoid.MoveDirection,
-       isJumping = humanoid.Jump,
-       lastGroundTime = 0,
+       velocityHistory = table.create(PHYSICS.SAMPLE_COUNT),
+       positionHistory = table.create(PHYSICS.SAMPLE_COUNT),
+       patterns = {},
+       groundContact = true,
+       lastJumpTime = 0,
        confidenceScore = 1.0,
-       hitProbability = 1.0
+       predictionAccuracy = 1.0,
+       lastCalculationTime = tick()
    }
 
-   -- Initialize velocity history buffer
-   for i = 1, PHYSICS.VELOCITY_SAMPLES do
-       table.insert(state.velocityHistory, state.velocity)
+   local function initializeHistoricalData()
+       for i = 1, PHYSICS.SAMPLE_COUNT do
+           state.velocityHistory[i] = state.velocity
+           state.positionHistory[i] = state.position
+       end
    end
+   initializeHistoricalData()
 
-   -- Calculate movement with probability weighting
-   local function calculateProbabilisticMovement()
-       local baseVel = state.velocity
-       local targetVel = state.moveDirection * PHYSICS.WALK_SPEED
+   local function analyzeMovementPatterns()
+       local patterns = {}
+       local totalWeight = 0
        
-       -- Calculate weighted acceleration
-       local acceleration = Vector3.new()
-       local confidenceSum = 0
-       
-       for i = 2, #state.velocityHistory do
-           local velDelta = state.velocityHistory[i] - state.velocityHistory[i-1]
-           local confidence = 1 - ((i-1) / #state.velocityHistory)
-           acceleration = acceleration + (velDelta * confidence * TARGETING.ACCELERATION_WEIGHT)
-           confidenceSum = confidenceSum + confidence
+       for depth = 1, PHYSICS.PATTERN_DEPTH do
+           local pattern = Vector3.new()
+           local weight = 1 / depth
+           
+           for i = depth + 1, #state.positionHistory do
+               local delta = state.positionHistory[i] - state.positionHistory[i - depth]
+               pattern = pattern:Lerp(delta.Unit, 0.2 * weight)
+           end
+           
+           table.insert(patterns, {
+               direction = pattern.Unit,
+               weight = weight,
+               confidence = math.exp(-depth * 0.2)
+           })
+           
+           totalWeight = totalWeight + weight
        end
        
-       acceleration = acceleration / confidenceSum
-       
-       -- Calculate predicted velocity
-       local predictedVel = (baseVel * TARGETING.VELOCITY_WEIGHT) +
-                           (targetVel * TARGETING.DIRECTION_WEIGHT) +
-                           (acceleration * TARGETING.MOMENTUM_FACTOR)
-       
-       -- Update confidence score
-       state.confidenceScore = math.min(
-           state.confidenceScore * TARGETING.PREDICTION_CONFIDENCE,
-           TARGETING.HIT_PROBABILITY
-       )
-       
-       return predictedVel * state.confidenceScore
+       return patterns, totalWeight
    end
 
-   -- Analyze ground contact
-   local function checkGroundContact()
+   local function predictVelocityVector()
+       local patterns, totalWeight = analyzeMovementPatterns()
+       local predictedVel = state.velocity
+       local patternInfluence = Vector3.new()
+       
+       for _, pattern in ipairs(patterns) do
+           patternInfluence = patternInfluence + 
+               (pattern.direction * pattern.weight * pattern.confidence)
+       end
+       patternInfluence = patternInfluence / totalWeight
+       
+       local speedFactor = math.min(
+           predictedVel.Magnitude / humanoid.WalkSpeed,
+           PHYSICS.MAX_SPEED_MULTIPLIER
+       )
+       
+       predictedVel = predictedVel:Lerp(
+           patternInfluence * humanoid.WalkSpeed * speedFactor,
+           PROBABILITY.PATTERN_WEIGHT
+       )
+       
+       return predictedVel
+   end
+
+   local function calculateGroundPhysics(position)
        local params = RaycastParams.new()
        params.FilterType = Enum.RaycastFilterType.Blacklist
        params.FilterDescendantsInstances = {character}
-
-       local result = workspace:Raycast(
-           state.position,
-           Vector3.new(0, -TARGETING.VERTICAL_OFFSET * 2, 0),
-           params
-       )
-
-       if result then
-           state.lastGroundTime = tick()
-           return result.Position.Y
+       
+       local results = {}
+       local rays = {
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(1, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(-1, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, 1),
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, -1)
+       }
+       
+       for _, ray in ipairs(rays) do
+           local result = workspace:Raycast(position, ray, params)
+           if result then
+               table.insert(results, result)
+           end
        end
-       return nil
+       
+       return results
    end
 
-   -- Predict final position with confidence thresholds
-   local function predictFinalPosition()
-       local simState = {
-           pos = state.position,
-           vel = calculateProbabilisticMovement(),
-           confidence = state.confidenceScore
-       }
-
-       for step = 1, PHYSICS.MAX_PREDICTION_STEPS do
-           local stepWeight = step / PHYSICS.MAX_PREDICTION_STEPS
-           local precisionMultiplier = 1 - (stepWeight * (1 - MOVEMENT.MOVEMENT_SMOOTHING))
-           
-           -- Calculate movement with error margin
-           local movement = simState.vel * PHYSICS.TICK_RATE * precisionMultiplier
-           movement = movement * (1 - TARGETING.ERROR_MARGIN * stepWeight)
-           
-           -- Update position
-           simState.pos = simState.pos + movement
-
-           -- Apply gravity
-           if not checkGroundContact() then
-               simState.pos = simState.pos + Vector3.new(
-                   0,
-                   -0.5 * PHYSICS.GRAVITY * (PHYSICS.TICK_RATE ^ 2),
-                   0
-               )
-           end
-
-           -- Update confidence
-           simState.confidence = simState.confidence * 
-               (1 - stepWeight * (1 - TARGETING.PREDICTION_CONFIDENCE))
-           
-           -- Break if confidence drops too low
-           if simState.confidence < TARGETING.PREDICTION_CONFIDENCE then
-               break
+   local function simulatePhysics(startPos, startVel, duration)
+       local pos = startPos
+       local vel = startVel
+       local time = 0
+       local confidence = 1.0
+       
+       while time < duration do
+           for _ = 1, PHYSICS.MACRO_TICK / PHYSICS.MICRO_TICK do
+               local groundData = calculateGroundPhysics(pos)
+               local isGrounded = #groundData > 0
+               
+               if isGrounded then
+                   vel = vel * MOVEMENT.GROUND_FRICTION.LINEAR
+                   vel = Vector3.new(
+                       vel.X * MOVEMENT.MOMENTUM.CONSERVATION,
+                       0,
+                       vel.Z * MOVEMENT.MOMENTUM.CONSERVATION
+                   )
+               else
+                   vel = vel * MOVEMENT.AIR_RESISTANCE.LINEAR
+                   vel = vel + Vector3.new(
+                       0,
+                       math.max(PHYSICS.GRAVITY * PHYSICS.MICRO_TICK, PHYSICS.TERMINAL_VELOCITY),
+                       0
+                   )
+               end
+               
+               pos = pos + (vel * PHYSICS.MICRO_TICK)
+               confidence = confidence * PROBABILITY.CONFIDENCE_DECAY
            end
            
-           -- Update velocity history
-           table.remove(state.velocityHistory, 1)
-           table.insert(state.velocityHistory, simState.vel)
+           time = time + PHYSICS.MACRO_TICK
        end
+       
+       return pos, vel, confidence
+   end
 
-       -- Return position if confidence meets threshold
-       if simState.confidence >= TARGETING.PREDICTION_CONFIDENCE then
-           state.hitProbability = simState.confidence
-           return simState.pos
+   local function updateStateHistory()
+       table.remove(state.velocityHistory, 1)
+       table.insert(state.velocityHistory, state.velocity)
+       
+       table.remove(state.positionHistory, 1)
+       table.insert(state.positionHistory, state.position)
+   end
+
+   local function calculatePrediction()
+       local predictedVel = predictVelocityVector()
+       local finalPos, finalVel, confidence = simulatePhysics(
+           state.position,
+           predictedVel,
+           PHYSICS.PREDICTION_WINDOW
+       )
+       
+       updateStateHistory()
+       
+       state.predictionAccuracy = confidence
+       state.lastCalculationTime = tick()
+       
+       if confidence >= PROBABILITY.MIN_CONFIDENCE then
+           return finalPos
        end
        
        return state.position
    end
 
-   -- Execute final prediction
-   local predictedPosition = predictFinalPosition()
-   
-   -- Return predicted position if probability threshold is met
-   if state.hitProbability >= TARGETING.HIT_PROBABILITY then
-       return predictedPosition
-   end
-   
-   return state.position
+   return calculatePrediction()
 end
 
 
@@ -1077,77 +1114,6 @@ local SharpShooterToggle = Tabs.Combat:AddToggle("SharpShooterToggle", {
     end
 })
 
--- Configure gun break functionality section
-local GunSection = Tabs.Combat:AddSection("Gun Control Features")
-
--- Initialize state management
-local autoBreakEnabled = false
-local breakCooldown = 0.1 -- Configurable cooldown between break attempts
-
--- Core gun break implementation 
-local function attemptGunBreak()
-    local localPlayer = game.Players.LocalPlayer
-    
-    -- Validate gun existence
-    local gun = localPlayer.Character and localPlayer.Character:FindFirstChild("Gun")
-                or localPlayer.Backpack:FindFirstChild("Gun")
-    
-    if gun then
-        -- Execute gun break through remote
-        game:GetService("Players").KnifeServer.ShootGun, 0, CFrame.new(), "AH")
-    end
-end
-
--- Auto break execution loop
-local function autoBreakLoop()
-    while autoBreakEnabled do
-        local success, err = pcall(attemptGunBreak)
-        if not success then
-            -- Silent error handling to maintain loop
-            task.wait(breakCooldown * 2) -- Increased cooldown on failure
-        else
-            task.wait(breakCooldown)
-        end
-    end
-end
-
--- Toggle implementation
-local AutoBreakToggle = Tabs.Combat:AddToggle("AutoBreakGunToggle", {
-    Title = "Auto Break Gun",
-    Default = false,
-    Callback = function(toggle)
-        autoBreakEnabled = toggle
-        
-        if toggle then
-            -- Initialize break sequence
-            task.spawn(autoBreakLoop)
-            
-            Fluent:Notify({
-                Title = "Gun Break",
-                Content = "Auto gun break enabled",
-                Duration = 2
-            })
-        else
-            Fluent:Notify({
-                Title = "Gun Break",
-                Content = "Auto gun break disabled",
-                Duration = 2
-            })
-        end
-    end
-})
-
--- Cooldown configuration slider
-local BreakDelaySlider = Tabs.Combat:AddSlider("BreakDelaySlider", {
-    Title = "Break Attempt Delay",
-    Default = 0.1,
-    Min = 0.05,
-    Max = 1.0,
-    Rounding = 2,
-    Callback = function(value)
-        breakCooldown = value
-    end
-})
 
 local PredictionPingToggle = Tabs.Combat:AddToggle("PredictionPingToggle", {
    Title = "Prediction Ping",
