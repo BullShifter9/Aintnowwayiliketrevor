@@ -1195,45 +1195,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
-local TrapEspToggle = Tabs.Visuals:AddToggle("ShowTrapESP", {
-    Title = "Show Trap ESP",
-    Default = true,
-    Callback = function(Value)
-        for _, trap in pairs(workspace:GetChildren()) do
-            if trap:FindFirstChild("TrapVisual") then
-                if Value then
-                    highlightTrap(trap.TrapVisual)
-                else
-                    removeHighlight(trap.TrapVisual)
-                end
-            end
-        end
-    end
-})
 
-local function highlightTrap(trapVisual)
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "TrapHighlight"
-    highlight.Adornee = trapVisual
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.Parent = trapVisual
-end
-
-local function removeHighlight(trapVisual)
-    local highlight = trapVisual:FindFirstChild("TrapHighlight")
-    if highlight then
-        highlight:Destroy()
-    end
-end
-
-local function onTrapAdded(trap)
-    if trap:FindFirstChild("TrapVisual") and TrapEspToggle.Value then
-        highlightTrap(trap.TrapVisual)
-    end
-end
-
-workspace.ChildAdded:Connect(onTrapAdded)
 
 
 -- Combat Tab Content
