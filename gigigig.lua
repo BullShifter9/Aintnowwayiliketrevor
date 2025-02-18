@@ -13,12 +13,6 @@ local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
 local Players = game:GetService("Players")
 
-local LocalPlayer = Players.LocalPlayer
-local SupportedGameID = 142823291  -- Murder Mystery 2 Place ID
-
-if game.PlaceId ~= SupportedGameID then
-    LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
-end
 
 -- Global State Management
 local state = {
@@ -908,7 +902,7 @@ Subtitle.BackgroundTransparency = 1
 Subtitle.Position = UDim2.new(0, 0, 0.35, 0)
 Subtitle.Size = UDim2.new(1, 0, 0, 25)
 Subtitle.Font = Enum.Font.GothamSemibold -- Changed to semibold
-Subtitle.Text = "Join My Discord Bbg"
+Subtitle.Text = "Please Wait.. Also Join My Discord"
 Subtitle.TextColor3 = Color3.fromRGB(220, 220, 220)
 Subtitle.TextSize = 18
 
@@ -956,7 +950,7 @@ local function animateLoader()
        StatusText.Text = stage[1]
        
        local fillTween = TweenService:Create(LoadingBarFill, 
-           TweenInfo.new(5, Enum.EasingStyle.Linear), -- Changed to 5 seconds with Linear style
+           TweenInfo.new(2, Enum.EasingStyle.Linear), -- Changed to 5 seconds with Linear style
            {Size = UDim2.new(stage[2], 0, 1, 0)}
        )
        fillTween:Play()
@@ -999,6 +993,12 @@ end
 
 -- Start the loading sequence
 animateLoader()
+
+if game.PlaceId ~= 142823291 then
+    local player = game.Players.LocalPlayer
+    player:Kick("\nGame Not Supported\n\nSupported Games:\n• Murder Mystery 2")
+    return
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
