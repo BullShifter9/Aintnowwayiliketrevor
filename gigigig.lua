@@ -1,3 +1,9 @@
+if game.PlaceId ~= 142823291 then
+    local player = game.Players.LocalPlayer
+    player:Kick("\nGame Not Supported\n\nSupported Games:\n• Murder Mystery 2")
+    return
+end
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
