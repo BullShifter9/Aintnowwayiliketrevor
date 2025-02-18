@@ -7,7 +7,6 @@ local HttpService = game:GetService("HttpService")
 local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true)
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
-local TrapSystem = ReplicatedStorage.TrapSystem
 local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
