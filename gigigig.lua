@@ -1,9 +1,3 @@
-if game.PlaceId ~= 142823291 then
-    local player = game.Players.LocalPlayer
-    player:Kick("\nGame Not Supported\n\nSupported Games:\n• Murder Mystery 2")
-    return
-end
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,6 +11,26 @@ local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
 local Players = game:GetService("Players")
+
+local SUPPORTED_GAME_ID = 142823291
+
+local function checkGameID()
+    local currentGameID = game.PlaceId
+    
+    if currentGameID ~= SUPPORTED_GAME_ID then
+        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+            player:Kick("Game Not Supported, Supported Game: Murder Mystery 2")
+        end
+    end
+end
+
+checkGameID()
+
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    if game.PlaceId ~= SUPPORTED_GAME_ID then
+        player:Kick("Game Not Supported, Supported Game: Murder Mystery 2")
+    end
+end)
 
 
 -- Global State Management
@@ -343,371 +357,241 @@ end)
 
 
 local function predictMurderV2(murderer)
-    local character = murderer.Character
-    if not character then return nil end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
+   local character = murderer.Character
+   if not character then return nil end
 
-    local PHYSICS = {
-        MICRO_TICK = 1/360,
-        MACRO_TICK = 1/60,
-        GRAVITY = workspace.Gravity,
-        TERMINAL_VELOCITY = -196.2,
-        PREDICTION_WINDOW = 2.5,
-        SAMPLE_COUNT = 100, -- Increased sample count for better historical data
-        PATTERN_DEPTH = 10, -- Increased pattern depth for more detailed analysis
-        GROUND_OFFSET = 5,
-        MAX_SPEED_MULTIPLIER = 1.5,
-        JUMP_FORCE = 50, -- Added jump force for better air dynamics
-        AIR_DENSITY = 1.225, -- Added air density for more realistic air resistance
-        DRAG_COEFFICIENT = 0.47, -- Added drag coefficient for more realistic air resistance
-        CROSS_SECTIONAL_AREA = 0.5 -- Added cross-sectional area for more realistic air resistance
-    }
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not rootPart or not humanoid then return nil end
 
-    local PROBABILITY = {
-        VELOCITY_WEIGHT = 0.92,
-        PATTERN_WEIGHT = 0.88,
-        MOMENTUM_WEIGHT = 0.85,
-        DIRECTION_WEIGHT = 0.90,
-        GROUND_WEIGHT = 0.95,
-        AIR_WEIGHT = 0.82,
-        CONFIDENCE_DECAY = 0.98,
-        MIN_CONFIDENCE = 0.85,
-        LOG_BASE = 2 -- Logarithm base for scaling probabilities
-    }
+   local PHYSICS = {
+       MICRO_TICK = 1/360,
+       MACRO_TICK = 1/60,
+       GRAVITY = workspace.Gravity,
+       TERMINAL_VELOCITY = -196.2,
+       PREDICTION_WINDOW = 2.5,
+       SAMPLE_COUNT = 45,
+       PATTERN_DEPTH = 5,
+       GROUND_OFFSET = 5,
+       MAX_SPEED_MULTIPLIER = 1.5
+   }
 
-    local MOVEMENT = {
-        GROUND_FRICTION = {
-            LINEAR = 0.92,
-            ANGULAR = 0.94,
-            SURFACE = 0.96
-        },
-        AIR_RESISTANCE = {
-            LINEAR = 0.985,
-            ANGULAR = 0.975,
-            TURBULENCE = 0.15
-        },
-        MOMENTUM = {
-            CONSERVATION = 0.95,
-            TRANSFER = 0.88,
-            DECAY = 0.94
-        }
-    }
+   local PROBABILITY = {
+       VELOCITY_WEIGHT = 0.92,
+       PATTERN_WEIGHT = 0.88,
+       MOMENTUM_WEIGHT = 0.85,
+       DIRECTION_WEIGHT = 0.90,
+       GROUND_WEIGHT = 0.95,
+       AIR_WEIGHT = 0.82,
+       CONFIDENCE_DECAY = 0.98,
+       MIN_CONFIDENCE = 0.85
+   }
 
-    local state = {
-        position = rootPart.Position,
-        velocity = rootPart.AssemblyLinearVelocity,
-        velocityHistory = table.create(PHYSICS.SAMPLE_COUNT),
-        positionHistory = table.create(PHYSICS.SAMPLE_COUNT),
-        patterns = {},
-        groundContact = true,
-        lastJumpTime = 0,
-        confidenceScore = 1.0,
-        predictionAccuracy = 1.0,
-        lastCalculationTime = tick()
-    }
+   local MOVEMENT = {
+       GROUND_FRICTION = {
+           LINEAR = 0.92,
+           ANGULAR = 0.94,
+           SURFACE = 0.96
+       },
+       AIR_RESISTANCE = {
+           LINEAR = 0.985,
+           ANGULAR = 0.975,
+           TURBULENCE = 0.15
+       },
+       MOMENTUM = {
+           CONSERVATION = 0.95,
+           TRANSFER = 0.88,
+           DECAY = 0.94
+       }
+   }
 
-    local function initializeHistoricalData()
-        for i = 1, PHYSICS.SAMPLE_COUNT do
-            state.velocityHistory[i] = state.velocity
-            state.positionHistory[i] = state.position
-        end
-    end
+   local state = {
+       position = rootPart.Position,
+       velocity = rootPart.AssemblyLinearVelocity,
+       velocityHistory = table.create(PHYSICS.SAMPLE_COUNT),
+       positionHistory = table.create(PHYSICS.SAMPLE_COUNT),
+       patterns = {},
+       groundContact = true,
+       lastJumpTime = 0,
+       confidenceScore = 1.0,
+       predictionAccuracy = 1.0,
+       lastCalculationTime = tick()
+   }
 
-    initializeHistoricalData()
+   local function initializeHistoricalData()
+       for i = 1, PHYSICS.SAMPLE_COUNT do
+           state.velocityHistory[i] = state.velocity
+           state.positionHistory[i] = state.position
+       end
+   end
+   initializeHistoricalData()
 
-    local function analyzeMovementPatterns()
-        local patterns = {}
-        local totalWeight = 0
+   local function analyzeMovementPatterns()
+       local patterns = {}
+       local totalWeight = 0
+       
+       for depth = 1, PHYSICS.PATTERN_DEPTH do
+           local pattern = Vector3.new()
+           local weight = 1 / depth
+           
+           for i = depth + 1, #state.positionHistory do
+               local delta = state.positionHistory[i] - state.positionHistory[i - depth]
+               pattern = pattern:Lerp(delta.Unit, 0.2 * weight)
+           end
+           
+           table.insert(patterns, {
+               direction = pattern.Unit,
+               weight = weight,
+               confidence = math.exp(-depth * 0.2)
+           })
+           
+           totalWeight = totalWeight + weight
+       end
+       
+       return patterns, totalWeight
+   end
 
-        for depth = 1, PHYSICS.PATTERN_DEPTH do
-            local pattern = Vector3.new()
-            local weight = 1 / math.log(depth + 1, PROBABILITY.LOG_BASE) -- Logarithmic scaling for weight
+   local function predictVelocityVector()
+       local patterns, totalWeight = analyzeMovementPatterns()
+       local predictedVel = state.velocity
+       local patternInfluence = Vector3.new()
+       
+       for _, pattern in ipairs(patterns) do
+           patternInfluence = patternInfluence + 
+               (pattern.direction * pattern.weight * pattern.confidence)
+       end
+       patternInfluence = patternInfluence / totalWeight
+       
+       local speedFactor = math.min(
+           predictedVel.Magnitude / humanoid.WalkSpeed,
+           PHYSICS.MAX_SPEED_MULTIPLIER
+       )
+       
+       predictedVel = predictedVel:Lerp(
+           patternInfluence * humanoid.WalkSpeed * speedFactor,
+           PROBABILITY.PATTERN_WEIGHT
+       )
+       
+       return predictedVel
+   end
 
-            for i = depth + 1, #state.positionHistory do
-                local delta = state.positionHistory[i] - state.positionHistory[i - depth]
-                pattern = pattern:Lerp(delta.Unit, 0.2 * weight)
-            end
+   local function calculateGroundPhysics(position)
+       local params = RaycastParams.new()
+       params.FilterType = Enum.RaycastFilterType.Blacklist
+       params.FilterDescendantsInstances = {character}
+       
+       local results = {}
+       local rays = {
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(1, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(-1, -PHYSICS.GROUND_OFFSET, 0),
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, 1),
+           Vector3.new(0, -PHYSICS.GROUND_OFFSET, -1)
+       }
+       
+       for _, ray in ipairs(rays) do
+           local result = workspace:Raycast(position, ray, params)
+           if result then
+               table.insert(results, result)
+           end
+       end
+       
+       return results
+   end
 
-            table.insert(patterns, {
-                direction = pattern.Unit,
-                weight = weight,
-                confidence = math.exp(-depth * 0.2)
-            })
+   local function simulatePhysics(startPos, startVel, duration)
+       local pos = startPos
+       local vel = startVel
+       local time = 0
+       local confidence = 1.0
+       
+       while time < duration do
+           for _ = 1, PHYSICS.MACRO_TICK / PHYSICS.MICRO_TICK do
+               local groundData = calculateGroundPhysics(pos)
+               local isGrounded = #groundData > 0
+               
+               if isGrounded then
+                   vel = vel * MOVEMENT.GROUND_FRICTION.LINEAR
+                   vel = Vector3.new(
+                       vel.X * MOVEMENT.MOMENTUM.CONSERVATION,
+                       0,
+                       vel.Z * MOVEMENT.MOMENTUM.CONSERVATION
+                   )
+               else
+                   vel = vel * MOVEMENT.AIR_RESISTANCE.LINEAR
+                   vel = vel + Vector3.new(
+                       0,
+                       math.max(PHYSICS.GRAVITY * PHYSICS.MICRO_TICK, PHYSICS.TERMINAL_VELOCITY),
+                       0
+                   )
+               end
+               
+               pos = pos + (vel * PHYSICS.MICRO_TICK)
+               confidence = confidence * PROBABILITY.CONFIDENCE_DECAY
+           end
+           
+           time = time + PHYSICS.MACRO_TICK
+       end
+       
+       return pos, vel, confidence
+   end
 
-            totalWeight = totalWeight + weight
-        end
+   local function updateStateHistory()
+       table.remove(state.velocityHistory, 1)
+       table.insert(state.velocityHistory, state.velocity)
+       
+       table.remove(state.positionHistory, 1)
+       table.insert(state.positionHistory, state.position)
+   end
 
-        return patterns, totalWeight
-    end
+   local function calculatePrediction()
+       local predictedVel = predictVelocityVector()
+       local finalPos, finalVel, confidence = simulatePhysics(
+           state.position,
+           predictedVel,
+           PHYSICS.PREDICTION_WINDOW
+       )
+       
+       updateStateHistory()
+       
+       state.predictionAccuracy = confidence
+       state.lastCalculationTime = tick()
+       
+       if confidence >= PROBABILITY.MIN_CONFIDENCE then
+           return finalPos
+       end
+       
+       return state.position
+   end
 
-    local function predictVelocityVector()
-        local patterns, totalWeight = analyzeMovementPatterns()
-        local predictedVel = state.velocity
-        local patternInfluence = Vector3.new()
-
-        for _, pattern in ipairs(patterns) do
-            patternInfluence = patternInfluence +
-                (pattern.direction * pattern.weight * pattern.confidence)
-        end
-        patternInfluence = patternInfluence / totalWeight
-
-        local speedFactor = math.min(
-            predictedVel.Magnitude / humanoid.WalkSpeed,
-            PHYSICS.MAX_SPEED_MULTIPLIER
-        )
-
-        predictedVel = predictedVel:Lerp(
-            patternInfluence * humanoid.WalkSpeed * speedFactor,
-            PROBABILITY.PATTERN_WEIGHT
-        )
-
-        return predictedVel
-    end
-
-    local function calculateGroundPhysics(position)
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Blacklist
-        params.FilterDescendantsInstances = {character}
-
-        local results = {}
-        local rays = {
-            Vector3.new(0, -PHYSICS.GROUND_OFFSET, 0),
-            Vector3.new(1, -PHYSICS.GROUND_OFFSET, 0),
-            Vector3.new(-1, -PHYSICS.GROUND_OFFSET, 0),
-            Vector3.new(0, -PHYSICS.GROUND_OFFSET, 1),
-            Vector3.new(0, -PHYSICS.GROUND_OFFSET, -1)
-        }
-
-        for _, ray in ipairs(rays) do
-            local result = workspace:Raycast(position, ray, params)
-            if result then
-                table.insert(results, result)
-            end
-        end
-
-        return results
-    end
-
-    local function simulatePhysics(startPos, startVel, duration)
-        local pos = startPos
-        local vel = startVel
-        local time = 0
-        local confidence = 1.0
-
-        while time < duration do
-            for _ = 1, PHYSICS.MACRO_TICK / PHYSICS.MICRO_TICK do
-                local groundData = calculateGroundPhysics(pos)
-                local isGrounded = #groundData > 0
-
-                if isGrounded then
-                    vel = vel * MOVEMENT.GROUND_FRICTION.LINEAR
-                    vel = Vector3.new(
-                        vel.X * MOVEMENT.MOMENTUM.CONSERVATION,
-                        0,
-                        vel.Z * MOVEMENT.MOMENTUM.CONSERVATION
-                    )
-                else
-                    -- Calculate air resistance using more realistic physics
-                    local airResistance = 0.5 * PHYSICS.AIR_DENSITY * PHYSICS.DRAG_COEFFICIENT * PHYSICS.CROSS_SECTIONAL_AREA * vel.Magnitude^2
-                    local airResistanceVector = -airResistance * vel.Unit
-                    vel = vel + airResistanceVector * PHYSICS.MICRO_TICK
-                    vel = vel + Vector3.new(
-                        0,
-                        math.max(PHYSICS.GRAVITY * PHYSICS.MICRO_TICK, PHYSICS.TERMINAL_VELOCITY),
-                        0
-                    )
-                end
-
-                pos = pos + (vel * PHYSICS.MICRO_TICK)
-                confidence = confidence * PROBABILITY.CONFIDENCE_DECAY
-            end
-
-            time = time + PHYSICS.MACRO_TICK
-        end
-
-        return pos, vel, confidence
-    end
-
-    local function updateStateHistory()
-        table.remove(state.velocityHistory, 1)
-        table.insert(state.velocityHistory, state.velocity)
-
-        table.remove(state.positionHistory, 1)
-        table.insert(state.positionHistory, state.position)
-    end
-
-    local function calculatePrediction()
-        local predictedVel = predictVelocityVector()
-        local finalPos, finalVel, confidence = simulatePhysics(
-            state.position,
-            predictedVel,
-            PHYSICS.PREDICTION_WINDOW
-        )
-
-        updateStateHistory()
-
-        state.predictionAccuracy = confidence
-        state.lastCalculationTime = tick()
-
-        if confidence >= PROBABILITY.MIN_CONFIDENCE then
-            return finalPos
-        end
-
-        return state.position
-    end
-
-    -- Machine Learning Enhancement: Simple Moving Average for Smoothing
-    local function movingAverage(data, windowSize)
-        local sum = 0
-        local count = 0
-        local avgData = {}
-
-        for i = 1, #data do
-            sum = sum + data[i]
-            count = count + 1
-
-            if count >= windowSize then
-                table.insert(avgData, sum / count)
-                sum = sum - data[i - windowSize + 1]
-                count = count - 1
-            end
-        end
-
-        return avgData
-    end
-
-    -- Apply moving average to velocity history for smoothing
-    local smoothedVelocityHistory = movingAverage(state.velocityHistory, 5)
-
-    -- Update state with smoothed velocity
-    for i = 1, #smoothedVelocityHistory do
-        state.velocityHistory[i] = smoothedVelocityHistory[i]
-    end
-
-    -- Enhanced Pattern Analysis with Weighted Averages
-    local function analyzeMovementPatternsEnhanced()
-        local patterns = {}
-        local totalWeight = 0
-
-        for depth = 1, PHYSICS.PATTERN_DEPTH do
-            local pattern = Vector3.new()
-            local weight = 1 / math.log(depth + 1, PROBABILITY.LOG_BASE) -- Logarithmic scaling for weight
-
-            for i = depth + 1, #state.positionHistory do
-                local delta = state.positionHistory[i] - state.positionHistory[i - depth]
-                pattern = pattern:Lerp(delta.Unit, 0.2 * weight)
-            end
-
-            -- Apply weighted average to pattern direction
-            pattern = pattern * weight
-
-            table.insert(patterns, {
-                direction = pattern.Unit,
-                weight = weight,
-                confidence = math.exp(-depth * 0.2)
-            })
-
-            totalWeight = totalWeight + weight
-        end
-
-        return patterns, totalWeight
-    end
-
-    local function predictVelocityVectorEnhanced()
-        local patterns, totalWeight = analyzeMovementPatternsEnhanced()
-        local predictedVel = state.velocity
-        local patternInfluence = Vector3.new()
-
-        for _, pattern in ipairs(patterns) do
-            patternInfluence = patternInfluence +
-                (pattern.direction * pattern.weight * pattern.confidence)
-        end
-        patternInfluence = patternInfluence / totalWeight
-
-        local speedFactor = math.min(
-            predictedVel.Magnitude / humanoid.WalkSpeed,
-            PHYSICS.MAX_SPEED_MULTIPLIER
-        )
-
-        predictedVel = predictedVel:Lerp(
-            patternInfluence * humanoid.WalkSpeed * speedFactor,
-            PROBABILITY.PATTERN_WEIGHT
-        )
-
-        return predictedVel
-    end
-
-    -- Use enhanced prediction vector
-    local predictedVel = predictVelocityVectorEnhanced()
-    local finalPos, finalVel, confidence = simulatePhysics(
-        state.position,
-        predictedVel,
-        PHYSICS.PREDICTION_WINDOW
-    )
-
-    updateStateHistory()
-
-    state.predictionAccuracy = confidence
-    state.lastCalculationTime = tick()
-
-    if confidence >= PROBABILITY.MIN_CONFIDENCE then
-        return finalPos
-    end
-
-    return state.position
+   return calculatePrediction()
 end
 
 
 
 local SilentAimGuiV2 = Instance.new("ScreenGui")
 local SilentAimButtonV2 = Instance.new("ImageButton")
-local UICorner = Instance.new("UICorner")
-local UIStroke = Instance.new("UIStroke")
-local UIGradient = Instance.new("UIGradient")
-local Shadow = Instance.new("ImageLabel")
 
 SilentAimGuiV2.Parent = game.CoreGui
 SilentAimButtonV2.Parent = SilentAimGuiV2
-SilentAimButtonV2.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-SilentAimButtonV2.BackgroundTransparency = 0.2
-SilentAimButtonV2.BorderSizePixel = 0
-SilentAimButtonV2.Position = UDim2.new(0.89, 0, 0.3, 0)
-SilentAimButtonV2.Size = UDim2.new(0.12, 0, 0.22, 0)
+SilentAimButtonV2.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SilentAimButtonV2.BackgroundTransparency = 0.3
+SilentAimButtonV2.BorderColor3 = Color3.fromRGB(255, 100, 0)
+SilentAimButtonV2.BorderSizePixel = 2
+SilentAimButtonV2.Position = UDim2.new(0.897, 0, 0.3)
+SilentAimButtonV2.Size = UDim2.new(0.1, 0, 0.2)
 SilentAimButtonV2.Image = "rbxassetid://11162755592"
 SilentAimButtonV2.Draggable = true
 SilentAimButtonV2.Visible = false
 
--- Add rounded corners
-UICorner.Parent = SilentAimButtonV2
-UICorner.CornerRadius = UDim.new(0.15, 0)
-
--- Add stroke effect
-UIStroke.Parent = SilentAimButtonV2
+local UIStroke = Instance.new("UIStroke", SilentAimButtonV2)
 UIStroke.Color = Color3.fromRGB(255, 100, 0)
-UIStroke.Thickness = 3
-UIStroke.Transparency = 0.3
-
--- Add gradient effect
-UIGradient.Parent = SilentAimButtonV2
-UIGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 0)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 50, 0))
-}
-UIGradient.Rotation = 90
-
--- Add shadow effect
-Shadow.Parent = SilentAimButtonV2
-Shadow.BackgroundTransparency = 1
-Shadow.Size = UDim2.new(1.2, 0, 1.2, 0)
-Shadow.Position = UDim2.new(-0.1, 0, -0.1, 0)
-Shadow.Image = "rbxassetid://1316045217"
-Shadow.ImageTransparency = 0.6
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.5
 
 -- Silent Aim V2 Button Click Event
 SilentAimButtonV2.MouseButton1Click:Connect(function()
-    local localPlayer = game.Players.LocalPlayer
+    local localPlayer = Players.LocalPlayer
     local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
 
     if not gun then return end
