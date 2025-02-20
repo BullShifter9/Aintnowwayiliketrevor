@@ -12,25 +12,12 @@ local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
 local Players = game:GetService("Players")
 
-local SUPPORTED_GAME_ID = 142823291
+local LocalPlayer = Players.LocalPlayer
+local SupportedGameID = 142823291  -- Murder Mystery 2 Place ID
 
-local function checkGameID()
-    local currentGameID = game.PlaceId
-    
-    if currentGameID ~= SUPPORTED_GAME_ID then
-        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-            player:Kick("Game Not Supported, Supported Game: Murder Mystery 2")
-        end
-    end
+if game.PlaceId ~= SupportedGameID then
+    LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
 end
-
-checkGameID()
-
-game:GetService("Players").PlayerAdded:Connect(function(player)
-    if game.PlaceId ~= SUPPORTED_GAME_ID then
-        player:Kick("Game Not Supported, Supported Game: Murder Mystery 2")
-    end
-end)
 
 
 -- Global State Management
