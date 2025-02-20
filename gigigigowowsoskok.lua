@@ -10,14 +10,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
-local Players = game:GetService("Players")
 
-local LocalPlayer = Players.LocalPlayer
-local SupportedGameID = 142823291  -- Murder Mystery 2 Place ID
-
-if game.PlaceId ~= SupportedGameID then
-    LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
-end
 
 
 -- Global State Management
@@ -1000,7 +993,14 @@ end
 -- Start the loading sequence
 animateLoader()
 
+local Players = game:GetService("Players")
 
+local LocalPlayer = Players.LocalPlayer
+local SupportedGameID = 142823291  -- Murder Mystery 2 Place ID
+
+if game.PlaceId ~= SupportedGameID then
+    LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
+end
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
