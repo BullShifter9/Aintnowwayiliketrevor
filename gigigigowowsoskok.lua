@@ -8,7 +8,6 @@ local GetPlayerData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", tru
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-local GameplayEvents = ReplicatedStorage.Remotes.Gameplay
 local AutoNotifyEnabled = true
 
 
