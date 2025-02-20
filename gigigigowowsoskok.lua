@@ -993,13 +993,39 @@ end
 -- Start the loading sequence
 animateLoader()
 
+-- Get core services
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-local LocalPlayer = Players.LocalPlayer
-local SupportedGameID = 142823291  -- Murder Mystery 2 Place ID
+-- Target game ID
+local SupportedGameID = 142823291  -- Murder Mystery 2
 
-if game.PlaceId ~= SupportedGameID then
-    LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
+-- Function to perform the kick
+local function kickIfWrongGame()
+    -- Make sure game is loaded and PlaceId is available
+    if game and game.PlaceId and game.PlaceId ~= SupportedGameID then
+        -- Handle different execution contexts
+        if RunService:IsClient() then
+            -- Client-side execution
+            local player = Players.LocalPlayer
+            if player then
+                player:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
+            end
+        else
+            -- Server-side execution
+            for _, player in ipairs(Players:GetPlayers()) do
+                player:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
+            end
+        end
+    end
+end
+
+-- Make sure services are loaded before executing
+if game:IsLoaded() then
+    kickIfWrongGame()
+else
+    game.Loaded:Wait()
+    kickIfWrongGame()
 end
 
 -- Fluent UI Integration
