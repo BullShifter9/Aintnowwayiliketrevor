@@ -993,40 +993,38 @@ end
 -- Start the loading sequence
 animateLoader()
 
--- Get core services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
--- Target game ID
-local SupportedGameID = 142823291  -- Murder Mystery 2
-
--- Function to perform the kick
-local function kickIfWrongGame()
-    -- Make sure game is loaded and PlaceId is available
-    if game and game.PlaceId and game.PlaceId ~= SupportedGameID then
-        -- Handle different execution contexts
-        if RunService:IsClient() then
-            -- Client-side execution
-            local player = Players.LocalPlayer
-            if player then
-                player:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
-            end
-        else
-            -- Server-side execution
-            for _, player in ipairs(Players:GetPlayers()) do
-                player:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
-            end
-        end
+-- Core execution function that doesn't rely on specific folder structures
+local function checkGameSupport()
+    -- Safely get core services with pcall to handle any potential errors
+    local success, Players = pcall(function() return game:GetService("Players") end)
+    if not success then return end
+    
+    -- Get local player with error handling
+    local LocalPlayer
+    pcall(function() LocalPlayer = Players.LocalPlayer end)
+    if not LocalPlayer then return end
+    
+    -- Check game ID - direct access to avoid folder dependencies
+    local currentGameID = game.PlaceId
+    local SupportedGameID = 142823291  -- Murder Mystery 2
+    
+    if currentGameID ~= SupportedGameID then
+        -- Force kick regardless of script context
+        pcall(function()
+            LocalPlayer:Kick("Game Not Supported\n\nSupported Games:\nMurder Mystery 2")
+        end)
     end
 end
 
--- Make sure services are loaded before executing
-if game:IsLoaded() then
-    kickIfWrongGame()
-else
-    game.Loaded:Wait()
-    kickIfWrongGame()
-end
+-- Execute with error trapping
+pcall(function()
+    if game:IsLoaded() then
+        checkGameSupport()
+    else
+        game.Loaded:Wait()
+        checkGameSupport()
+    end
+end)
 
 -- Fluent UI Integration
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
