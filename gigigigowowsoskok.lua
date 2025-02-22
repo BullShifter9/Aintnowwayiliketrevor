@@ -1245,7 +1245,7 @@ local function NotifyMurdererPerk()
    end
    
    local success, perkData = pcall(function()
-       return ReplicatedStorage.Remotes.Extras.GetData2:InvokeServer(murdererPlayer)
+       return ReplicatedStorage.Remotes.Extras.GetFullInventory:InvokeServer(murdererPlayer)
    end)
    
    if success and perkData and perkData.EquippedPerk then
