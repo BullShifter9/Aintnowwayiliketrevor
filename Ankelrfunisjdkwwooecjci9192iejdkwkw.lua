@@ -459,93 +459,303 @@ local function ToggleESP(state)
     end
 end
 
-local AimGui = Instance.new("ScreenGui")
-local AimButton = Instance.new("ImageButton")
+--------------------------LOADER-----------------------LOADER--------------------------
 
-AimGui.Parent = game.CoreGui
+-- OmniHub Loader GUI Script with Water Transition Animation
 
-AimButton.Parent = AimGui
-AimButton.BackgroundColor3 = Color3.new(0,0,0)
-AimButton.BackgroundTransparency = 0
-AimButton.BorderColor3 = Color3.new(1,1,1)
-AimButton.BorderSizePixel = 1
-AimButton.Position = UDim2.new(0.897,0,0.3)
-AimButton.Size = UDim2.new(0.1,0,0.2)
-AimButton.Image = "http://www.roblox.com/asset/?id=9654892206" -- Updated crosshair asset
-AimButton.Draggable = true
-AimButton.Visible = true
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "OmniHubLoader"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Silent aim configuration
-local SilentAim = {
-    Enabled = false,
-    PredictionMultiplier = 2.8, -- Enhanced prediction multiplier
-    VerticalCompensation = 1.2  -- Improved vertical compensation
-}
+-- Create main container frame with rounded corners
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 450, 0, 250)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
 
--- Optimized murderer identification function
-function GetMurderer()
-    local murderer = nil
-    pcall(function()
-        local roleData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-        for playerName, data in pairs(roleData) do
-            if data.Role == "Murderer" then
-                for _, player in ipairs(game.Players:GetPlayers()) do
-                    if player.Name == playerName and player ~= game.Players.LocalPlayer then
-                        murderer = player
-                        break
-                    end
-                end
+-- Add UI corner to main frame
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+-- Add drop shadow
+local dropShadow = Instance.new("ImageLabel")
+dropShadow.Name = "DropShadow"
+dropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+dropShadow.BackgroundTransparency = 1
+dropShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+dropShadow.Size = UDim2.new(1, 40, 1, 40)
+dropShadow.ZIndex = 0
+dropShadow.Image = "rbxassetid://6014261993"
+dropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+dropShadow.ImageTransparency = 1
+dropShadow.ScaleType = Enum.ScaleType.Slice
+dropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+dropShadow.Parent = mainFrame
+
+-- Create water particles container
+local waterContainer = Instance.new("Frame")
+waterContainer.Name = "WaterContainer"
+waterContainer.Size = UDim2.new(1, 0, 1, 0)
+waterContainer.BackgroundTransparency = 1
+waterContainer.ClipsDescendants = true
+waterContainer.Parent = mainFrame
+
+-- Create logo
+local logo = Instance.new("ImageLabel")
+logo.Name = "Logo"
+logo.Size = UDim2.new(0, 100, 0, 100)
+logo.Position = UDim2.new(0.5, 0, 0.3, 0)
+logo.AnchorPoint = Vector2.new(0.5, 0.5)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://7072706318" -- Replace with your logo asset ID
+logo.ImageTransparency = 1
+logo.Parent = mainFrame
+
+-- Create title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0.55, 0)
+title.Font = Enum.Font.GothamBold
+title.Text = "OMNIHUB"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 36
+title.BackgroundTransparency = 1
+title.TextTransparency = 1
+title.Parent = mainFrame
+
+-- Create version text
+local versionText = Instance.new("TextLabel")
+versionText.Name = "Version"
+versionText.Size = UDim2.new(1, 0, 0, 20)
+versionText.Position = UDim2.new(0, 0, 0.67, 0)
+versionText.Font = Enum.Font.Gotham
+versionText.Text = "V1.1.5 • By Azzakirms"
+versionText.TextColor3 = Color3.fromRGB(180, 180, 255)
+versionText.TextSize = 14
+versionText.BackgroundTransparency = 1
+versionText.TextTransparency = 1
+versionText.Parent = mainFrame
+
+-- Create loading status
+local statusText = Instance.new("TextLabel")
+statusText.Name = "Status"
+statusText.Size = UDim2.new(0.8, 0, 0, 20)
+statusText.Position = UDim2.new(0.1, 0, 0.78, 0)
+statusText.Font = Enum.Font.Gotham
+statusText.Text = "Initializing..."
+statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusText.TextSize = 16
+statusText.BackgroundTransparency = 1
+statusText.TextTransparency = 1
+statusText.Parent = mainFrame
+
+-- Create progress bar container
+local progressContainer = Instance.new("Frame")
+progressContainer.Name = "ProgressContainer"
+progressContainer.Size = UDim2.new(0.8, 0, 0, 10)
+progressContainer.Position = UDim2.new(0.1, 0, 0.85, 0)
+progressContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+progressContainer.BorderSizePixel = 0
+progressContainer.BackgroundTransparency = 1
+progressContainer.Parent = mainFrame
+
+-- Add corner to progress container
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 5)
+progressCorner.Parent = progressContainer
+
+-- Create progress bar fill
+local progressFill = Instance.new("Frame")
+progressFill.Name = "ProgressFill"
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+progressFill.BorderSizePixel = 0
+progressFill.BackgroundTransparency = 1
+progressFill.Parent = progressContainer
+
+-- Add corner to progress fill
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 5)
+fillCorner.Parent = progressFill
+
+-- Create glow effect behind progress bar
+local progressGlow = Instance.new("ImageLabel")
+progressGlow.Name = "ProgressGlow"
+progressGlow.BackgroundTransparency = 1
+progressGlow.Position = UDim2.new(0, -10, 0, -10)
+progressGlow.Size = UDim2.new(1, 20, 1, 20)
+progressGlow.ZIndex = 0
+progressGlow.Image = "rbxassetid://5028857084"
+progressGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+progressGlow.ImageTransparency = 1
+progressGlow.Parent = progressFill
+
+-- Create fadeOut animation
+local fadeOut = Instance.new("NumberValue")
+fadeOut.Name = "FadeOut"
+fadeOut.Value = 0
+fadeOut.Parent = screenGui
+
+-- Create water droplet function
+local function createWaterParticle(startPosition)
+    local droplet = Instance.new("Frame")
+    droplet.Size = UDim2.new(0, math.random(5, 20), 0, math.random(5, 20))
+    droplet.Position = startPosition
+    droplet.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+    droplet.BackgroundTransparency = math.random(2, 5) / 10
+    droplet.BorderSizePixel = 0
+    
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = droplet
+    
+    -- Add glow effect to droplet
+    local dropletGlow = Instance.new("ImageLabel")
+    dropletGlow.BackgroundTransparency = 1
+    dropletGlow.Position = UDim2.new(0, -5, 0, -5)
+    dropletGlow.Size = UDim2.new(1, 10, 1, 10)
+    dropletGlow.ZIndex = 0
+    dropletGlow.Image = "rbxassetid://5028857084"
+    dropletGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+    dropletGlow.ImageTransparency = 0.7
+    dropletGlow.Parent = droplet
+    
+    droplet.Parent = waterContainer
+    return droplet
+end
+
+-- Main loading sequence
+local function startLoader()
+    -- Intro water droplet animation
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = -20
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 30 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
             end
-        end
-    end)
-    return murderer
-end
-
--- Enhanced target position prediction with improved accuracy
-function PredictTargetPosition(player)
-    if not player or not player.Character then return nil end
-    
-    local upperTorso = player.Character:FindFirstChild("UpperTorso")
-    local humanoid = player.Character:FindFirstChild("Humanoid")
-    
-    if not upperTorso or not humanoid then return upperTorso and upperTorso.Position end
-    
-    -- Extract movement vectors for precise prediction
-    local currentPosition = upperTorso.Position
-    local velocity = upperTorso.AssemblyLinearVelocity
-    local moveDirection = humanoid.MoveDirection
-    
-    -- Calculate vertical compensation factor based on Y velocity
-    local yVelFactor = velocity.Y > 0 and -1 * SilentAim.VerticalCompensation or 0.6
-    
-    -- Apply enhanced prediction algorithm
-    local predictedPosition = currentPosition + 
-                             ((velocity * Vector3.new(1, yVelFactor, 1)) * (2.1 / 15)) + 
-                             (moveDirection * SilentAim.PredictionMultiplier)
-    
-    -- Apply network latency compensation
-    local pingMultiplier = ((game.Players.LocalPlayer:GetNetworkPing() * 1000) * 0.02) + 1
-    predictedPosition = predictedPosition * pingMultiplier
-    
-    return predictedPosition
-end
-
--- Toggle visual feedback for aim button
-local function UpdateAimButtonVisual()
-    if SilentAim.Enabled then
-        AimButton.BorderColor3 = Color3.new(0,1,0)
-        AimButton.BackgroundColor3 = Color3.new(0,0.3,0)
-    else
-        AimButton.BorderColor3 = Color3.new(1,1,1)
-        AimButton.BackgroundColor3 = Color3.new(0,0,0)
+            
+            -- When droplets reach bottom, start "forming solid"
+            if i > 80 then
+                mainFrame.BackgroundTransparency = (100 - i) / 20
+                dropShadow.ImageTransparency = (100 - i) / 20
+            end
+            
+            wait(0.5)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
     end
+    
+    -- Show UI elements
+    for i = 10, 0, -1 do
+        title.TextTransparency = i/10
+        logo.ImageTransparency = i/10
+        versionText.TextTransparency = i/10
+        statusText.TextTransparency = i/10
+        progressContainer.BackgroundTransparency = i/10
+        progressFill.BackgroundTransparency = i/10
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Loading sequence
+    local loadingSteps = {
+        "Checking Modules...",
+        "Checking Script...",
+        "Getting Common Information..."
+    }
+    
+    -- Progress loading
+    for i, step in ipairs(loadingSteps) do
+        statusText.Text = step
+        
+        local startFill = (i-1)/3
+        local endFill = i/3
+        
+        for j = 1, 20 do  -- Each step takes 2 seconds (20 * 0.1)
+            local progress = startFill + ((endFill - startFill) * (j/20))
+            progressFill.Size = UDim2.new(progress, 0, 1, 0)
+            wait(0.1)
+        end
+    end
+    
+    -- Final loading period
+    statusText.Text = "Finalizing..."
+    for i = 1, 90 do  -- 9 seconds remaining (90 * 0.1)
+        progressFill.Size = UDim2.new(1, 0, 1, 0)
+        wait(0.1)
+    end
+    
+    -- Outro transition - form liquid again
+    for i = 0, 10 do
+        local transparency = i/10
+        title.TextTransparency = transparency
+        logo.ImageTransparency = transparency
+        versionText.TextTransparency = transparency
+        statusText.TextTransparency = transparency
+        progressContainer.BackgroundTransparency = transparency
+        progressFill.BackgroundTransparency = transparency
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Create falling water effect
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = math.random(0, 250)
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 40 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
+            end
+            
+            -- When droplets start falling, fade out main frame
+            if i > 20 then
+                local transparency = i / 100
+                mainFrame.BackgroundTransparency = transparency
+                dropShadow.ImageTransparency = transparency
+            end
+            
+            wait(0.1)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
+    end
+    
+    -- Create and play fadeOut animation instead of using loadMainGui()
+    local fadeOutTween = game:GetService("TweenService"):Create(
+        fadeOut,
+        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+        {Value = 1}
+    )
+    
+    fadeOutTween:Play()
+    fadeOutTween.Completed:Wait()
+    
+    screenGui:Destroy()
 end
 
--- Direct button toggle functionality
-AimButton.MouseButton1Click:Connect(function()
-    SilentAim.Enabled = not SilentAim.Enabled
-    UpdateAimButtonVisual()
-end)
+-- Start the loading sequence
+startLoader()
 
 -- Fluent UI Integration (preserved from original code)
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -584,47 +794,6 @@ Tabs.Visuals:AddToggle("ESPToggle", {
        ToggleESP(Value)
    end
 })
-
-Tabs.Combat:AddSection("Sheriff")
-
-Tabs.Combat:AddToggle("SilentAimToggle", {
-    Title = "Silent Aim",
-    Default = SilentAim.Enabled,
-    Callback = function(Value)
-        SilentAim.Enabled = Value
-        UpdateAimButtonVisual()
-    end
-})
-
--- Implement silent aim execution on HeartBeat for consistent timing
-game:GetService("RunService").Heartbeat:Connect(function()
-    if not SilentAim.Enabled then return end
-    
-    -- Check if player has sheriff gun
-    local character = game.Players.LocalPlayer.Character
-    local backpack = game.Players.LocalPlayer.Backpack
-    if not character or not backpack then return end
-    
-    local gun = character:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
-    if not gun then return end
-    
-    -- Auto-equip gun if in backpack
-    if gun.Parent == backpack and character:FindFirstChild("Humanoid") then
-        character.Humanoid:EquipTool(gun)
-    end
-    
-    -- Target murderer with enhanced prediction
-    local murderer = GetMurderer()
-    if murderer and murderer.Character then
-        local predictedPosition = PredictTargetPosition(murderer)
-        if predictedPosition then
-            -- Execute shot with optimal parameters
-            pcall(function()
-                character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
-            end)
-        end
-    end
-end)
 
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
