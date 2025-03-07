@@ -461,7 +461,7 @@ end
 
 --------------------------LOADER-----------------------LOADER--------------------------
 
--- OmniHub Loader with Water Animation and Quick Transitions
+-- OmniHub Loader GUI Script with Water Transition Animation
 
 local player = game.Players.LocalPlayer
 local screenGui = Instance.new("ScreenGui")
@@ -469,7 +469,7 @@ screenGui.Name = "OmniHubLoader"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Main container frame
+-- Create main container frame with rounded corners
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 450, 0, 250)
@@ -480,11 +480,12 @@ mainFrame.BorderSizePixel = 0
 mainFrame.BackgroundTransparency = 1
 mainFrame.Parent = screenGui
 
--- UI corner and shadow
+-- Add UI corner to main frame
 local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 12)
 mainCorner.Parent = mainFrame
 
+-- Add drop shadow
 local dropShadow = Instance.new("ImageLabel")
 dropShadow.Name = "DropShadow"
 dropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -495,10 +496,11 @@ dropShadow.ZIndex = 0
 dropShadow.Image = "rbxassetid://6014261993"
 dropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
 dropShadow.ImageTransparency = 1
-dropShadow.ScaleCenter = Rect.new(49, 49, 450, 450)
+dropShadow.ScaleType = Enum.ScaleType.Slice
+dropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
 dropShadow.Parent = mainFrame
 
--- Water container
+-- Create water particles container
 local waterContainer = Instance.new("Frame")
 waterContainer.Name = "WaterContainer"
 waterContainer.Size = UDim2.new(1, 0, 1, 0)
@@ -506,17 +508,18 @@ waterContainer.BackgroundTransparency = 1
 waterContainer.ClipsDescendants = true
 waterContainer.Parent = mainFrame
 
--- Logo and title
+-- Create logo
 local logo = Instance.new("ImageLabel")
 logo.Name = "Logo"
 logo.Size = UDim2.new(0, 100, 0, 100)
 logo.Position = UDim2.new(0.5, 0, 0.3, 0)
 logo.AnchorPoint = Vector2.new(0.5, 0.5)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://122380482857500" 
+logo.Image = "rbxassetid://122380482857500" -- Replace with your logo asset ID
 logo.ImageTransparency = 1
 logo.Parent = mainFrame
 
+-- Create title
 local title = Instance.new("TextLabel")
 title.Name = "Title"
 title.Size = UDim2.new(1, 0, 0, 50)
@@ -529,6 +532,7 @@ title.BackgroundTransparency = 1
 title.TextTransparency = 1
 title.Parent = mainFrame
 
+-- Create version text
 local versionText = Instance.new("TextLabel")
 versionText.Name = "Version"
 versionText.Size = UDim2.new(1, 0, 0, 20)
@@ -541,7 +545,7 @@ versionText.BackgroundTransparency = 1
 versionText.TextTransparency = 1
 versionText.Parent = mainFrame
 
--- Status and progress
+-- Create loading status
 local statusText = Instance.new("TextLabel")
 statusText.Name = "Status"
 statusText.Size = UDim2.new(0.8, 0, 0, 20)
@@ -554,6 +558,7 @@ statusText.BackgroundTransparency = 1
 statusText.TextTransparency = 1
 statusText.Parent = mainFrame
 
+-- Create progress bar container
 local progressContainer = Instance.new("Frame")
 progressContainer.Name = "ProgressContainer"
 progressContainer.Size = UDim2.new(0.8, 0, 0, 10)
@@ -563,10 +568,12 @@ progressContainer.BorderSizePixel = 0
 progressContainer.BackgroundTransparency = 1
 progressContainer.Parent = mainFrame
 
+-- Add corner to progress container
 local progressCorner = Instance.new("UICorner")
 progressCorner.CornerRadius = UDim.new(0, 5)
 progressCorner.Parent = progressContainer
 
+-- Create progress bar fill
 local progressFill = Instance.new("Frame")
 progressFill.Name = "ProgressFill"
 progressFill.Size = UDim2.new(0, 0, 1, 0)
@@ -575,10 +582,12 @@ progressFill.BorderSizePixel = 0
 progressFill.BackgroundTransparency = 1
 progressFill.Parent = progressContainer
 
+-- Add corner to progress fill
 local fillCorner = Instance.new("UICorner")
 fillCorner.CornerRadius = UDim.new(0, 5)
 fillCorner.Parent = progressFill
 
+-- Create glow effect behind progress bar
 local progressGlow = Instance.new("ImageLabel")
 progressGlow.Name = "ProgressGlow"
 progressGlow.BackgroundTransparency = 1
@@ -590,157 +599,159 @@ progressGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
 progressGlow.ImageTransparency = 1
 progressGlow.Parent = progressFill
 
--- Fade animation
+-- Create fadeOut animation
 local fadeOut = Instance.new("NumberValue")
 fadeOut.Name = "FadeOut"
 fadeOut.Value = 0
 fadeOut.Parent = screenGui
 
--- Water particle function
+-- Create water droplet function
 local function createWaterParticle(startPosition)
-   local droplet = Instance.new("Frame")
-   droplet.Size = UDim2.new(0, math.random(5, 20), 0, math.random(5, 20))
-   droplet.Position = startPosition
-   droplet.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
-   droplet.BackgroundTransparency = math.random(2, 5) / 10
-   droplet.BorderSizePixel = 0
-   
-   local uiCorner = Instance.new("UICorner")
-   uiCorner.CornerRadius = UDim.new(1, 0)
-   uiCorner.Parent = droplet
-   
-   local dropletGlow = Instance.new("ImageLabel")
-   dropletGlow.BackgroundTransparency = 1
-   dropletGlow.Position = UDim2.new(0, -5, 0, -5)
-   dropletGlow.Size = UDim2.new(1, 10, 1, 10)
-   dropletGlow.ZIndex = 0
-   dropletGlow.Image = "rbxassetid://5028857084"
-   dropletGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
-   dropletGlow.ImageTransparency = 0.7
-   dropletGlow.Parent = droplet
-   
-   droplet.Parent = waterContainer
-   return droplet
+    local droplet = Instance.new("Frame")
+    droplet.Size = UDim2.new(0, math.random(5, 20), 0, math.random(5, 20))
+    droplet.Position = startPosition
+    droplet.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+    droplet.BackgroundTransparency = math.random(2, 5) / 10
+    droplet.BorderSizePixel = 0
+    
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = droplet
+    
+    -- Add glow effect to droplet
+    local dropletGlow = Instance.new("ImageLabel")
+    dropletGlow.BackgroundTransparency = 1
+    dropletGlow.Position = UDim2.new(0, -5, 0, -5)
+    dropletGlow.Size = UDim2.new(1, 10, 1, 10)
+    dropletGlow.ZIndex = 0
+    dropletGlow.Image = "rbxassetid://5028857084"
+    dropletGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+    dropletGlow.ImageTransparency = 0.7
+    dropletGlow.Parent = droplet
+    
+    droplet.Parent = waterContainer
+    return droplet
 end
 
--- Loading sequence
+-- Main loading sequence
 local function startLoader()
-   -- Quick intro with 50 droplets (faster)
-   for i = 1, 50 do
-       local xPos = math.random(0, 450)
-       local yPos = -20
-       local startPosition = UDim2.new(0, xPos, 0, yPos)
-       local droplet = createWaterParticle(startPosition)
-       
-       spawn(function()
-           for j = 1, 20 do
-               droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 15)
-               wait(0.005)
-           end
-           
-           if i > 30 then
-               mainFrame.BackgroundTransparency = (50 - i) / 20
-               dropShadow.ImageTransparency = (50 - i) / 20
-           end
-           
-           wait(0.2)
-           droplet:Destroy()
-       end)
-       
-       wait(0.03)
-   end
-   
-   -- Fast UI reveal
-   for i = 10, 0, -2 do
-       local transparency = i/10
-       title.TextTransparency = transparency
-       logo.ImageTransparency = transparency
-       versionText.TextTransparency = transparency
-       statusText.TextTransparency = transparency
-       progressContainer.BackgroundTransparency = transparency
-       progressFill.BackgroundTransparency = transparency
-       progressGlow.ImageTransparency = 0.7 + (i/30)
-       wait(0.02)
-   end
-   
-   -- Loading steps with faster times
-   local loadingSteps = {
-       "Checking Modules...",
-       "Checking Script...",
-       "Getting Common Information..."
-   }
-   
-   -- Each step takes 0.67 seconds (20 * 0.033)
-   for i, step in ipairs(loadingSteps) do
-       statusText.Text = step
-       
-       local startFill = (i-1)/3
-       local endFill = i/3
-       
-       for j = 1, 20 do
-           local progress = startFill + ((endFill - startFill) * (j/20))
-           progressFill.Size = UDim2.new(progress, 0, 1, 0)
-           wait(0.033)
-       end
-   end
-   
-   -- Final loading (reduced to 12 seconds total)
-   statusText.Text = "Finalizing..."
-   for i = 1, 60 do
-       progressFill.Size = UDim2.new(1, 0, 1, 0)
-       wait(0.1)
-   end
-   
-   -- Quick fadeout
-   for i = 0, 10, 2 do
-       local transparency = i/10
-       title.TextTransparency = transparency
-       logo.ImageTransparency = transparency
-       versionText.TextTransparency = transparency
-       statusText.TextTransparency = transparency
-       progressContainer.BackgroundTransparency = transparency
-       progressFill.BackgroundTransparency = transparency
-       progressGlow.ImageTransparency = 0.7 + (i/30)
-       wait(0.02)
-   end
-   
-   -- Faster falling water effect with 50 droplets
-   for i = 1, 50 do
-       local xPos = math.random(0, 450)
-       local yPos = math.random(0, 250)
-       local startPosition = UDim2.new(0, xPos, 0, yPos)
-       local droplet = createWaterParticle(startPosition)
-       
-       spawn(function()
-           for j = 1, 25 do
-               droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 15)
-               wait(0.005)
-           end
-           
-           if i > 10 then
-               local transparency = i / 50
-               mainFrame.BackgroundTransparency = transparency
-               dropShadow.ImageTransparency = transparency
-           end
-           
-           wait(0.05)
-           droplet:Destroy()
-       end)
-       
-       wait(0.03)
-   end
-   
-   -- Create and play fadeOut animation
-   local fadeOutTween = game:GetService("TweenService"):Create(
-       fadeOut,
-       TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-       {Value = 1}
-   )
-   
-   fadeOutTween:Play()
-   fadeOutTween.Completed:Wait()
-   
-   screenGui:Destroy()
+    -- Intro water droplet animation
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = -20
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 30 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
+            end
+            
+            -- When droplets reach bottom, start "forming solid"
+            if i > 80 then
+                mainFrame.BackgroundTransparency = (100 - i) / 20
+                dropShadow.ImageTransparency = (100 - i) / 20
+            end
+            
+            wait(0.5)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
+    end
+    
+    -- Show UI elements
+    for i = 10, 0, -1 do
+        title.TextTransparency = i/10
+        logo.ImageTransparency = i/10
+        versionText.TextTransparency = i/10
+        statusText.TextTransparency = i/10
+        progressContainer.BackgroundTransparency = i/10
+        progressFill.BackgroundTransparency = i/10
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Loading sequence
+    local loadingSteps = {
+        "Checking Modules...",
+        "Checking Script...",
+        "Getting Common Information..."
+    }
+    
+    -- Progress loading
+    for i, step in ipairs(loadingSteps) do
+        statusText.Text = step
+        
+        local startFill = (i-1)/3
+        local endFill = i/3
+        
+        for j = 1, 20 do  -- Each step takes 2 seconds (20 * 0.1)
+            local progress = startFill + ((endFill - startFill) * (j/20))
+            progressFill.Size = UDim2.new(progress, 0, 1, 0)
+            wait(0.1)
+        end
+    end
+    
+    -- Final loading period
+    statusText.Text = "Finalizing..."
+    for i = 1, 90 do  -- 9 seconds remaining (90 * 0.1)
+        progressFill.Size = UDim2.new(1, 0, 1, 0)
+        wait(0.1)
+    end
+    
+    -- Outro transition - form liquid again
+    for i = 0, 10 do
+        local transparency = i/10
+        title.TextTransparency = transparency
+        logo.ImageTransparency = transparency
+        versionText.TextTransparency = transparency
+        statusText.TextTransparency = transparency
+        progressContainer.BackgroundTransparency = transparency
+        progressFill.BackgroundTransparency = transparency
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Create falling water effect
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = math.random(0, 250)
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 40 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
+            end
+            
+            -- When droplets start falling, fade out main frame
+            if i > 20 then
+                local transparency = i / 100
+                mainFrame.BackgroundTransparency = transparency
+                dropShadow.ImageTransparency = transparency
+            end
+            
+            wait(0.1)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
+    end
+    
+    -- Create and play fadeOut animation instead of using loadMainGui()
+    local fadeOutTween = game:GetService("TweenService"):Create(
+        fadeOut,
+        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+        {Value = 1}
+    )
+    
+    fadeOutTween:Play()
+    fadeOutTween.Completed:Wait()
+    
+    screenGui:Destroy()
 end
 
 -- Start the loading sequence
