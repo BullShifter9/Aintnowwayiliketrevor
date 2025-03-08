@@ -844,6 +844,10 @@ screenGui.Name = "OmniHubLoader"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- Services
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
 -- Create main container frame with rounded corners
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
@@ -875,13 +879,32 @@ dropShadow.ScaleType = Enum.ScaleType.Slice
 dropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
 dropShadow.Parent = mainFrame
 
--- Create water particles container
+-- Create water particles container with clip boundary
 local waterContainer = Instance.new("Frame")
 waterContainer.Name = "WaterContainer"
 waterContainer.Size = UDim2.new(1, 0, 1, 0)
 waterContainer.BackgroundTransparency = 1
 waterContainer.ClipsDescendants = true
 waterContainer.Parent = mainFrame
+
+-- Create surface tension frame (the water "level" that forms)
+local waterSurface = Instance.new("Frame")
+waterSurface.Name = "WaterSurface"
+waterSurface.Size = UDim2.new(1, 0, 0, 0)
+waterSurface.Position = UDim2.new(0, 0, 1, 0)  -- Start at bottom
+waterSurface.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+waterSurface.BackgroundTransparency = 0.3
+waterSurface.BorderSizePixel = 0
+waterSurface.Visible = false
+waterSurface.Parent = waterContainer
+
+-- Create splashes container for extra particle effects
+local splashesContainer = Instance.new("Frame")
+splashesContainer.Name = "SplashesContainer"
+splashesContainer.Size = UDim2.new(1, 0, 1, 0)
+splashesContainer.BackgroundTransparency = 1
+splashesContainer.ZIndex = 3
+splashesContainer.Parent = mainFrame
 
 -- Create logo
 local logo = Instance.new("ImageLabel")
@@ -892,6 +915,7 @@ logo.AnchorPoint = Vector2.new(0.5, 0.5)
 logo.BackgroundTransparency = 1
 logo.Image = "rbxassetid://122380482857500" -- Replace with your logo asset ID
 logo.ImageTransparency = 1
+logo.ZIndex = 2
 logo.Parent = mainFrame
 
 -- Create title
@@ -905,6 +929,7 @@ title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 36
 title.BackgroundTransparency = 1
 title.TextTransparency = 1
+title.ZIndex = 2
 title.Parent = mainFrame
 
 -- Create version text
@@ -918,6 +943,7 @@ versionText.TextColor3 = Color3.fromRGB(180, 180, 255)
 versionText.TextSize = 14
 versionText.BackgroundTransparency = 1
 versionText.TextTransparency = 1
+versionText.ZIndex = 2
 versionText.Parent = mainFrame
 
 -- Create loading status
@@ -931,6 +957,7 @@ statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
 statusText.TextSize = 16
 statusText.BackgroundTransparency = 1
 statusText.TextTransparency = 1
+statusText.ZIndex = 2
 statusText.Parent = mainFrame
 
 -- Create progress bar container
@@ -941,6 +968,7 @@ progressContainer.Position = UDim2.new(0.1, 0, 0.85, 0)
 progressContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 progressContainer.BorderSizePixel = 0
 progressContainer.BackgroundTransparency = 1
+progressContainer.ZIndex = 2
 progressContainer.Parent = mainFrame
 
 -- Add corner to progress container
@@ -955,6 +983,7 @@ progressFill.Size = UDim2.new(0, 0, 1, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
 progressFill.BorderSizePixel = 0
 progressFill.BackgroundTransparency = 1
+progressFill.ZIndex = 2
 progressFill.Parent = progressContainer
 
 -- Add corner to progress fill
@@ -968,7 +997,7 @@ progressGlow.Name = "ProgressGlow"
 progressGlow.BackgroundTransparency = 1
 progressGlow.Position = UDim2.new(0, -10, 0, -10)
 progressGlow.Size = UDim2.new(1, 20, 1, 20)
-progressGlow.ZIndex = 0
+progressGlow.ZIndex = 1
 progressGlow.Image = "rbxassetid://5028857084"
 progressGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
 progressGlow.ImageTransparency = 1
@@ -980,68 +1009,340 @@ fadeOut.Name = "FadeOut"
 fadeOut.Value = 0
 fadeOut.Parent = screenGui
 
--- Create water droplet function
-local function createWaterParticle(startPosition)
-    local droplet = Instance.new("Frame")
-    droplet.Size = UDim2.new(0, math.random(5, 20), 0, math.random(5, 20))
-    droplet.Position = startPosition
-    droplet.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
-    droplet.BackgroundTransparency = math.random(2, 5) / 10
-    droplet.BorderSizePixel = 0
+-- Particle physics config
+local GRAVITY = 0.5 -- Gravity strength
+local WIND_STRENGTH = 0.08 -- Wind effect
+local SPLASH_CHANCE = 0.3 -- Chance of creating splash particles
+local MAX_ACTIVE_PARTICLES = 120 -- Limit particles for performance
+
+-- Track active particles
+local activeParticles = 0
+local particles = {}
+
+-- Create realistic water droplet
+local function createWaterDroplet(startX, startY, size, initialVelocity)
+    if activeParticles >= MAX_ACTIVE_PARTICLES then return nil end
     
+    -- Randomize parameters for natural variation
+    size = size or math.random(4, 18)
+    local transparency = math.random(25, 50) / 100
+    local velocityX = (initialVelocity and initialVelocity.X) or (math.random(-20, 20) / 100)
+    local velocityY = (initialVelocity and initialVelocity.Y) or 0
+    
+    -- Create droplet with physics properties
+    local droplet = Instance.new("Frame")
+    droplet.Size = UDim2.new(0, size, 0, size * (1 + math.random(-20, 20) / 100)) -- Slightly oval shape
+    droplet.Position = UDim2.new(0, startX, 0, startY)
+    droplet.BackgroundColor3 = Color3.fromRGB(
+        75 + math.random(-10, 10), 
+        145 + math.random(-10, 10), 
+        255 + math.random(-20, 0)
+    )
+    droplet.BackgroundTransparency = transparency
+    droplet.BorderSizePixel = 0
+    droplet.ZIndex = 2
+    
+    -- Physics properties (stored as attributes)
+    droplet:SetAttribute("VelocityX", velocityX)
+    droplet:SetAttribute("VelocityY", velocityY)
+    droplet:SetAttribute("Mass", size / 10) -- Larger drops fall faster
+    droplet:SetAttribute("LifeTime", 0)
+    droplet:SetAttribute("MaxLife", math.random(40, 100))
+    
+    -- Round corners for water droplet look
     local uiCorner = Instance.new("UICorner")
-    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.CornerRadius = UDim.new(0.5, 0)
     uiCorner.Parent = droplet
     
-    -- Add glow effect to droplet
+    -- Add subtle glow/refraction effect
     local dropletGlow = Instance.new("ImageLabel")
     dropletGlow.BackgroundTransparency = 1
-    dropletGlow.Position = UDim2.new(0, -5, 0, -5)
-    dropletGlow.Size = UDim2.new(1, 10, 1, 10)
-    dropletGlow.ZIndex = 0
+    dropletGlow.Position = UDim2.new(0, -3, 0, -3)
+    dropletGlow.Size = UDim2.new(1, 6, 1, 6)
+    dropletGlow.ZIndex = 1
     dropletGlow.Image = "rbxassetid://5028857084"
-    dropletGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+    dropletGlow.ImageColor3 = Color3.fromRGB(150, 200, 255)
     dropletGlow.ImageTransparency = 0.7
     dropletGlow.Parent = droplet
+    
+    -- Add to tracking
+    activeParticles = activeParticles + 1
+    table.insert(particles, droplet)
     
     droplet.Parent = waterContainer
     return droplet
 end
 
+-- Create splash effect
+local function createSplash(x, y, size)
+    for i = 1, math.random(3, 8) do
+        local splashSize = size * (math.random(30, 70) / 100)
+        local angle = math.random(0, 360) * (math.pi/180)
+        local power = math.random(20, 50) / 10
+        
+        local velocityX = math.cos(angle) * power
+        local velocityY = -math.sin(angle) * power
+        
+        createWaterDroplet(x, y, splashSize, {X = velocityX, Y = velocityY})
+    end
+end
+
+-- Create water ripple effect
+local function createRipple(x, y, size)
+    local ripple = Instance.new("ImageLabel")
+    ripple.BackgroundTransparency = 1
+    ripple.Position = UDim2.new(0, x - size/2, 0, y - size/2)
+    ripple.Size = UDim2.new(0, size, 0, size)
+    ripple.Image = "rbxassetid://3087045804" -- Circle ripple image
+    ripple.ImageColor3 = Color3.fromRGB(120, 180, 255)
+    ripple.ImageTransparency = 0.7
+    ripple.ZIndex = 2
+    ripple.Parent = splashesContainer
+    
+    -- Animate ripple
+    TweenService:Create(
+        ripple,
+        TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {
+            Size = UDim2.new(0, size * 3, 0, size * 3),
+            Position = UDim2.new(0, x - size * 1.5, 0, y - size * 1.5),
+            ImageTransparency = 1
+        }
+    ):Play()
+    
+    -- Clean up ripple
+    game:GetService("Debris"):AddItem(ripple, 1)
+end
+
+-- Update water particle physics
+local function updateWaterPhysics()
+    local toRemove = {}
+    
+    for i, droplet in ipairs(particles) do
+        if not droplet:IsDescendantOf(game) then
+            table.insert(toRemove, i)
+            continue
+        end
+        
+        -- Get current state
+        local x = droplet.Position.X.Offset
+        local y = droplet.Position.Y.Offset
+        local velocityX = droplet:GetAttribute("VelocityX") 
+        local velocityY = droplet:GetAttribute("VelocityY")
+        local mass = droplet:GetAttribute("Mass")
+        local lifeTime = droplet:GetAttribute("LifeTime") + 1
+        local maxLife = droplet:GetAttribute("MaxLife")
+        
+        -- Apply physics
+        velocityY = velocityY + (GRAVITY * mass)
+        velocityX = velocityX + (math.random(-10, 10) / 100) * WIND_STRENGTH
+        
+        -- Apply slight damping to simulate air resistance
+        velocityX = velocityX * 0.99
+        
+        -- Update position
+        local newX = x + velocityX
+        local newY = y + velocityY
+        
+        -- Handle water surface collision
+        if waterSurface.Visible and newY >= waterSurface.Position.Y.Offset and velocityY > 0 then
+            -- Create splash and ripple on impact
+            if velocityY > 1 and math.random() < SPLASH_CHANCE then
+                createSplash(x, waterSurface.Position.Y.Offset, droplet.Size.X.Offset)
+                createRipple(x, waterSurface.Position.Y.Offset, droplet.Size.X.Offset * 2)
+            end
+            
+            -- Bounce effect with dampening
+            velocityY = -velocityY * 0.4
+            velocityX = velocityX * 0.8
+            
+            -- Adjust position to surface
+            newY = waterSurface.Position.Y.Offset
+        end
+        
+        -- Handle wall collisions
+        if newX < 0 or newX > waterContainer.AbsoluteSize.X then
+            velocityX = -velocityX * 0.8
+            newX = math.clamp(newX, 0, waterContainer.AbsoluteSize.X)
+        end
+        
+        -- Update droplet
+        droplet.Position = UDim2.new(0, newX, 0, newY)
+        droplet:SetAttribute("VelocityX", velocityX)
+        droplet:SetAttribute("VelocityY", velocityY)
+        droplet:SetAttribute("LifeTime", lifeTime)
+        
+        -- Handle lifetime and fading
+        if lifeTime > maxLife * 0.7 then
+            local fadeProgress = (lifeTime - maxLife * 0.7) / (maxLife * 0.3)
+            droplet.BackgroundTransparency = math.min(1, droplet:FindFirstChildOfClass("ImageLabel").ImageTransparency + fadeProgress * 0.3)
+            droplet:FindFirstChildOfClass("ImageLabel").ImageTransparency = math.min(1, droplet:FindFirstChildOfClass("ImageLabel").ImageTransparency + fadeProgress * 0.3)
+        end
+        
+        -- Remove drops that have lived their life or fallen far offscreen
+        if lifeTime >= maxLife or newY > waterContainer.AbsoluteSize.Y + 100 then
+            table.insert(toRemove, i)
+        end
+    end
+    
+    -- Remove destroyed particles (in reverse order to avoid index shifting)
+    for i = #toRemove, 1, -1 do
+        if particles[toRemove[i]] and particles[toRemove[i]]:IsDescendantOf(game) then
+            particles[toRemove[i]]:Destroy()
+        end
+        table.remove(particles, toRemove[i])
+        activeParticles = math.max(0, activeParticles - 1)
+    end
+end
+
+-- Generates rain drops from the top
+local function generateRain(intensity, duration)
+    local startTime = tick()
+    local waterWidth = waterContainer.AbsoluteSize.X
+    
+    -- Rain generation loop
+    while tick() - startTime < duration do
+        for i = 1, intensity do
+            local xPos = math.random(0, waterWidth)
+            local size = math.random(5, 15)
+            local droplet = createWaterDroplet(xPos, -20, size)
+            
+            if droplet then
+                -- Set initial velocity for rain
+                droplet:SetAttribute("VelocityY", math.random(3, 7))
+                droplet:SetAttribute("VelocityX", math.random(-10, 10) / 100)
+            end
+        end
+        wait(0.05)
+    end
+end
+
+-- Create rising water effect
+local function riseWaterLevel(targetHeight, duration)
+    waterSurface.Visible = true
+    local startHeight = waterSurface.Size.Y.Offset
+    local startPos = waterSurface.Position.Y.Offset
+    local targetPos = waterContainer.AbsoluteSize.Y - targetHeight
+    
+    -- Animate water rising
+    TweenService:Create(
+        waterSurface,
+        TweenInfo.new(duration, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out),
+        {
+            Size = UDim2.new(1, 0, 0, targetHeight),
+            Position = UDim2.new(0, 0, 0, targetPos)
+        }
+    ):Play()
+    
+    -- Create bubbles and small upward splash particles while rising
+    local startTime = tick()
+    while tick() - startTime < duration do
+        local currentHeight = waterSurface.Position.Y.Offset
+        
+        -- Create some upward moving particles at the surface
+        for i = 1, math.random(1, 3) do
+            local xPos = math.random(0, waterContainer.AbsoluteSize.X)
+            local size = math.random(3, 8)
+            local droplet = createWaterDroplet(xPos, currentHeight, size)
+            
+            if droplet then
+                droplet:SetAttribute("VelocityY", math.random(-30, -10) / 10)
+                droplet:SetAttribute("VelocityX", math.random(-20, 20) / 100)
+            end
+        end
+        
+        wait(0.1)
+    end
+end
+
+-- Create falling water effect (draining)
+local function drainWaterLevel(duration)
+    if not waterSurface.Visible then return end
+    
+    local startHeight = waterSurface.Size.Y.Offset
+    local targetHeight = 0
+    local startPos = waterSurface.Position.Y.Offset
+    local targetPos = waterContainer.AbsoluteSize.Y
+    
+    -- Create droplets at surface that fall down
+    for i = 1, 50 do
+        local xPos = math.random(0, waterContainer.AbsoluteSize.X)
+        local currentHeight = waterSurface.Position.Y.Offset
+        local size = math.random(5, 15)
+        local droplet = createWaterDroplet(xPos, currentHeight, size)
+        
+        if droplet then
+            droplet:SetAttribute("VelocityY", math.random(10, 30) / 10)
+            droplet:SetAttribute("VelocityX", math.random(-30, 30) / 100)
+        end
+    end
+    
+    -- Animate water falling
+    TweenService:Create(
+        waterSurface,
+        TweenInfo.new(duration, Enum.EasingStyle.Cubic, Enum.EasingDirection.In),
+        {
+            Size = UDim2.new(1, 0, 0, targetHeight),
+            Position = UDim2.new(0, 0, 0, targetPos)
+        }
+    ):Play()
+    
+    wait(duration)
+    waterSurface.Visible = false
+end
+
+-- Start physics update loop
+local physicsConnection
+local function startPhysics()
+    physicsConnection = RunService.Heartbeat:Connect(updateWaterPhysics)
+end
+
+local function stopPhysics()
+    if physicsConnection then
+        physicsConnection:Disconnect()
+        physicsConnection = nil
+    end
+end
+
 -- Main loading sequence
 local function startLoader()
-    -- Intro water droplet animation
-    for i = 1, 100 do
-        local xPos = math.random(0, 450)
-        local yPos = -20
-        local startPosition = UDim2.new(0, xPos, 0, yPos)
-        local droplet = createWaterParticle(startPosition)
-        
-        spawn(function()
-            for j = 1, 30 do
-                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
-                wait(0.01)
-            end
-            
-            -- When droplets reach bottom, start "forming solid"
-            if i > 80 then
-                mainFrame.BackgroundTransparency = (100 - i) / 20
-                dropShadow.ImageTransparency = (100 - i) / 20
-            end
-            
-            wait(0.5)
-            droplet:Destroy()
-        end)
-        
+    startPhysics()
+    
+    -- Initial light rain
+    spawn(function()
+        generateRain(3, 4) -- Light rain for 4 seconds
+    end)
+    
+    -- Fade in frame with initial droplets
+    for i = 10, 0, -1 do
+        mainFrame.BackgroundTransparency = i/10
+        dropShadow.ImageTransparency = i/10
         wait(0.05)
     end
     
-    -- Show UI elements
+    -- Heavy rain starts filling the container
+    spawn(function()
+        generateRain(8, 3) -- Heavy rain for 3 seconds
+    end)
+    
+    -- Start forming the water level
+    riseWaterLevel(250, 3)
+    
+    -- Show UI elements with ripple effect from the center
+    local centerX = mainFrame.AbsoluteSize.X / 2
+    local centerY = mainFrame.AbsoluteSize.Y / 2
+    createRipple(centerX, centerY, 100)
+    
+    -- Fade in UI elements with a slight delay between each
     for i = 10, 0, -1 do
-        title.TextTransparency = i/10
         logo.ImageTransparency = i/10
+        wait(0.03)
+        title.TextTransparency = i/10
+        wait(0.03)
         versionText.TextTransparency = i/10
+        wait(0.03)
         statusText.TextTransparency = i/10
+        wait(0.03)
         progressContainer.BackgroundTransparency = i/10
         progressFill.BackgroundTransparency = i/10
         progressGlow.ImageTransparency = 0.7 + (i/30)
@@ -1051,7 +1352,7 @@ local function startLoader()
     -- Loading sequence
     local loadingSteps = {
         "Checking Modules...",
-        "Checking Script...",
+        "Loading Scripts...",
         "Getting Common Information..."
     }
     
@@ -1065,68 +1366,155 @@ local function startLoader()
         for j = 1, 20 do  -- Each step takes 2 seconds (20 * 0.1)
             local progress = startFill + ((endFill - startFill) * (j/20))
             progressFill.Size = UDim2.new(progress, 0, 1, 0)
+            
+            -- Create droplet effect from the progress bar
+            if math.random() < 0.3 then
+                local progressX = progressContainer.AbsolutePosition.X + 
+                                 (progressFill.Size.X.Scale * progressContainer.AbsoluteSize.X)
+                local progressY = progressContainer.AbsolutePosition.Y
+                
+                local droplet = createWaterDroplet(
+                    progressX - mainFrame.AbsolutePosition.X,
+                    progressY - mainFrame.AbsolutePosition.Y,
+                    math.random(3, 6)
+                )
+                
+                if droplet then
+                    droplet:SetAttribute("VelocityY", math.random(5, 15) / 10)
+                    droplet:SetAttribute("VelocityX", math.random(-10, 10) / 100)
+                end
+            end
+            
             wait(0.1)
         end
     end
     
     -- Final loading period
     statusText.Text = "Finalizing..."
-    for i = 1, 90 do  -- 9 seconds remaining (90 * 0.1)
-        progressFill.Size = UDim2.new(1, 0, 1, 0)
-        wait(0.1)
-    end
+    progressFill.Size = UDim2.new(1, 0, 1, 0)
     
-    -- Outro transition - form liquid again
-    for i = 0, 10 do
-        local transparency = i/10
-        title.TextTransparency = transparency
-        logo.ImageTransparency = transparency
-        versionText.TextTransparency = transparency
-        statusText.TextTransparency = transparency
-        progressContainer.BackgroundTransparency = transparency
-        progressFill.BackgroundTransparency = transparency
-        progressGlow.ImageTransparency = 0.7 + (i/30)
-        wait(0.03)
-    end
+    -- Pulse effect on completion
+    TweenService:Create(
+        progressGlow, 
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {ImageTransparency = 0.5}
+    ):Play()
     
-    -- Create falling water effect
-    for i = 1, 100 do
-        local xPos = math.random(0, 450)
-        local yPos = math.random(0, 250)
-        local startPosition = UDim2.new(0, xPos, 0, yPos)
-        local droplet = createWaterParticle(startPosition)
+    wait(0.6)
+    
+    TweenService:Create(
+        progressGlow, 
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {ImageTransparency = 0.7}
+    ):Play()
+    
+    wait(1)
+    
+    -- Outro transition - start draining water
+for i = 0, 10 do
+    local transparency = i/10
+    title.TextTransparency = transparency
+    logo.ImageTransparency = transparency
+    versionText.TextTransparency = transparency
+    statusText.TextTransparency = transparency
+    progressContainer.BackgroundTransparency = transparency
+    progressFill.BackgroundTransparency = transparency
+    progressGlow.ImageTransparency = 0.7 + (transparency/3)
+    wait(0.03)
+end
+
+-- Drain the water
+drainWaterLevel(2)
+
+-- Heavy rain effect as everything dissolves
+spawn(function()
+    generateRain(10, 3) -- Very heavy rain for 3 seconds
+end)
+
+-- Start fading out main frame
+for i = 0, 10 do
+    local transparency = i/10
+    mainFrame.BackgroundTransparency = transparency
+    dropShadow.ImageTransparency = transparency
+    wait(0.05)
+end
+
+-- Create breaking water effect
+for i = 1, 150 do
+    local xPos = math.random(0, waterContainer.AbsoluteSize.X)
+    local yPos = math.random(0, waterContainer.AbsoluteSize.Y)
+    local size = math.random(5, 15)
+    local droplet = createWaterDroplet(xPos, yPos, size)
+    
+    if droplet then
+        -- Add explosive velocity in random directions
+        local angle = math.random(0, 360) * (math.pi/180)
+        local power = math.random(30, 80) / 10
         
-        spawn(function()
-            for j = 1, 40 do
-                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
-                wait(0.01)
-            end
-            
-            -- When droplets start falling, fade out main frame
-            if i > 20 then
-                local transparency = i / 100
-                mainFrame.BackgroundTransparency = transparency
-                dropShadow.ImageTransparency = transparency
-            end
-            
-            wait(0.1)
-            droplet:Destroy()
-        end)
-        
-        wait(0.05)
+        droplet:SetAttribute("VelocityX", math.cos(angle) * power)
+        droplet:SetAttribute("VelocityY", math.sin(angle) * power)
+        droplet:SetAttribute("MaxLife", math.random(30, 60)) -- Shorter life
     end
     
-    -- Create and play fadeOut animation instead of using loadMainGui()
-    local fadeOutTween = game:GetService("TweenService"):Create(
-        fadeOut,
-        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-        {Value = 1}
-    )
+    -- Create droplets in small batches for more natural look
+    if i % 10 == 0 then
+        wait(0.01)
+    end
+end
+
+-- Final water dissipation effect
+for i = 1, activeParticles do
+    if i <= #particles and particles[i] and particles[i]:IsDescendantOf(game) then
+        TweenService:Create(
+            particles[i],
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {BackgroundTransparency = 1}
+        ):Play()
+        
+        if particles[i]:FindFirstChildOfClass("ImageLabel") then
+            TweenService:Create(
+                particles[i]:FindFirstChildOfClass("ImageLabel"),
+                TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {ImageTransparency = 1}
+            ):Play()
+        end
+    end
     
-    fadeOutTween:Play()
-    fadeOutTween.Completed:Wait()
-    
-    screenGui:Destroy()
+    -- Process in small batches for performance
+    if i % 20 == 0 then
+        wait(0.02)
+    end
+end
+
+-- Create and play fadeOut animation
+local fadeOutTween = TweenService:Create(
+    fadeOut,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+    {Value = 1}
+)
+
+fadeOutTween:Play()
+fadeOutTween.Completed:Wait()
+
+-- Clean up
+stopPhysics()
+for _, particle in ipairs(particles) do
+    if particle:IsDescendantOf(game) then
+        particle:Destroy()
+    end
+end
+particles = {}
+activeParticles = 0
+
+-- Optional: Play a final splash sound effect
+local splashSound = Instance.new("Sound")
+splashSound.SoundId = "rbxassetid://5157776222" -- Replace with appropriate splash sound
+splashSound.Volume = 0.5
+splashSound.Parent = mainFrame
+splashSound:Play()
+
+wait(0.5)
+screenGui:Destroy()
 end
 
 -- Start the loading sequence
@@ -1180,8 +1568,8 @@ local SilentAimToggleV3 = Tabs.Combat:AddToggle("SilentAimToggleV3", {
 
 -- Algorithm Type Dropdown
 local SelectedAlgorithm = "Algorithm" -- Default algorithm
-local SilentAimChoice = Tabs.Combat:AddDropdown("SilentAimChoice", {
-   Title = "Algorithm",
+local SilentAimChoice = Tabs.Main:AddDropdown("SilentAimChoice", {
+   Title = "Algorithm Type",
    Values = {"Algorithm", "Jet", "Adaptive"},
    Default = "Algorithm",
    Callback = function(choice)
