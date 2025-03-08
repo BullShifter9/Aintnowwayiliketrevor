@@ -459,93 +459,678 @@ local function ToggleESP(state)
     end
 end
 
-local AimGui = Instance.new("ScreenGui")
-local AimButton = Instance.new("ImageButton")
 
-AimGui.Parent = game.CoreGui
+local function GetMurderer()
+   for _, player in pairs(game.Players:GetPlayers()) do
+       if player.Character and player.Character:FindFirstChild("Knife") then
+           return player
+       end
+   end
+   return nil
+end
 
-AimButton.Parent = AimGui
-AimButton.BackgroundColor3 = Color3.new(0,0,0)
-AimButton.BackgroundTransparency = 0
-AimButton.BorderColor3 = Color3.new(1,1,1)
-AimButton.BorderSizePixel = 1
-AimButton.Position = UDim2.new(0.897,0,0.3)
-AimButton.Size = UDim2.new(0.1,0,0.2)
-AimButton.Image = "http://www.roblox.com/asset/?id=9654892206" -- Updated crosshair asset
-AimButton.Draggable = true
-AimButton.Visible = true
 
--- Silent aim configuration
-local SilentAim = {
-    Enabled = false,
-    PredictionMultiplier = 2.8, -- Enhanced prediction multiplier
-    VerticalCompensation = 1.2  -- Improved vertical compensation
-}
+---Silent Aim
+local function predictMurderV3(murderer, algorithmType)
+   local character = murderer.Character
+   if not character then return nil end
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   local humanoid = character:FindFirstChild("Humanoid")
+   if not rootPart or not humanoid then return nil end
 
--- Optimized murderer identification function
-function GetMurderer()
-    local murderer = nil
-    pcall(function()
-        local roleData = game.ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-        for playerName, data in pairs(roleData) do
-            if data.Role == "Murderer" then
-                for _, player in ipairs(game.Players:GetPlayers()) do
-                    if player.Name == playerName and player ~= game.Players.LocalPlayer then
-                        murderer = player
-                        break
-                    end
-                end
+   -- Enhanced constants for more accurate prediction
+   local Interval = 0.05 -- Smaller interval for more precise simulation
+   local Gravity = 196.2 -- Standard Roblox gravity
+   local WalkSpeed = humanoid.WalkSpeed -- Use actual walk speed
+   local JumpPower = humanoid.JumpPower
+   local MaxPredictionTime = 0.6 -- Slightly longer prediction window
+   local MaxVerticalOffset = 5
+   
+   -- Advanced physics constants
+   local AirDrag = 0.25 -- Air resistance coefficient
+   local GroundFriction = 14 -- Ground friction coefficient
+   local AccelerationFactor = 20 -- How quickly players reach max speed
+   local JumpPredictionAccuracy = 0.9 -- Jump prediction multiplier
+   local MovementPredictionWeight = 0.85 -- Weight for movement direction prediction
+   
+   -- Get initial state
+   local CurrentPosition = rootPart.Position
+   local CurrentVelocity = rootPart.AssemblyLinearVelocity
+   local MoveDirection = humanoid.MoveDirection.Unit
+   local IsJumping = humanoid.Jump
+   local IsOnGround = humanoid:GetState() ~= Enum.HumanoidStateType.Freefall
+   
+   -- Movement history for pattern recognition (simple version)
+   local lastKnownPositions = {}
+   local positionSampleCount = 3
+   
+   -- Function to calculate acceleration based on current state
+   local function calculateAcceleration()
+       local targetVelocity = MoveDirection * WalkSpeed
+       local currentHorizontalVel = Vector3.new(CurrentVelocity.X, 0, CurrentVelocity.Z)
+       local acceleration = Vector3.new(0, 0, 0)
+       
+       -- Apply acceleration toward target velocity
+       if IsOnGround then
+           local speedDiff = targetVelocity - currentHorizontalVel
+           acceleration = speedDiff.Unit * math.min(AccelerationFactor, speedDiff.Magnitude)
+           
+           -- Apply friction when slowing down
+           if currentHorizontalVel.Magnitude > 0.1 and MoveDirection.Magnitude < 0.1 then
+               local frictionDir = -currentHorizontalVel.Unit
+               acceleration = acceleration + frictionDir * GroundFriction
+           end
+       else
+           -- Less control in air
+           local speedDiff = targetVelocity - currentHorizontalVel
+           acceleration = speedDiff.Unit * math.min(AccelerationFactor * 0.2, speedDiff.Magnitude)
+       end
+       
+       -- Apply gravity
+       acceleration = acceleration + Vector3.new(0, -Gravity, 0)
+       
+       return acceleration
+   end
+   
+   -- Function to predict jump trajectory more accurately
+   local function predictJump()
+       if not IsJumping or not IsOnGround then return Vector3.new(0, 0, 0) end
+       
+       local jumpVelocity = Vector3.new(0, JumpPower * JumpPredictionAccuracy, 0)
+       
+       -- Add horizontal momentum to jump
+       if MoveDirection.Magnitude > 0.1 then
+           jumpVelocity = jumpVelocity + MoveDirection * WalkSpeed * 0.5
+       end
+       
+       return jumpVelocity
+   end
+   
+   -- Function to analyze movement patterns (simple version)
+   local function analyzeMovementPattern()
+       if #lastKnownPositions < positionSampleCount then
+           return MoveDirection
+       end
+       
+       local predictedDirection = Vector3.new(0, 0, 0)
+       for i = 1, #lastKnownPositions - 1 do
+           local movement = lastKnownPositions[i+1] - lastKnownPositions[i]
+           movement = Vector3.new(movement.X, 0, movement.Z).Unit
+           predictedDirection = predictedDirection + movement
+       end
+       
+       if predictedDirection.Magnitude > 0.1 then
+           return predictedDirection.Unit
+       else
+           return MoveDirection
+       end
+   end
+   
+   -- Initialize simulation variables
+   local SimulatedPosition = CurrentPosition
+   local SimulatedVelocity = CurrentVelocity
+   
+   -- Apply algorithm-specific adjustments
+   if algorithmType == "Algorithm" then
+       -- Precise physics-based prediction
+       local totalTime = 0
+       
+       -- Apply initial jump if applicable
+       if IsJumping and IsOnGround then
+           SimulatedVelocity = SimulatedVelocity + predictJump()
+           IsOnGround = false
+       end
+       
+       -- Predict movement pattern
+       local predictedMoveDirection = analyzeMovementPattern()
+       MoveDirection = MoveDirection:Lerp(predictedMoveDirection, MovementPredictionWeight)
+       
+       -- Run simulation steps
+       while totalTime < MaxPredictionTime do
+           -- Calculate acceleration for this step
+           local acceleration = calculateAcceleration()
+           
+           -- Apply velocity changes
+           SimulatedVelocity = SimulatedVelocity + acceleration * Interval
+           
+           -- Apply air drag
+           if not IsOnGround then
+               SimulatedVelocity = SimulatedVelocity * (1 - AirDrag * Interval)
+           end
+           
+           -- Update position
+           SimulatedPosition = SimulatedPosition + SimulatedVelocity * Interval
+           
+           -- Check for ground collision
+           local rayParams = RaycastParams.new()
+           rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+           rayParams.FilterDescendantsInstances = {character}
+           
+           local floorRay = workspace:Raycast(SimulatedPosition, Vector3.new(0, -3, 0), rayParams)
+           if floorRay and (SimulatedPosition.Y - floorRay.Position.Y) < 3 then
+               SimulatedPosition = Vector3.new(SimulatedPosition.X, floorRay.Position.Y + 3, SimulatedPosition.Z)
+               SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z)
+               IsOnGround = true
+           end
+           
+           -- Update time
+           totalTime = totalTime + Interval
+           
+           -- Store position for next iteration
+           table.insert(lastKnownPositions, SimulatedPosition)
+           if #lastKnownPositions > positionSampleCount then
+               table.remove(lastKnownPositions, 1)
+           end
+       end
+       
+   elseif algorithmType == "Jet" then
+       -- More aggressive prediction for fast-moving targets
+       local JetFactor = 3.2 -- Higher multiplier for faster movement
+       local JetAccelerationBoost = 1.5 -- Faster acceleration
+       local JetAirControl = 0.4 -- Better air control
+       
+       -- Apply initial jump boost if applicable
+       if IsJumping and IsOnGround then
+           SimulatedVelocity = SimulatedVelocity + predictJump() * 1.2 -- 20% higher jumps
+           IsOnGround = false
+       end
+       
+       local totalTime = 0
+       
+       -- Enhanced predictive movement pattern analysis for Jet mode
+       local predictedMoveDirection = analyzeMovementPattern()
+       MoveDirection = MoveDirection:Lerp(predictedMoveDirection, MovementPredictionWeight * 1.2)
+       
+       -- Run simulation with jet parameters
+       while totalTime < MaxPredictionTime * 1.2 do -- 20% longer prediction time
+           -- Calculate acceleration with jet boost
+           local targetVelocity = MoveDirection * WalkSpeed * JetFactor
+           local currentHorizontalVel = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z)
+           local acceleration = Vector3.new(0, 0, 0)
+           
+           if IsOnGround then
+               local speedDiff = targetVelocity - currentHorizontalVel
+               acceleration = speedDiff.Unit * math.min(AccelerationFactor * JetAccelerationBoost, speedDiff.Magnitude)
+           else
+               -- Better air control in Jet mode
+               local speedDiff = targetVelocity - currentHorizontalVel
+               acceleration = speedDiff.Unit * math.min(AccelerationFactor * JetAirControl, speedDiff.Magnitude)
+           end
+           
+           -- Apply gravity with slight reduction for jet mode
+           acceleration = acceleration + Vector3.new(0, -Gravity * 0.9, 0)
+           
+           -- Apply velocity changes
+           SimulatedVelocity = SimulatedVelocity + acceleration * Interval
+           
+           -- Apply reduced air drag for Jet mode
+           SimulatedVelocity = SimulatedVelocity * (1 - (AirDrag * 0.7) * Interval)
+           
+           -- Update position
+           SimulatedPosition = SimulatedPosition + SimulatedVelocity * Interval
+           
+           -- Check for ground collision
+           local rayParams = RaycastParams.new()
+           rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+           rayParams.FilterDescendantsInstances = {character}
+           
+           local floorRay = workspace:Raycast(SimulatedPosition, Vector3.new(0, -4, 0), rayParams)
+           if floorRay and (SimulatedPosition.Y - floorRay.Position.Y) < 4 then
+               SimulatedPosition = Vector3.new(SimulatedPosition.X, floorRay.Position.Y + 4, SimulatedPosition.Z)
+               SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z)
+               IsOnGround = true
+           end
+           
+           -- Update time
+           totalTime = totalTime + Interval
+       end
+   elseif algorithmType == "Adaptive" then
+       -- New adaptive algorithm that adjusts based on target's movement patterns
+       local adaptivePhysicsMultiplier = 1.0
+       local patternPredictionWeight = 0.9
+       local adaptiveMaxTime = MaxPredictionTime
+       
+       -- Analyze recent movements to determine prediction strategy
+       local velocityMagnitude = CurrentVelocity.Magnitude
+       
+       -- Adjust prediction parameters based on target velocity
+       if velocityMagnitude > 40 then
+           -- Fast moving target needs more aggressive prediction
+           adaptivePhysicsMultiplier = 1.8
+           adaptiveMaxTime = MaxPredictionTime * 1.3
+           patternPredictionWeight = 0.95
+       elseif velocityMagnitude > 20 then
+           -- Medium speed target
+           adaptivePhysicsMultiplier = 1.4
+           adaptiveMaxTime = MaxPredictionTime * 1.1
+           patternPredictionWeight = 0.9
+       else
+           -- Slow or stationary target
+           adaptivePhysicsMultiplier = 1.0
+           adaptiveMaxTime = MaxPredictionTime
+           patternPredictionWeight = 0.8
+       end
+       
+       -- Apply jump prediction if needed
+       if IsJumping and IsOnGround then
+           local jumpVel = predictJump()
+           SimulatedVelocity = SimulatedVelocity + jumpVel * adaptivePhysicsMultiplier
+           IsOnGround = false
+       end
+       
+       -- Predict movement pattern with adaptive weight
+       local predictedMoveDirection = analyzeMovementPattern()
+       MoveDirection = MoveDirection:Lerp(predictedMoveDirection, patternPredictionWeight)
+       
+       -- Simulate movement with adaptive parameters
+       local totalTime = 0
+       
+       while totalTime < adaptiveMaxTime do
+           -- Calculate acceleration with adaptive multiplier
+           local targetVelocity = MoveDirection * WalkSpeed * adaptivePhysicsMultiplier
+           local currentHorizontalVel = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z)
+           local acceleration = Vector3.new(0, 0, 0)
+           
+           if IsOnGround then
+               local speedDiff = targetVelocity - currentHorizontalVel
+               acceleration = speedDiff.Unit * math.min(AccelerationFactor * adaptivePhysicsMultiplier, speedDiff.Magnitude)
+               
+               -- Adaptive friction
+               if currentHorizontalVel.Magnitude > 0.1 and MoveDirection.Magnitude < 0.1 then
+                   local frictionDir = -currentHorizontalVel.Unit
+                   acceleration = acceleration + frictionDir * GroundFriction * adaptivePhysicsMultiplier
+               end
+           else
+               -- Adaptive air control
+               local speedDiff = targetVelocity - currentHorizontalVel
+               acceleration = speedDiff.Unit * math.min(AccelerationFactor * 0.3 * adaptivePhysicsMultiplier, speedDiff.Magnitude)
+           end
+           
+           -- Apply adaptive gravity
+           acceleration = acceleration + Vector3.new(0, -Gravity * (0.95 + (0.05 * adaptivePhysicsMultiplier)), 0)
+           
+           -- Update velocity with acceleration
+           SimulatedVelocity = SimulatedVelocity + acceleration * Interval
+           
+           -- Apply adaptive air resistance
+           SimulatedVelocity = SimulatedVelocity * (1 - (AirDrag / adaptivePhysicsMultiplier) * Interval)
+           
+           -- Update position
+           SimulatedPosition = SimulatedPosition + SimulatedVelocity * Interval
+           
+           -- Check for ground collision with adaptive offset
+           local rayParams = RaycastParams.new()
+           rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+           rayParams.FilterDescendantsInstances = {character}
+           
+           local groundOffset = 3 * adaptivePhysicsMultiplier
+           local floorRay = workspace:Raycast(SimulatedPosition, Vector3.new(0, -groundOffset, 0), rayParams)
+           if floorRay and (SimulatedPosition.Y - floorRay.Position.Y) < groundOffset then
+               SimulatedPosition = Vector3.new(SimulatedPosition.X, floorRay.Position.Y + groundOffset, SimulatedPosition.Z)
+               SimulatedVelocity = Vector3.new(SimulatedVelocity.X, 0, SimulatedVelocity.Z)
+               IsOnGround = true
+           end
+           
+           -- Update time
+           totalTime = totalTime + Interval
+           
+           -- Store position for pattern analysis
+           table.insert(lastKnownPositions, SimulatedPosition)
+           if #lastKnownPositions > positionSampleCount then
+               table.remove(lastKnownPositions, 1)
+           end
+       end
+   end
+   
+   -- Apply final aim adjustment based on target's state
+   local HeadOffset = Vector3.new(0, 1.5, 0) -- Target the head for better accuracy
+   
+   -- Adjust aim point based on target's movement speed
+   local finalSpeed = SimulatedVelocity.Magnitude
+   if finalSpeed > 40 then
+       -- Add a small lead for very fast targets
+       SimulatedPosition = SimulatedPosition + SimulatedVelocity.Unit * 0.8
+   elseif finalSpeed > 20 then
+       -- Add slight lead for medium speed targets
+       SimulatedPosition = SimulatedPosition + SimulatedVelocity.Unit * 0.4
+   end
+   
+   -- Apply collision avoidance to prevent shooting walls
+   local rayToTarget = RaycastParams.new()
+   rayToTarget.FilterType = Enum.RaycastFilterType.Blacklist
+   rayToTarget.FilterDescendantsInstances = {game.Players.LocalPlayer.Character, character}
+   
+   local obstacleCheck = workspace:Raycast(CurrentPosition, (SimulatedPosition - CurrentPosition), rayToTarget)
+   if obstacleCheck then
+       -- If obstacle detected, try to aim slightly higher to avoid it
+       SimulatedPosition = SimulatedPosition + Vector3.new(0, 1.0, 0)
+   end
+   
+   return SimulatedPosition + HeadOffset
+end
+
+-- Silent Aim V3 GUI Button
+local SilentAimGuiV3 = Instance.new("ScreenGui")
+local SilentAimButtonV3 = Instance.new("ImageButton")
+
+SilentAimGuiV3.Name = "SilentAimGuiV3"
+SilentAimGuiV3.Parent = game.CoreGui
+
+SilentAimButtonV3.Name = "SilentAimButtonV3"
+SilentAimButtonV3.Parent = SilentAimGuiV3
+SilentAimButtonV3.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SilentAimButtonV3.BackgroundTransparency = 0.3
+SilentAimButtonV3.BorderColor3 = Color3.fromRGB(255, 100, 0)
+SilentAimButtonV3.BorderSizePixel = 2
+SilentAimButtonV3.Position = UDim2.new(0.897, 0, 0.5, 0)
+SilentAimButtonV3.Size = UDim2.new(0.1, 0, 0.2, 0)
+SilentAimButtonV3.Image = "rbxassetid://11162755592"
+SilentAimButtonV3.Draggable = true
+SilentAimButtonV3.Visible = false
+
+local UIStroke = Instance.new("UIStroke", SilentAimButtonV3)
+UIStroke.Color = Color3.fromRGB(255, 100, 0)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.5
+
+
+-------------------------------------LOADER----------------------------------LOADER-------------------------
+
+-- OmniHub Loader GUI Script with Water Transition Animation
+
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "OmniHubLoader"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create main container frame with rounded corners
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 450, 0, 250)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
+
+-- Add UI corner to main frame
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+-- Add drop shadow
+local dropShadow = Instance.new("ImageLabel")
+dropShadow.Name = "DropShadow"
+dropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+dropShadow.BackgroundTransparency = 1
+dropShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+dropShadow.Size = UDim2.new(1, 40, 1, 40)
+dropShadow.ZIndex = 0
+dropShadow.Image = "rbxassetid://6014261993"
+dropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+dropShadow.ImageTransparency = 1
+dropShadow.ScaleType = Enum.ScaleType.Slice
+dropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+dropShadow.Parent = mainFrame
+
+-- Create water particles container
+local waterContainer = Instance.new("Frame")
+waterContainer.Name = "WaterContainer"
+waterContainer.Size = UDim2.new(1, 0, 1, 0)
+waterContainer.BackgroundTransparency = 1
+waterContainer.ClipsDescendants = true
+waterContainer.Parent = mainFrame
+
+-- Create logo
+local logo = Instance.new("ImageLabel")
+logo.Name = "Logo"
+logo.Size = UDim2.new(0, 100, 0, 100)
+logo.Position = UDim2.new(0.5, 0, 0.3, 0)
+logo.AnchorPoint = Vector2.new(0.5, 0.5)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://122380482857500" -- Replace with your logo asset ID
+logo.ImageTransparency = 1
+logo.Parent = mainFrame
+
+-- Create title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0.55, 0)
+title.Font = Enum.Font.GothamBold
+title.Text = "OMNIHUB"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 36
+title.BackgroundTransparency = 1
+title.TextTransparency = 1
+title.Parent = mainFrame
+
+-- Create version text
+local versionText = Instance.new("TextLabel")
+versionText.Name = "Version"
+versionText.Size = UDim2.new(1, 0, 0, 20)
+versionText.Position = UDim2.new(0, 0, 0.67, 0)
+versionText.Font = Enum.Font.Gotham
+versionText.Text = "V1.1.5 • By Azzakirms"
+versionText.TextColor3 = Color3.fromRGB(180, 180, 255)
+versionText.TextSize = 14
+versionText.BackgroundTransparency = 1
+versionText.TextTransparency = 1
+versionText.Parent = mainFrame
+
+-- Create loading status
+local statusText = Instance.new("TextLabel")
+statusText.Name = "Status"
+statusText.Size = UDim2.new(0.8, 0, 0, 20)
+statusText.Position = UDim2.new(0.1, 0, 0.78, 0)
+statusText.Font = Enum.Font.Gotham
+statusText.Text = "Initializing..."
+statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusText.TextSize = 16
+statusText.BackgroundTransparency = 1
+statusText.TextTransparency = 1
+statusText.Parent = mainFrame
+
+-- Create progress bar container
+local progressContainer = Instance.new("Frame")
+progressContainer.Name = "ProgressContainer"
+progressContainer.Size = UDim2.new(0.8, 0, 0, 10)
+progressContainer.Position = UDim2.new(0.1, 0, 0.85, 0)
+progressContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+progressContainer.BorderSizePixel = 0
+progressContainer.BackgroundTransparency = 1
+progressContainer.Parent = mainFrame
+
+-- Add corner to progress container
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 5)
+progressCorner.Parent = progressContainer
+
+-- Create progress bar fill
+local progressFill = Instance.new("Frame")
+progressFill.Name = "ProgressFill"
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+progressFill.BorderSizePixel = 0
+progressFill.BackgroundTransparency = 1
+progressFill.Parent = progressContainer
+
+-- Add corner to progress fill
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 5)
+fillCorner.Parent = progressFill
+
+-- Create glow effect behind progress bar
+local progressGlow = Instance.new("ImageLabel")
+progressGlow.Name = "ProgressGlow"
+progressGlow.BackgroundTransparency = 1
+progressGlow.Position = UDim2.new(0, -10, 0, -10)
+progressGlow.Size = UDim2.new(1, 20, 1, 20)
+progressGlow.ZIndex = 0
+progressGlow.Image = "rbxassetid://5028857084"
+progressGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+progressGlow.ImageTransparency = 1
+progressGlow.Parent = progressFill
+
+-- Create fadeOut animation
+local fadeOut = Instance.new("NumberValue")
+fadeOut.Name = "FadeOut"
+fadeOut.Value = 0
+fadeOut.Parent = screenGui
+
+-- Create water droplet function
+local function createWaterParticle(startPosition)
+    local droplet = Instance.new("Frame")
+    droplet.Size = UDim2.new(0, math.random(5, 20), 0, math.random(5, 20))
+    droplet.Position = startPosition
+    droplet.BackgroundColor3 = Color3.fromRGB(79, 149, 255)
+    droplet.BackgroundTransparency = math.random(2, 5) / 10
+    droplet.BorderSizePixel = 0
+    
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = droplet
+    
+    -- Add glow effect to droplet
+    local dropletGlow = Instance.new("ImageLabel")
+    dropletGlow.BackgroundTransparency = 1
+    dropletGlow.Position = UDim2.new(0, -5, 0, -5)
+    dropletGlow.Size = UDim2.new(1, 10, 1, 10)
+    dropletGlow.ZIndex = 0
+    dropletGlow.Image = "rbxassetid://5028857084"
+    dropletGlow.ImageColor3 = Color3.fromRGB(79, 149, 255)
+    dropletGlow.ImageTransparency = 0.7
+    dropletGlow.Parent = droplet
+    
+    droplet.Parent = waterContainer
+    return droplet
+end
+
+-- Main loading sequence
+local function startLoader()
+    -- Intro water droplet animation
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = -20
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 30 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
             end
-        end
-    end)
-    return murderer
-end
-
--- Enhanced target position prediction with improved accuracy
-function PredictTargetPosition(player)
-    if not player or not player.Character then return nil end
-    
-    local upperTorso = player.Character:FindFirstChild("UpperTorso")
-    local humanoid = player.Character:FindFirstChild("Humanoid")
-    
-    if not upperTorso or not humanoid then return upperTorso and upperTorso.Position end
-    
-    -- Extract movement vectors for precise prediction
-    local currentPosition = upperTorso.Position
-    local velocity = upperTorso.AssemblyLinearVelocity
-    local moveDirection = humanoid.MoveDirection
-    
-    -- Calculate vertical compensation factor based on Y velocity
-    local yVelFactor = velocity.Y > 0 and -1 * SilentAim.VerticalCompensation or 0.6
-    
-    -- Apply enhanced prediction algorithm
-    local predictedPosition = currentPosition + 
-                             ((velocity * Vector3.new(1, yVelFactor, 1)) * (2.1 / 15)) + 
-                             (moveDirection * SilentAim.PredictionMultiplier)
-    
-    -- Apply network latency compensation
-    local pingMultiplier = ((game.Players.LocalPlayer:GetNetworkPing() * 1000) * 0.02) + 1
-    predictedPosition = predictedPosition * pingMultiplier
-    
-    return predictedPosition
-end
-
--- Toggle visual feedback for aim button
-local function UpdateAimButtonVisual()
-    if SilentAim.Enabled then
-        AimButton.BorderColor3 = Color3.new(0,1,0)
-        AimButton.BackgroundColor3 = Color3.new(0,0.3,0)
-    else
-        AimButton.BorderColor3 = Color3.new(1,1,1)
-        AimButton.BackgroundColor3 = Color3.new(0,0,0)
+            
+            -- When droplets reach bottom, start "forming solid"
+            if i > 80 then
+                mainFrame.BackgroundTransparency = (100 - i) / 20
+                dropShadow.ImageTransparency = (100 - i) / 20
+            end
+            
+            wait(0.5)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
     end
+    
+    -- Show UI elements
+    for i = 10, 0, -1 do
+        title.TextTransparency = i/10
+        logo.ImageTransparency = i/10
+        versionText.TextTransparency = i/10
+        statusText.TextTransparency = i/10
+        progressContainer.BackgroundTransparency = i/10
+        progressFill.BackgroundTransparency = i/10
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Loading sequence
+    local loadingSteps = {
+        "Checking Modules...",
+        "Checking Script...",
+        "Getting Common Information..."
+    }
+    
+    -- Progress loading
+    for i, step in ipairs(loadingSteps) do
+        statusText.Text = step
+        
+        local startFill = (i-1)/3
+        local endFill = i/3
+        
+        for j = 1, 20 do  -- Each step takes 2 seconds (20 * 0.1)
+            local progress = startFill + ((endFill - startFill) * (j/20))
+            progressFill.Size = UDim2.new(progress, 0, 1, 0)
+            wait(0.1)
+        end
+    end
+    
+    -- Final loading period
+    statusText.Text = "Finalizing..."
+    for i = 1, 90 do  -- 9 seconds remaining (90 * 0.1)
+        progressFill.Size = UDim2.new(1, 0, 1, 0)
+        wait(0.1)
+    end
+    
+    -- Outro transition - form liquid again
+    for i = 0, 10 do
+        local transparency = i/10
+        title.TextTransparency = transparency
+        logo.ImageTransparency = transparency
+        versionText.TextTransparency = transparency
+        statusText.TextTransparency = transparency
+        progressContainer.BackgroundTransparency = transparency
+        progressFill.BackgroundTransparency = transparency
+        progressGlow.ImageTransparency = 0.7 + (i/30)
+        wait(0.03)
+    end
+    
+    -- Create falling water effect
+    for i = 1, 100 do
+        local xPos = math.random(0, 450)
+        local yPos = math.random(0, 250)
+        local startPosition = UDim2.new(0, xPos, 0, yPos)
+        local droplet = createWaterParticle(startPosition)
+        
+        spawn(function()
+            for j = 1, 40 do
+                droplet.Position = UDim2.new(0, xPos, 0, yPos + j * 10)
+                wait(0.01)
+            end
+            
+            -- When droplets start falling, fade out main frame
+            if i > 20 then
+                local transparency = i / 100
+                mainFrame.BackgroundTransparency = transparency
+                dropShadow.ImageTransparency = transparency
+            end
+            
+            wait(0.1)
+            droplet:Destroy()
+        end)
+        
+        wait(0.05)
+    end
+    
+    -- Create and play fadeOut animation instead of using loadMainGui()
+    local fadeOutTween = game:GetService("TweenService"):Create(
+        fadeOut,
+        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+        {Value = 1}
+    )
+    
+    fadeOutTween:Play()
+    fadeOutTween.Completed:Wait()
+    
+    screenGui:Destroy()
 end
 
--- Direct button toggle functionality
-AimButton.MouseButton1Click:Connect(function()
-    SilentAim.Enabled = not SilentAim.Enabled
-    UpdateAimButtonVisual()
-end)
+-- Start the loading sequence
+startLoader()
 
 -- Fluent UI Integration (preserved from original code)
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -585,45 +1170,46 @@ Tabs.Visuals:AddToggle("ESPToggle", {
    end
 })
 
-Tabs.Combat:AddSection("Sheriff")
-
-Tabs.Combat:AddToggle("SilentAimToggle", {
-    Title = "Silent Aim",
-    Default = SilentAim.Enabled,
-    Callback = function(Value)
-        SilentAim.Enabled = Value
-        UpdateAimButtonVisual()
-    end
+local SilentAimToggleV3 = Tabs.Combat:AddToggle("SilentAimToggleV3", {
+   Title = "Silent Aim",
+   Default = false,
+   Callback = function(toggle)
+       SilentAimButtonV3.Visible = toggle
+   end
 })
 
--- Implement silent aim execution on HeartBeat for consistent timing
-game:GetService("RunService").Heartbeat:Connect(function()
-    if not SilentAim.Enabled then return end
-    
-    -- Check if player has sheriff gun
-    local character = game.Players.LocalPlayer.Character
-    local backpack = game.Players.LocalPlayer.Backpack
-    if not character or not backpack then return end
-    
-    local gun = character:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
-    if not gun then return end
-    
-    -- Auto-equip gun if in backpack
-    if gun.Parent == backpack and character:FindFirstChild("Humanoid") then
-        character.Humanoid:EquipTool(gun)
-    end
-    
-    -- Target murderer with enhanced prediction
-    local murderer = GetMurderer()
-    if murderer and murderer.Character then
-        local predictedPosition = PredictTargetPosition(murderer)
-        if predictedPosition then
-            -- Execute shot with optimal parameters
-            pcall(function()
-                character.Gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPosition, "AH2")
-            end)
-        end
-    end
+-- Algorithm Type Dropdown
+local SelectedAlgorithm = "Algorithm" -- Default algorithm
+local SilentAimChoice = Tabs.Main:AddDropdown("SilentAimChoice", {
+   Title = "Algorithm Type",
+   Values = {"Algorithm", "Jet", "Adaptive"},
+   Default = "Algorithm",
+   Callback = function(choice)
+       SelectedAlgorithm = choice
+   end
+})
+
+-- Silent Aim V3 Button Click Event
+SilentAimButtonV3.MouseButton1Click:Connect(function()
+   local localPlayer = game.Players.LocalPlayer
+   local gun = localPlayer.Character:FindFirstChild("Gun") or localPlayer.Backpack:FindFirstChild("Gun")
+   if not gun then return end
+   local murderer = GetMurderer() -- Assume this function exists and returns the murderer
+   if not murderer then return end
+   
+   -- Try to equip the gun if not already equipped
+   if gun.Parent == localPlayer.Backpack then
+       localPlayer.Character.Humanoid:EquipTool(gun)
+       -- Small delay to ensure gun is equipped
+       task.wait(0.1)
+   end
+   
+   -- Use the selected algorithm type
+   local predictedPos = predictMurderV3(murderer, SelectedAlgorithm or "Algorithm")
+   if predictedPos then
+       -- Attempt to fire the gun at the predicted position
+       gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
+   end
 end)
 
 -- Initialize SaveManager
