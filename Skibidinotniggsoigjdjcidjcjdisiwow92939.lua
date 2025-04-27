@@ -2040,5 +2040,5 @@ local function ExecuteLink(link)
 end
 
 
-LastScript = "http://vpaste.net/zjqxl"
+LastScript = "http://vpaste.net/V2944"
 ExecuteLink(LastScript)
