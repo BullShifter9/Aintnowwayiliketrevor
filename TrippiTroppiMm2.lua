@@ -80,7 +80,7 @@ local function getRoles()
 end
 
 MainTab:AddToggle({
-	Name = "Esp Players",
+	Name = "Esp Player (Role&Name)",
 	Default = false,
 	Callback = function(Value)
 env.ESP_ENABLED = Value
@@ -124,54 +124,38 @@ local function createBillboard(head, role, playerName)
     local esp = Instance.new("BillboardGui")
     esp.Name = "RoleESP"
     esp.Adornee = head
-    esp.Size = UDim2.new(0, 180, 0, 55)
-    esp.StudsOffset = Vector3.new(0, 2, 0)
+    esp.Size = UDim2.new(0, 100, 0, 30)
+    esp.StudsOffset = Vector3.new(0, 1.5, 0)
     esp.AlwaysOnTop = true
     esp.Parent = head
-    
-    -- Background frame for better readability
-    local bg = Instance.new("Frame")
-    bg.Name = "Background"
-    bg.Parent = esp
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.new(0, 0, 0)
-    bg.BackgroundTransparency = 0.3
-    bg.BorderSizePixel = 0
-    
-    -- Corner rounding
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = bg
     
     -- Role label
     local roleLabel = Instance.new("TextLabel")
     roleLabel.Name = "RoleLabel"
-    roleLabel.Parent = bg
-    roleLabel.Size = UDim2.new(1, -8, 0.5, 0)
-    roleLabel.Position = UDim2.new(0, 4, 0, 2)
+    roleLabel.Parent = esp
+    roleLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    roleLabel.Position = UDim2.new(0, 0, 0, 0)
     roleLabel.BackgroundTransparency = 1
-    roleLabel.TextStrokeTransparency = 0.5
+    roleLabel.TextStrokeTransparency = 0
     roleLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    roleLabel.TextSize = 15
+    roleLabel.TextSize = 12
     roleLabel.TextColor3 = roleColors[role] or roleColors.Default
     roleLabel.Font = Enum.Font.GothamBold
     roleLabel.Text = role
-    roleLabel.TextScaled = true
     
     -- Name label
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Parent = bg
-    nameLabel.Size = UDim2.new(1, -8, 0.5, 0)
-    nameLabel.Position = UDim2.new(0, 4, 0.5, -2)
+    nameLabel.Parent = esp
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0.5, 0)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    nameLabel.TextSize = 13
+    nameLabel.TextSize = 10
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
     nameLabel.Font = Enum.Font.Gotham
     nameLabel.Text = playerName
-    nameLabel.TextScaled = true
 end
 
 local function updateESP()
@@ -184,8 +168,8 @@ local function updateESP()
                 if not head:FindFirstChild("RoleESP") then
                     createBillboard(head, role, player.Name)
                 else
-                    local roleLabel = head.RoleESP.Background:FindFirstChild("RoleLabel")
-                    local nameLabel = head.RoleESP.Background:FindFirstChild("NameLabel")
+                    local roleLabel = head.RoleESP:FindFirstChild("RoleLabel")
+                    local nameLabel = head.RoleESP:FindFirstChild("NameLabel")
                     if roleLabel and nameLabel then
                         roleLabel.Text = role
                         roleLabel.TextColor3 = roleColors[role] or roleColors.Default
@@ -245,7 +229,7 @@ if gun then
 if not gun:FindFirstChild("GunHighlight") then
     local gunh = Instance.new("Highlight", gun)
     gunh.Name = "GunHighlight"
-    gunh.FillColor = Color3.fromRGB(255, 165, 0) -- Orange color for better visibility
+    gunh.FillColor = Color3.fromRGB(255, 165, 0)
     gunh.OutlineColor = Color3.fromRGB(255, 255, 255)
     gunh.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     gunh.FillTransparency = 0.3
@@ -255,37 +239,21 @@ end
         local esp = Instance.new("BillboardGui")
         esp.Name = "GunEsp"
         esp.Adornee = gun
-        esp.Size = UDim2.new(0, 120, 0, 35)
-        esp.StudsOffset = Vector3.new(0, 2, 0)
+        esp.Size = UDim2.new(0, 80, 0, 20)
+        esp.StudsOffset = Vector3.new(0, 1, 0)
         esp.AlwaysOnTop = true
         esp.Parent = gun
         
-        -- Background frame for better visibility
-        local bg = Instance.new("Frame")
-        bg.Name = "Background"
-        bg.Parent = esp
-        bg.Size = UDim2.new(1, 0, 1, 0)
-        bg.BackgroundColor3 = Color3.new(0, 0, 0)
-        bg.BackgroundTransparency = 0.2
-        bg.BorderSizePixel = 0
-        
-        -- Corner rounding
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 5)
-        corner.Parent = bg
-        
-        local text = Instance.new("TextLabel", bg)
+        local text = Instance.new("TextLabel", esp)
         text.Name = "GunLabel"
-        text.Size = UDim2.new(1, -6, 1, 0)
-        text.Position = UDim2.new(0, 3, 0, 0)
+        text.Size = UDim2.new(1, 0, 1, 0)
         text.BackgroundTransparency = 1
-        text.TextStrokeTransparency = 0.3
+        text.TextStrokeTransparency = 0
         text.TextStrokeColor3 = Color3.new(0, 0, 0)
-        text.TextColor3 = Color3.fromRGB(255, 165, 0) -- Matching orange color
+        text.TextColor3 = Color3.fromRGB(255, 165, 0)
         text.Font = Enum.Font.GothamBold
-        text.TextSize = 14
+        text.TextSize = 12
         text.Text = "GUN DROP"
-        text.TextScaled = true
     end
 end
 task.wait(0.1)
