@@ -1895,7 +1895,21 @@ if Tabs and Tabs.Visuals then
     })
 end
 
-
+Tabs.Combat:AddButton({
+	Name = "Grab Gun",
+	Callback = function()
+if Char and Char ~= nil and Root then
+local gun = Workspace:FindFirstChild("GunDrop",true)
+if gun then
+if firetouchinterest then
+firetouchinterest(Root, gun, 0)
+firetouchinterest(Root, gun, 1)
+else
+gun.CFrame = Root.CFrame
+end
+end
+end
+  	end
 
 local SilentAimToggle = Tabs.Combat:AddToggle("SilentAimToggle", {
     Title = "Silent Aim",
