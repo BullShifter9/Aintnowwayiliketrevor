@@ -422,11 +422,11 @@ MainTab:AddToggle({
                 TextButton.Draggable = true
                 TextButton.Position = UDim2.new(0.5, 100, 0.5, -150)
                 TextButton.Size = UDim2.new(0, 130, 0, 55)
-                TextButton.BackgroundTransparency = 0.1
-                TextButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+                TextButton.BackgroundTransparency = 0.7
+                TextButton.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
                 TextButton.BorderSizePixel = 0
                 TextButton.Text = "SHOOT MURDERER"
-                TextButton.TextColor3 = Color3.fromRGB(255, 85, 85)
+                TextButton.TextColor3 = Color3.fromRGB(100, 150, 255)
                 TextButton.TextSize = 13
                 TextButton.Font = Enum.Font.GothamBold
                 TextButton.Visible = true
@@ -437,28 +437,23 @@ MainTab:AddToggle({
                 local corner = Instance.new("UICorner", TextButton)
                 corner.CornerRadius = UDim.new(0, 10)
 
-                -- Border stroke
+                -- Blue border stroke
                 local UIStroke = Instance.new("UIStroke", TextButton)
-                UIStroke.Color = Color3.fromRGB(255, 85, 85)
+                UIStroke.Color = Color3.fromRGB(70, 130, 255)
                 UIStroke.Thickness = 2.5
-                UIStroke.Transparency = 0.1
+                UIStroke.Transparency = 0
 
-                -- Gradient effect
-                local UIGradient = Instance.new("UIGradient", TextButton)
-                UIGradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 50)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 35))
-                }
-                UIGradient.Rotation = 45
-
+                -- Remove gradient for cleaner look
                 -- Hover effects
                 local originalSize = TextButton.Size
                 local originalColor = TextButton.BackgroundColor3
+                local originalTextColor = TextButton.TextColor3
 
                 TextButton.MouseEnter:Connect(function()
                     local hoverTween = Tween:Create(TextButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
                         Size = UDim2.new(0, 135, 0, 58),
-                        BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+                        BackgroundColor3 = Color3.fromRGB(30, 50, 100),
+                        TextColor3 = Color3.fromRGB(150, 200, 255)
                     })
                     hoverTween:Play()
                 end)
@@ -466,7 +461,8 @@ MainTab:AddToggle({
                 TextButton.MouseLeave:Connect(function()
                     local leaveTween = Tween:Create(TextButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
                         Size = originalSize,
-                        BackgroundColor3 = originalColor
+                        BackgroundColor3 = originalColor,
+                        TextColor3 = originalTextColor
                     })
                     leaveTween:Play()
                 end)
@@ -515,6 +511,351 @@ MainTab:AddToggle({
         else
             if guip:FindFirstChild("GunW") then
                 guip:FindFirstChild("GunW"):Destroy()
+            end
+        end
+    end    
+})
+
+local function check()
+    local success, hookFunc = false, nil
+    if not getnamecallmethod or not checkcaller then return success end
+    local mt = getrawmetatable and getrawmetatable(game) or debug.getmetatable and debug.getmetatable(game)
+    local function handleNamecall(self, ...)
+        local method = getnamecallmethod and getnamecallmethod()
+        local args = {...}
+        if not checkcaller() then
+            if method == "InvokeServer" and tostring(self) == "RemoteFunction" and env.enabledGunBot then
+                return nil
+            end
+        end
+        return hookFunc(self, unpack(args))
+    end
+    if hookmetamethod and newcclosure then
+        hookFunc = hookmetamethod(game, "__namecall", newcclosure(handleNamecall))
+        success = true
+    elseif mt and setreadonly and newcclosure then
+        setreadonly(mt, false)
+        hookFunc = mt.__namecall
+        mt.__namecall = newcclosure(handleNamecall)
+        setreadonly(mt, true)
+        success = true
+    elseif hookmetamethod then
+        hookFunc = hookmetamethod(game, "__namecall", handleNamecall)
+        success = true
+    elseif mt and setreadonly then
+        setreadonly(mt, false)
+        hookFunc = mt.__namecall
+        mt.__namecall = handleNamecall
+        setreadonly(mt, true)
+        success = true
+    elseif mt and (makewriteable or make_writeable) then
+        (makewriteable or make_writeable)(mt)
+        hookFunc = mt.__namecall
+        mt.__namecall = handleNamecall
+        success = true
+    end
+    return success
+end
+
+-- Prediction System
+local PredictionData = {
+    positionHistory = {},
+    velocityHistory = {},
+    jumpHistory = {},
+    zigzagHistory = {},
+    lastUpdate = 0
+}
+
+-- Spark Method - Basic prediction with ping compensation
+local function SparkPrediction(targetPlayer, targetPos)
+    if not targetPlayer or not targetPlayer.Character then return targetPos end
+    
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return targetPos end
+    
+    -- Get ping compensation
+    local ping = LocalPlayer:GetNetworkPing() * 1000 -- Convert to ms
+    local compensationTime = ping / 1000 + 0.15 -- Add base compensation
+    
+    -- Get velocity
+    local velocity = rootPart.Velocity
+    local speed = velocity.Magnitude
+    
+    if speed < 2 then return targetPos end -- Target is stationary
+    
+    -- Basic prediction with jump detection
+    local predictedPos = targetPos + (velocity * compensationTime)
+    
+    -- Jump prediction
+    if humanoid.Jump or velocity.Y > 10 then
+        predictedPos = predictedPos + Vector3.new(0, speed * 0.3, 0)
+    end
+    
+    return predictedPos
+end
+
+-- BlueGogi Method - Advanced prediction with movement pattern analysis
+local function BlueGogiPrediction(targetPlayer, targetPos)
+    if not targetPlayer or not targetPlayer.Character then return targetPos end
+    
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return targetPos end
+    
+    local currentTime = tick()
+    local playerId = targetPlayer.UserId
+    
+    -- Initialize tracking data
+    if not PredictionData.positionHistory[playerId] then
+        PredictionData.positionHistory[playerId] = {}
+        PredictionData.velocityHistory[playerId] = {}
+        PredictionData.jumpHistory[playerId] = {}
+        PredictionData.zigzagHistory[playerId] = {}
+    end
+    
+    local posHistory = PredictionData.positionHistory[playerId]
+    local velHistory = PredictionData.velocityHistory[playerId]
+    local jumpHistory = PredictionData.jumpHistory[playerId]
+    local zigzagHistory = PredictionData.zigzagHistory[playerId]
+    
+    -- Update history
+    table.insert(posHistory, {pos = targetPos, time = currentTime})
+    table.insert(velHistory, {vel = rootPart.Velocity, time = currentTime})
+    table.insert(jumpHistory, {jump = humanoid.Jump or rootPart.Velocity.Y > 15, time = currentTime})
+    
+    -- Keep only recent history (last 2 seconds)
+    for i = #posHistory, 1, -1 do
+        if currentTime - posHistory[i].time > 2 then
+            table.remove(posHistory, i)
+        end
+    end
+    for i = #velHistory, 1, -1 do
+        if currentTime - velHistory[i].time > 2 then
+            table.remove(velHistory, i)
+        end
+    end
+    for i = #jumpHistory, 1, -1 do
+        if currentTime - jumpHistory[i].time > 1.5 then
+            table.remove(jumpHistory, i)
+        end
+    end
+    
+    if #posHistory < 3 then return SparkPrediction(targetPlayer, targetPos) end
+    
+    -- Calculate advanced metrics
+    local ping = LocalPlayer:GetNetworkPing() * 1000
+    local compensationTime = (ping / 1000) + 0.18
+    
+    -- Analyze movement patterns
+    local currentVel = rootPart.Velocity
+    local speed = currentVel.Magnitude
+    
+    -- Detect zigzag pattern
+    local isZigzag = false
+    if #velHistory >= 4 then
+        local directionChanges = 0
+        for i = 2, #velHistory do
+            local prevDir = velHistory[i-1].vel.Unit
+            local currDir = velHistory[i].vel.Unit
+            if prevDir:Dot(currDir) < 0.3 then -- Direction change threshold
+                directionChanges = directionChanges + 1
+            end
+        end
+        isZigzag = directionChanges >= 2
+    end
+    
+    -- Detect spam jumping
+    local isSpamJumping = false
+    if #jumpHistory >= 3 then
+        local jumpCount = 0
+        for _, jump in ipairs(jumpHistory) do
+            if jump.jump then jumpCount = jumpCount + 1 end
+        end
+        isSpamJumping = jumpCount >= 2
+    end
+    
+    -- Calculate acceleration
+    local acceleration = Vector3.new(0, 0, 0)
+    if #velHistory >= 2 then
+        local prevVel = velHistory[#velHistory - 1].vel
+        local timeDiff = currentTime - velHistory[#velHistory - 1].time
+        if timeDiff > 0 then
+            acceleration = (currentVel - prevVel) / timeDiff
+        end
+    end
+    
+    -- Base prediction
+    local predictedPos = targetPos + (currentVel * compensationTime)
+    
+    -- Apply acceleration compensation
+    predictedPos = predictedPos + (acceleration * compensationTime * compensationTime * 0.5)
+    
+    -- Zigzag compensation
+    if isZigzag then
+        local zigzagFactor = math.sin(currentTime * 8) * (speed * 0.15)
+        local perpendicular = Vector3.new(-currentVel.Z, 0, currentVel.X).Unit
+        predictedPos = predictedPos + (perpendicular * zigzagFactor)
+    end
+    
+    -- Jump prediction enhancement
+    local jumpPredicted = false
+    for _, jump in ipairs(jumpHistory) do
+        if jump.jump and (currentTime - jump.time) < 0.5 then
+            jumpPredicted = true
+            break
+        end
+    end
+    
+    if jumpPredicted or humanoid.Jump or currentVel.Y > 10 then
+        if isSpamJumping then
+            -- Spam jump prediction
+            local jumpCycle = math.sin(currentTime * 12) * 0.5 + 0.5
+            predictedPos = predictedPos + Vector3.new(0, speed * 0.4 * jumpCycle, 0)
+        else
+            -- Normal jump prediction
+            predictedPos = predictedPos + Vector3.new(0, speed * 0.35, 0)
+        end
+    end
+    
+    -- Distance-based accuracy adjustment
+    local distance = (targetPos - Root.Position).Magnitude
+    local distanceFactor = math.min(distance / 100, 1.5) -- Scale with distance
+    predictedPos = predictedPos * distanceFactor
+    
+    -- Smooth prediction to avoid jittery aiming
+    if PredictionData.lastPrediction and PredictionData.lastPrediction[playerId] then
+        local lastPred = PredictionData.lastPrediction[playerId]
+        predictedPos = lastPred:Lerp(predictedPos, 0.7) -- Smooth transition
+    end
+    
+    -- Store last prediction
+    if not PredictionData.lastPrediction then
+        PredictionData.lastPrediction = {}
+    end
+    PredictionData.lastPrediction[playerId] = predictedPos
+    
+    return predictedPos
+end
+
+-- Enhanced getMurdererTarget with prediction
+local function getMurdererTargetWithPrediction(predictionMethod)
+    local success, data = pcall(function()
+        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    end)
+    
+    if not success or not data then return nil, false end
+    
+    for plr, plrData in pairs(data) do
+        if plrData.Role == "Murderer" and not plrData.Dead then
+            local player = Players:FindFirstChild(plr)
+            if player then
+                if player == LocalPlayer then return nil, true end
+                local char = player.Character
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local basePos = hrp.Position
+                        local predictedPos
+                        
+                        if predictionMethod == "BlueGogi" then
+                            predictedPos = BlueGogiPrediction(player, basePos)
+                        else -- Spark method
+                            predictedPos = SparkPrediction(player, basePos)
+                        end
+                        
+                        return predictedPos, false
+                    end
+                    local head = char:FindFirstChild("Head")
+                    if head then return head.Position, false end
+                end
+            end
+        end
+    end
+    return nil, false
+end
+
+local isUseHook = check()
+
+-- Add prediction method selector
+local PredictionMethod = MainTab:AddDropdown({
+    Name = "Prediction Method",
+    Default = "Spark",
+    Options = {"Spark", "BlueGogi"},
+    Callback = function(Value)
+        env.predictionMethod = Value
+    end    
+})
+
+local AimbotMem = MainTab:AddToggle({
+    Name = "Gun Aimbot",
+    Default = false,
+    Callback = function(Value)
+        if isUseHook then
+            env.enabledGunBot = Value
+            env.GunBotConnection = env.GunBotConnection or {}
+            env.predictionMethod = env.predictionMethod or "Spark"
+            
+            local function setupGunBot(character)
+                if not character then return end
+                local gun = character:FindFirstChild("Gun")
+                if not gun then
+                    if env.GunBotConnection.Connection then
+                        env.GunBotConnection.Connection:Disconnect()
+                        env.GunBotConnection.Connection = nil
+                    end
+                    return
+                end
+                local knifeScript = gun:FindFirstChild("KnifeLocal")
+                local cb = knifeScript and knifeScript:FindFirstChild("CreateBeam")
+                local remote = cb and cb:FindFirstChild("RemoteFunction")
+                if not knifeScript or not cb or not remote then return end
+                
+                if env.enabledGunBot then
+                    if env.GunBotConnection.Connection then
+                        env.GunBotConnection.Connection:Disconnect()
+                        env.GunBotConnection.Connection = nil
+                    end
+                    env.GunBotConnection.Connection = gun.Activated:Connect(function()
+                        local targetPos, isSelf = getMurdererTargetWithPrediction(env.predictionMethod)
+                        if not targetPos or isSelf or not remote then return end
+                        remote:InvokeServer(1, targetPos, "AH2")
+                    end)
+                else
+                    if env.GunBotConnection.Connection then
+                        env.GunBotConnection.Connection:Disconnect()
+                        env.GunBotConnection.Connection = nil
+                    end
+                end
+            end
+            
+            while env.enabledGunBot do
+                if Char and Char:FindFirstChild("Gun") then
+                    setupGunBot(Char)
+                end
+                task.wait(0.25)
+            end
+            
+            if not env.enabledGunBot then
+                if env.GunBotConnection.Connection then
+                    env.GunBotConnection.Connection:Disconnect()
+                    env.GunBotConnection.Connection = nil
+                end
+            end
+        else
+            if not env.AsChange then return end
+            if env.AsChange.Value then
+                env.AsChange:Set(false)
+                OrionLib:MakeNotification({
+                    Name = "Your Executor Is Not Support This Function",
+                    Content = "Sorry, use a better one",
+                    Image = "rbxassetid://7733658504",
+                    Time = 3
+                })
             end
         end
     end    
