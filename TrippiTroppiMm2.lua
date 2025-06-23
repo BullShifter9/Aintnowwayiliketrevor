@@ -80,7 +80,7 @@ local function getRoles()
 end
 
 MainTab:AddToggle({
-	Name = "Esp Player (Role&Name)",
+	Name = "Esp Players",
 	Default = false,
 	Callback = function(Value)
 env.ESP_ENABLED = Value
@@ -159,28 +159,44 @@ local function createBillboard(head, role, playerName)
 end
 
 local function updateESP()
-    local roles = getRoles()
+    local success, roles = pcall(getRoles)
+    if not success then
+        return -- Skip this update if getRoles() fails
+    end
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local head = player.Character:FindFirstChild("Head")
             if head then
-                local role = roles[player.Name] or "Default"
-                if not head:FindFirstChild("RoleESP") then
+                local role = roles[player.Name] or "Unknown" -- Changed from "Default" to "Unknown"
+                local existingESP = head:FindFirstChild("RoleESP")
+                
+                if not existingESP then
                     createBillboard(head, role, player.Name)
                 else
-                    local roleLabel = head.RoleESP:FindFirstChild("RoleLabel")
-                    local nameLabel = head.RoleESP:FindFirstChild("NameLabel")
+                    -- Only update if role actually changed
+                    local roleLabel = existingESP:FindFirstChild("RoleLabel")
+                    local nameLabel = existingESP:FindFirstChild("NameLabel")
                     if roleLabel and nameLabel then
-                        roleLabel.Text = role
-                        roleLabel.TextColor3 = roleColors[role] or roleColors.Default
-                        nameLabel.Text = player.Name
+                        if roleLabel.Text ~= role then
+                            roleLabel.Text = role
+                            roleLabel.TextColor3 = roleColors[role] or roleColors.Default
+                        end
+                        if nameLabel.Text ~= player.Name then
+                            nameLabel.Text = player.Name
+                        end
                     end
                 end
-              local light = player.Character:FindFirstChild("RoleHighlight")
-              if not light then
-                applyHighlight(player.Character, role)
-                 else
-                 light.FillColor = roleColors[role] or roleColors.Default
+                
+                local light = player.Character:FindFirstChild("RoleHighlight")
+                if not light then
+                    applyHighlight(player.Character, role)
+                else
+                    -- Only update color if it changed
+                    local newColor = roleColors[role] or roleColors.Default
+                    if light.FillColor ~= newColor then
+                        light.FillColor = newColor
+                    end
                 end
             end
         end
@@ -192,7 +208,7 @@ local function startESP()
     updateLoop = task.spawn(function()
         while env.ESP_ENABLED do
             pcall(updateESP)
-            task.wait(0.25)
+            task.wait(0.5) -- Increased wait time to reduce lag
         end
         clearESP()
         updateLoop = nil
@@ -354,4 +370,152 @@ end
 task.wait(0.1)
 end
 	end    
+})
+
+local function getMurdererTarget()
+    local success, data = pcall(function()
+        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    end)
+    
+    if not success or not data then return nil, false end
+    
+    for plr, plrData in pairs(data) do
+        if plrData.Role == "Murderer" and not plrData.Dead then
+            local player = Players:FindFirstChild(plr)
+            if player then
+                if player == LocalPlayer then return nil, true end
+                local char = player.Character
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then return hrp.Position, false end
+                    local head = char:FindFirstChild("Head")
+                    if head then return head.Position, false end
+                end
+            end
+        end
+    end
+    return nil, false
+end
+
+MainTab:AddToggle({
+    Name = "Shoot Murder Button",
+    Default = false,
+    Callback = function(Value)
+        local guip, CoreGui = nil, game:FindService("CoreGui")
+        if gethui then
+            guip = gethui()
+        elseif CoreGui and CoreGui:FindFirstChild("RobloxGui") then
+            guip = CoreGui.RobloxGui
+        elseif CoreGui then
+            guip = CoreGui
+        else
+            guip = LocalPlayer:FindFirstChild("PlayerGui")
+        end
+        
+        if Value then
+            if not guip:FindFirstChild("GunW") then
+                local GunGui = Instance.new("ScreenGui", guip)
+                GunGui.Name = "GunW"
+                GunGui.ResetOnSpawn = false
+
+                local TextButton = Instance.new("TextButton", GunGui)
+                TextButton.Draggable = true
+                TextButton.Position = UDim2.new(0.5, 100, 0.5, -150)
+                TextButton.Size = UDim2.new(0, 130, 0, 55)
+                TextButton.BackgroundTransparency = 0.1
+                TextButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+                TextButton.BorderSizePixel = 0
+                TextButton.Text = "SHOOT MURDERER"
+                TextButton.TextColor3 = Color3.fromRGB(255, 85, 85)
+                TextButton.TextSize = 13
+                TextButton.Font = Enum.Font.GothamBold
+                TextButton.Visible = true
+                TextButton.Active = true
+                TextButton.TextWrapped = true
+
+                -- Corner rounding
+                local corner = Instance.new("UICorner", TextButton)
+                corner.CornerRadius = UDim.new(0, 10)
+
+                -- Border stroke
+                local UIStroke = Instance.new("UIStroke", TextButton)
+                UIStroke.Color = Color3.fromRGB(255, 85, 85)
+                UIStroke.Thickness = 2.5
+                UIStroke.Transparency = 0.1
+
+                -- Gradient effect
+                local UIGradient = Instance.new("UIGradient", TextButton)
+                UIGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 50)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 35))
+                }
+                UIGradient.Rotation = 45
+
+                -- Hover effects
+                local originalSize = TextButton.Size
+                local originalColor = TextButton.BackgroundColor3
+
+                TextButton.MouseEnter:Connect(function()
+                    local hoverTween = Tween:Create(TextButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                        Size = UDim2.new(0, 135, 0, 58),
+                        BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+                    })
+                    hoverTween:Play()
+                end)
+
+                TextButton.MouseLeave:Connect(function()
+                    local leaveTween = Tween:Create(TextButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                        Size = originalSize,
+                        BackgroundColor3 = originalColor
+                    })
+                    leaveTween:Play()
+                end)
+
+                TextButton.MouseButton1Click:Connect(function()
+                    -- Click animation
+                    local clickTween = Tween:Create(TextButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
+                        Size = UDim2.new(0, 125, 0, 52)
+                    })
+                    clickTween:Play()
+                    clickTween.Completed:Connect(function()
+                        local returnTween = Tween:Create(TextButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
+                            Size = originalSize
+                        })
+                        returnTween:Play()
+                    end)
+                    
+                    -- Get current character references
+                    local currentChar = LocalPlayer.Character
+                    local currentHum = currentChar and currentChar:FindFirstChildWhichIsA("Humanoid")
+                    local currentBackpack = LocalPlayer:FindFirstChild("Backpack")
+                    
+                    if not currentChar or not currentHum or not currentBackpack then
+                        return
+                    end
+                    
+                    -- Auto-equip gun if available
+                    local gun = currentBackpack:FindFirstChild("Gun") or currentChar:FindFirstChild("Gun")
+                    if gun and gun.Parent == currentBackpack then
+                        currentHum:EquipTool(gun)
+                        task.wait(0.15) -- Slight delay to ensure gun is equipped
+                    end
+                    
+                    -- Shoot murderer
+                    local equippedGun = currentChar:FindFirstChild("Gun")
+                    if equippedGun then
+                        local targetPos, isSelf = getMurdererTarget()
+                        if targetPos and not isSelf then
+                            pcall(function()
+                                equippedGun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(1, targetPos, "AH2")
+                            end)
+                        end
+                    end
+                end)
+            end
+        else
+            if guip:FindFirstChild("GunW") then
+                guip:FindFirstChild("GunW"):Destroy()
+            end
+        end
+    end    
 })
