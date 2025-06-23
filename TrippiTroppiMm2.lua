@@ -557,48 +557,18 @@ local function check()
     return success
 end
 
--- Prediction System
+-- Enhanced Prediction System
 local PredictionData = {
     positionHistory = {},
     velocityHistory = {},
     jumpHistory = {},
-    zigzagHistory = {},
-    lastUpdate = 0
+    movementPatterns = {},
+    lastUpdate = {},
+    smoothingData = {}
 }
 
--- Spark Method - Basic prediction with ping compensation
-local function SparkPrediction(targetPlayer, targetPos)
-    if not targetPlayer or not targetPlayer.Character then return targetPos end
-    
-    local character = targetPlayer.Character
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart then return targetPos end
-    
-    -- Get ping compensation
-    local ping = LocalPlayer:GetNetworkPing() * 1000 -- Convert to ms
-    local compensationTime = ping / 1000 + 0.15 -- Add base compensation
-    
-    -- Get velocity
-    local velocity = rootPart.Velocity
-    local speed = velocity.Magnitude
-    
-    if speed < 2 then return targetPos end -- Target is stationary
-    
-    -- Basic prediction with jump detection
-    local predictedPos = targetPos + (velocity * compensationTime)
-    
-    -- Jump prediction
-    if humanoid.Jump or velocity.Y > 10 then
-        predictedPos = predictedPos + Vector3.new(0, speed * 0.3, 0)
-    end
-    
-    return predictedPos
-end
-
--- BlueGogi Method - Advanced prediction with movement pattern analysis
-local function BlueGogiPrediction(targetPlayer, targetPos)
+-- Ultra Enhanced Prediction
+local function UltraEnhancedPrediction(targetPlayer, targetPos)
     if not targetPlayer or not targetPlayer.Character then return targetPos end
     
     local character = targetPlayer.Character
@@ -615,134 +585,207 @@ local function BlueGogiPrediction(targetPlayer, targetPos)
         PredictionData.positionHistory[playerId] = {}
         PredictionData.velocityHistory[playerId] = {}
         PredictionData.jumpHistory[playerId] = {}
-        PredictionData.zigzagHistory[playerId] = {}
+        PredictionData.movementPatterns[playerId] = {
+            avgSpeed = 0,
+            zigzagFreq = 0,
+            jumpFreq = 0,
+            lastDirection = Vector3.new(0, 0, 0),
+            strafePattern = 0
+        }
+        PredictionData.smoothingData[playerId] = {
+            lastPrediction = targetPos,
+            confidence = 0.5
+        }
     end
     
     local posHistory = PredictionData.positionHistory[playerId]
     local velHistory = PredictionData.velocityHistory[playerId]
     local jumpHistory = PredictionData.jumpHistory[playerId]
-    local zigzagHistory = PredictionData.zigzagHistory[playerId]
+    local patterns = PredictionData.movementPatterns[playerId]
+    local smoothing = PredictionData.smoothingData[playerId]
     
-    -- Update history
-    table.insert(posHistory, {pos = targetPos, time = currentTime})
-    table.insert(velHistory, {vel = rootPart.Velocity, time = currentTime})
-    table.insert(jumpHistory, {jump = humanoid.Jump or rootPart.Velocity.Y > 15, time = currentTime})
-    
-    -- Keep only recent history (last 2 seconds)
-    for i = #posHistory, 1, -1 do
-        if currentTime - posHistory[i].time > 2 then
-            table.remove(posHistory, i)
-        end
-    end
-    for i = #velHistory, 1, -1 do
-        if currentTime - velHistory[i].time > 2 then
-            table.remove(velHistory, i)
-        end
-    end
-    for i = #jumpHistory, 1, -1 do
-        if currentTime - jumpHistory[i].time > 1.5 then
-            table.remove(jumpHistory, i)
-        end
-    end
-    
-    if #posHistory < 3 then return SparkPrediction(targetPlayer, targetPos) end
-    
-    -- Calculate advanced metrics
-    local ping = LocalPlayer:GetNetworkPing() * 1000
-    local compensationTime = (ping / 1000) + 0.18
-    
-    -- Analyze movement patterns
+    -- Get current data
     local currentVel = rootPart.Velocity
-    local speed = currentVel.Magnitude
+    local currentSpeed = currentVel.Magnitude
+    local isJumping = humanoid.Jump or currentVel.Y > 12
     
-    -- Detect zigzag pattern
-    local isZigzag = false
+    -- Update histories with size limits
+    table.insert(posHistory, {pos = targetPos, time = currentTime})
+    table.insert(velHistory, {vel = currentVel, time = currentTime, speed = currentSpeed})
+    table.insert(jumpHistory, {jump = isJumping, time = currentTime})
+    
+    -- Keep only recent data (optimized for performance)
+    local maxHistorySize = 15
+    if #posHistory > maxHistorySize then
+        table.remove(posHistory, 1)
+    end
+    if #velHistory > maxHistorySize then
+        table.remove(velHistory, 1)
+    end
+    if #jumpHistory > 10 then
+        table.remove(jumpHistory, 1)
+    end
+    
+    -- Enhanced ping calculation with stability
+    local ping = LocalPlayer:GetNetworkPing() * 1000
+    local stabilizedPing = math.max(ping, 50) -- Minimum 50ms for stability
+    local compensationTime = (stabilizedPing / 1000) + 0.12 -- Reduced base compensation
+    
+    -- Distance-based compensation adjustment
+    local distance = (targetPos - Root.Position).Magnitude
+    local distanceCompensation = math.min(distance / 80, 2.0) -- Scale with distance
+    compensationTime = compensationTime * distanceCompensation
+    
+    -- Advanced movement pattern analysis
+    local directionChanges = 0
+    local avgAcceleration = Vector3.new(0, 0, 0)
+    local velocityConsistency = 1.0
+    
     if #velHistory >= 4 then
-        local directionChanges = 0
+        local totalAccel = Vector3.new(0, 0, 0)
+        local speedVariation = 0
+        local avgSpeed = 0
+        
         for i = 2, #velHistory do
-            local prevDir = velHistory[i-1].vel.Unit
-            local currDir = velHistory[i].vel.Unit
-            if prevDir:Dot(currDir) < 0.3 then -- Direction change threshold
-                directionChanges = directionChanges + 1
+            local prevVel = velHistory[i-1]
+            local currVel = velHistory[i]
+            local timeDiff = currVel.time - prevVel.time
+            
+            if timeDiff > 0 then
+                -- Calculate acceleration
+                local accel = (currVel.vel - prevVel.vel) / timeDiff
+                totalAccel = totalAccel + accel
+                
+                -- Track speed changes
+                speedVariation = speedVariation + math.abs(currVel.speed - prevVel.speed)
+                avgSpeed = avgSpeed + currVel.speed
+                
+                -- Direction change detection (improved)
+                if prevVel.speed > 5 and currVel.speed > 5 then
+                    local prevDir = prevVel.vel.Unit
+                    local currDir = currVel.vel.Unit
+                    local dotProduct = prevDir:Dot(currDir)
+                    if dotProduct < 0.5 then -- More sensitive direction change
+                        directionChanges = directionChanges + 1
+                    end
+                end
             end
         end
-        isZigzag = directionChanges >= 2
+        
+        avgAcceleration = totalAccel / (#velHistory - 1)
+        avgSpeed = avgSpeed / (#velHistory - 1)
+        velocityConsistency = math.max(0.1, 1 - (speedVariation / math.max(avgSpeed * #velHistory, 1)))
+        
+        -- Update patterns
+        patterns.avgSpeed = avgSpeed
+        patterns.zigzagFreq = directionChanges / (#velHistory - 1)
     end
     
-    -- Detect spam jumping
-    local isSpamJumping = false
+    -- Jump pattern analysis (enhanced)
+    local jumpFrequency = 0
+    local recentJumps = 0
     if #jumpHistory >= 3 then
-        local jumpCount = 0
-        for _, jump in ipairs(jumpHistory) do
-            if jump.jump then jumpCount = jumpCount + 1 end
+        for i = 1, #jumpHistory do
+            if jumpHistory[i].jump then
+                jumpFrequency = jumpFrequency + 1
+                if currentTime - jumpHistory[i].time < 0.8 then
+                    recentJumps = recentJumps + 1
+                end
+            end
         end
-        isSpamJumping = jumpCount >= 2
+        jumpFrequency = jumpFrequency / #jumpHistory
+        patterns.jumpFreq = jumpFrequency
     end
     
-    -- Calculate acceleration
-    local acceleration = Vector3.new(0, 0, 0)
-    if #velHistory >= 2 then
-        local prevVel = velHistory[#velHistory - 1].vel
-        local timeDiff = currentTime - velHistory[#velHistory - 1].time
-        if timeDiff > 0 then
-            acceleration = (currentVel - prevVel) / timeDiff
-        end
+    -- Advanced prediction calculation
+    local basePrediction = targetPos + (currentVel * compensationTime)
+    
+    -- Acceleration compensation (enhanced)
+    if avgAcceleration.Magnitude > 0.1 then
+        basePrediction = basePrediction + (avgAcceleration * compensationTime * compensationTime * 0.8)
     end
     
-    -- Base prediction
-    local predictedPos = targetPos + (currentVel * compensationTime)
-    
-    -- Apply acceleration compensation
-    predictedPos = predictedPos + (acceleration * compensationTime * compensationTime * 0.5)
-    
-    -- Zigzag compensation
-    if isZigzag then
-        local zigzagFactor = math.sin(currentTime * 8) * (speed * 0.15)
-        local perpendicular = Vector3.new(-currentVel.Z, 0, currentVel.X).Unit
-        predictedPos = predictedPos + (perpendicular * zigzagFactor)
+    -- Zigzag prediction (much improved)
+    local zigzagFactor = 0
+    if patterns.zigzagFreq > 0.3 and currentSpeed > 8 then
+        -- Advanced zigzag prediction using sine wave approximation
+        local zigzagIntensity = math.min(patterns.zigzagFreq * 2, 1.5)
+        local timeOffset = currentTime * (6 + zigzagIntensity * 4)
+        zigzagFactor = math.sin(timeOffset) * (currentSpeed * 0.25 * zigzagIntensity)
+        
+        -- Calculate perpendicular direction for strafe
+        local moveDirection = currentVel.Unit
+        local perpendicularDir = Vector3.new(-moveDirection.Z, 0, moveDirection.X)
+        basePrediction = basePrediction + (perpendicularDir * zigzagFactor)
     end
     
-    -- Jump prediction enhancement
-    local jumpPredicted = false
-    for _, jump in ipairs(jumpHistory) do
-        if jump.jump and (currentTime - jump.time) < 0.5 then
-            jumpPredicted = true
-            break
-        end
-    end
-    
-    if jumpPredicted or humanoid.Jump or currentVel.Y > 10 then
-        if isSpamJumping then
-            -- Spam jump prediction
-            local jumpCycle = math.sin(currentTime * 12) * 0.5 + 0.5
-            predictedPos = predictedPos + Vector3.new(0, speed * 0.4 * jumpCycle, 0)
+    -- Enhanced jump prediction
+    if isJumping or recentJumps > 0 then
+        local jumpPower = 50 -- Default Roblox jump power
+        local jumpTime = compensationTime
+        local gravityAccel = -196.2 -- Roblox gravity
+        
+        if patterns.jumpFreq > 0.4 then
+            -- Spam jumping pattern
+            local jumpCycle = math.sin(currentTime * 10) * 0.6 + 0.4
+            local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
+            basePrediction = basePrediction + Vector3.new(0, jumpOffset * jumpCycle, 0)
         else
             -- Normal jump prediction
-            predictedPos = predictedPos + Vector3.new(0, speed * 0.35, 0)
+            local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
+            basePrediction = basePrediction + Vector3.new(0, jumpOffset * 0.7, 0)
         end
     end
     
-    -- Distance-based accuracy adjustment
+    -- Confidence-based smoothing (prevents jittery aiming)
+    local confidence = velocityConsistency * math.min(currentSpeed / 16, 1)
+    smoothing.confidence = (smoothing.confidence * 0.7) + (confidence * 0.3)
+    
+    -- Apply smoothing based on confidence
+    local smoothingFactor = 0.15 + (smoothing.confidence * 0.25)
+    local finalPrediction = smoothing.lastPrediction:Lerp(basePrediction, smoothingFactor)
+    
+    -- Store for next iteration
+    smoothing.lastPrediction = finalPrediction
+    
+    return finalPrediction
+end
+
+-- Spark Method (Improved)
+local function ImprovedSparkPrediction(targetPlayer, targetPos)
+    if not targetPlayer or not targetPlayer.Character then return targetPos end
+    
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return targetPos end
+    
+    local ping = LocalPlayer:GetNetworkPing() * 1000
+    local compensationTime = (ping / 1000) + 0.14
+    
+    local velocity = rootPart.Velocity
+    local speed = velocity.Magnitude
+    
+    if speed < 3 then return targetPos end
+    
+    -- Distance-based compensation
     local distance = (targetPos - Root.Position).Magnitude
-    local distanceFactor = math.min(distance / 100, 1.5) -- Scale with distance
-    predictedPos = predictedPos * distanceFactor
+    compensationTime = compensationTime * math.min(distance / 60, 1.8)
     
-    -- Smooth prediction to avoid jittery aiming
-    if PredictionData.lastPrediction and PredictionData.lastPrediction[playerId] then
-        local lastPred = PredictionData.lastPrediction[playerId]
-        predictedPos = lastPred:Lerp(predictedPos, 0.7) -- Smooth transition
-    end
+    local predictedPos = targetPos + (velocity * compensationTime)
     
-    -- Store last prediction
-    if not PredictionData.lastPrediction then
-        PredictionData.lastPrediction = {}
+    -- Improved jump prediction
+    if humanoid.Jump or velocity.Y > 8 then
+        local jumpTime = compensationTime
+        local gravityOffset = -196.2 * jumpTime * jumpTime * 0.5
+        predictedPos = predictedPos + Vector3.new(0, (velocity.Y * jumpTime) + gravityOffset, 0)
     end
-    PredictionData.lastPrediction[playerId] = predictedPos
     
     return predictedPos
 end
 
--- Enhanced getMurdererTarget with prediction
+-- Enhanced getMurdererTarget with improved prediction
 local function getMurdererTargetWithPrediction(predictionMethod)
     local success, data = pcall(function()
         return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
@@ -762,10 +805,12 @@ local function getMurdererTargetWithPrediction(predictionMethod)
                         local basePos = hrp.Position
                         local predictedPos
                         
-                        if predictionMethod == "BlueGogi" then
-                            predictedPos = BlueGogiPrediction(player, basePos)
-                        else -- Spark method
-                            predictedPos = SparkPrediction(player, basePos)
+                        if predictionMethod == "Ultra" then
+                            predictedPos = UltraEnhancedPrediction(player, basePos)
+                        elseif predictionMethod == "Spark" then
+                            predictedPos = ImprovedSparkPrediction(player, basePos)
+                        else
+                            predictedPos = basePos -- Fallback
                         end
                         
                         return predictedPos, false
@@ -781,24 +826,24 @@ end
 
 local isUseHook = check()
 
--- Add prediction method selector
+-- Updated prediction method selector
 local PredictionMethod = MainTab:AddDropdown({
     Name = "Prediction Method",
-    Default = "Spark",
-    Options = {"Spark", "BlueGogi"},
+    Default = "Ultra",
+    Options = {"Ultra", "Spark"},
     Callback = function(Value)
         env.predictionMethod = Value
     end    
 })
 
 local AimbotMem = MainTab:AddToggle({
-    Name = "Gun Aimbot",
+    Name = "Gun Silent Aim",
     Default = false,
     Callback = function(Value)
         if isUseHook then
             env.enabledGunBot = Value
             env.GunBotConnection = env.GunBotConnection or {}
-            env.predictionMethod = env.predictionMethod or "Spark"
+            env.predictionMethod = env.predictionMethod or "Ultra"
             
             local function setupGunBot(character)
                 if not character then return end
@@ -837,7 +882,7 @@ local AimbotMem = MainTab:AddToggle({
                 if Char and Char:FindFirstChild("Gun") then
                     setupGunBot(Char)
                 end
-                task.wait(0.25)
+                task.wait(0.1) -- Faster update rate
             end
             
             if not env.enabledGunBot then
@@ -945,7 +990,7 @@ MainTab:AddToggle({
             
             -- Hide after 3 seconds
             hideTimer = task.spawn(function()
-                task.wait(3)
+                task.wait(5)
                 if roleGui and env.NOTIFY_ENABLED then
                     roleGui.Enabled = false
                 end
@@ -1015,92 +1060,3 @@ MainTab:AddToggle({
     end
 })
 
-local BreakGun = MainTab:AddToggle({
-    Name = "Break Gun",
-    Default = false,
-    Callback = function(Value)
-        env.breakGunEnabled = Value
-        env.breakGunConnection = env.breakGunConnection or {}
-        
-        local function breakGunFunction(character)
-            if not character then return end
-            
-            -- Check for gun in character first
-            local gun = character:FindFirstChild("Gun")
-            
-            -- If not found in character, check backpack
-            if not gun and backpack then
-                gun = backpack:FindFirstChild("Gun")
-            end
-            
-            if not gun then
-                if env.breakGunConnection.Connection then
-                    env.breakGunConnection.Connection:Disconnect()
-                    env.breakGunConnection.Connection = nil
-                end
-                return
-            end
-            
-            if env.breakGunEnabled then
-                -- Disconnect any existing connection first
-                if env.breakGunConnection.Connection then
-                    env.breakGunConnection.Connection:Disconnect()
-                    env.breakGunConnection.Connection = nil
-                end
-                
-                -- Connect to gun activation and block it
-                env.breakGunConnection.Connection = gun.Activated:Connect(function()
-                    -- Do nothing - this blocks the gun from firing
-                    return
-                end)
-            else
-                -- Cleanup connection when disabled
-                if env.breakGunConnection.Connection then
-                    env.breakGunConnection.Connection:Disconnect()
-                    env.breakGunConnection.Connection = nil
-                end
-            end
-        end
-        
-        if isUseHook then
-            -- Monitor for gun and apply break
-            task.spawn(function()
-                while env.breakGunEnabled do
-                    if Char then
-                        breakGunFunction(Char)
-                    end
-                    task.wait(0.5)
-                end
-                
-                -- Cleanup when disabled
-                if not env.breakGunEnabled then
-                    if env.breakGunConnection.Connection then
-                        env.breakGunConnection.Connection:Disconnect()
-                        env.breakGunConnection.Connection = nil
-                    end
-                end
-            end)
-            
-            -- Show notification only when enabled
-            if Value then
-                OrionLib:MakeNotification({
-                    Name = "Gun Broken",
-                    Content = "Gun shooting has been disabled",
-                    Image = "rbxassetid://7733658504",
-                    Time = 2
-                })
-            end
-        else
-            if not env.AsChange then return end
-            if env.AsChange.Value then
-                env.AsChange:Set(false)
-                OrionLib:MakeNotification({
-                    Name = "Your Executor Is Not Support This Function",
-                    Content = "Sorry, use a better one",
-                    Image = "rbxassetid://7733658504",
-                    Time = 3
-                })
-            end
-        end
-    end    
-})
