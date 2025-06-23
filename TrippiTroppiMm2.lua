@@ -1014,3 +1014,93 @@ MainTab:AddToggle({
         end
     end
 })
+
+local BreakGun = MainTab:AddToggle({
+    Name = "Break Gun",
+    Default = false,
+    Callback = function(Value)
+        env.breakGunEnabled = Value
+        env.breakGunConnection = env.breakGunConnection or {}
+        
+        local function breakGunFunction(character)
+            if not character then return end
+            
+            -- Check for gun in character first
+            local gun = character:FindFirstChild("Gun")
+            
+            -- If not found in character, check backpack
+            if not gun and backpack then
+                gun = backpack:FindFirstChild("Gun")
+            end
+            
+            if not gun then
+                if env.breakGunConnection.Connection then
+                    env.breakGunConnection.Connection:Disconnect()
+                    env.breakGunConnection.Connection = nil
+                end
+                return
+            end
+            
+            if env.breakGunEnabled then
+                -- Disconnect any existing connection first
+                if env.breakGunConnection.Connection then
+                    env.breakGunConnection.Connection:Disconnect()
+                    env.breakGunConnection.Connection = nil
+                end
+                
+                -- Connect to gun activation and block it
+                env.breakGunConnection.Connection = gun.Activated:Connect(function()
+                    -- Do nothing - this blocks the gun from firing
+                    return
+                end)
+            else
+                -- Cleanup connection when disabled
+                if env.breakGunConnection.Connection then
+                    env.breakGunConnection.Connection:Disconnect()
+                    env.breakGunConnection.Connection = nil
+                end
+            end
+        end
+        
+        if isUseHook then
+            -- Monitor for gun and apply break
+            task.spawn(function()
+                while env.breakGunEnabled do
+                    if Char then
+                        breakGunFunction(Char)
+                    end
+                    task.wait(0.5)
+                end
+                
+                -- Cleanup when disabled
+                if not env.breakGunEnabled then
+                    if env.breakGunConnection.Connection then
+                        env.breakGunConnection.Connection:Disconnect()
+                        env.breakGunConnection.Connection = nil
+                    end
+                end
+            end)
+            
+            -- Show notification only when enabled
+            if Value then
+                OrionLib:MakeNotification({
+                    Name = "Gun Broken",
+                    Content = "Gun shooting has been disabled",
+                    Image = "rbxassetid://7733658504",
+                    Time = 2
+                })
+            end
+        else
+            if not env.AsChange then return end
+            if env.AsChange.Value then
+                env.AsChange:Set(false)
+                OrionLib:MakeNotification({
+                    Name = "Your Executor Is Not Support This Function",
+                    Content = "Sorry, use a better one",
+                    Image = "rbxassetid://7733658504",
+                    Time = 3
+                })
+            end
+        end
+    end    
+})
