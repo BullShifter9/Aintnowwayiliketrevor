@@ -860,3 +860,157 @@ local AimbotMem = MainTab:AddToggle({
         end
     end    
 })
+
+-- Auto Notify Role Toggle
+MainTab:AddToggle({
+    Name = "Auto Notify Role",
+    Default = false,
+    Callback = function(Value)
+        env.NOTIFY_ENABLED = Value
+        local notifyLoop = nil
+        local roleGui = nil
+        local lastRole = nil
+        local hideTimer = nil
+        
+        local function createRoleGui()
+            if roleGui then roleGui:Destroy() end
+            
+            roleGui = Instance.new("ScreenGui")
+            roleGui.Name = "RoleNotifyGui"
+            roleGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+            roleGui.ResetOnSpawn = false
+            roleGui.Enabled = false -- Start hidden
+            
+            local frame = Instance.new("Frame")
+            frame.Name = "RoleFrame"
+            frame.Parent = roleGui
+            frame.Size = UDim2.new(0, 200, 0, 60)
+            frame.Position = UDim2.new(0, 10, 0, 100)
+            frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            frame.BorderSizePixel = 0
+            frame.BackgroundTransparency = 0.2
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = Color3.fromRGB(255, 255, 255)
+            stroke.Thickness = 1
+            stroke.Transparency = 0.8
+            stroke.Parent = frame
+            
+            local roleLabel = Instance.new("TextLabel")
+            roleLabel.Name = "RoleLabel"
+            roleLabel.Parent = frame
+            roleLabel.Size = UDim2.new(1, 0, 1, 0)
+            roleLabel.Position = UDim2.new(0, 0, 0, 0)
+            roleLabel.BackgroundTransparency = 1
+            roleLabel.TextStrokeTransparency = 0
+            roleLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+            roleLabel.TextSize = 16
+            roleLabel.TextColor3 = Color3.new(1, 1, 1)
+            roleLabel.Font = Enum.Font.GothamBold
+            roleLabel.Text = "You are: Loading..."
+            roleLabel.TextScaled = true
+        end
+        
+        local function showRoleTemporarily(role)
+            if not roleGui then return end
+            
+            -- Cancel previous hide timer if exists
+            if hideTimer then
+                task.cancel(hideTimer)
+            end
+            
+            -- Update role display
+            local roleLabel = roleGui:FindFirstChild("RoleFrame") and roleGui.RoleFrame:FindFirstChild("RoleLabel")
+            if roleLabel then
+                roleLabel.Text = "You are: " .. role
+                
+                -- Change color based on role
+                local roleColors = {
+                    Murderer = Color3.fromRGB(255, 100, 100),
+                    Sheriff = Color3.fromRGB(100, 150, 255),
+                    Hero = Color3.fromRGB(255, 215, 0),
+                    Innocent = Color3.fromRGB(100, 255, 150),
+                    Unknown = Color3.fromRGB(150, 150, 150)
+                }
+                
+                roleLabel.TextColor3 = roleColors[role] or roleColors.Unknown
+            end
+            
+            -- Show GUI
+            roleGui.Enabled = true
+            
+            -- Hide after 3 seconds
+            hideTimer = task.spawn(function()
+                task.wait(3)
+                if roleGui and env.NOTIFY_ENABLED then
+                    roleGui.Enabled = false
+                end
+                hideTimer = nil
+            end)
+        end
+        
+        local function checkForNewRound()
+            local success, roles = pcall(getRoles)
+            if not success then
+                return
+            end
+            
+            local myRole = roles[LocalPlayer.Name]
+            
+            -- Check if new round started (got a new role)
+            if myRole and myRole ~= lastRole then
+                lastRole = myRole
+                showRoleTemporarily(myRole)
+            elseif not myRole and lastRole then
+                -- Round ended
+                lastRole = nil
+                if roleGui then
+                    roleGui.Enabled = false
+                end
+            end
+        end
+        
+        local function startNotify()
+            if notifyLoop then return end
+            createRoleGui()
+            
+            notifyLoop = task.spawn(function()
+                while env.NOTIFY_ENABLED do
+                    pcall(checkForNewRound)
+                    task.wait(0.5)
+                end
+                if roleGui then
+                    roleGui:Destroy()
+                    roleGui = nil
+                end
+                if hideTimer then
+                    task.cancel(hideTimer)
+                    hideTimer = nil
+                end
+                notifyLoop = nil
+            end)
+        end
+        
+        if Value then
+            startNotify()
+        else
+            if notifyLoop then
+                task.cancel(notifyLoop)
+                notifyLoop = nil
+            end
+            if hideTimer then
+                task.cancel(hideTimer)
+                hideTimer = nil
+            end
+            if roleGui then
+                roleGui:Destroy()
+                roleGui = nil
+            end
+            lastRole = nil
+        end
+    end
+})
