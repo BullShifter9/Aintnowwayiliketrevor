@@ -8,6 +8,54 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
+
+local cloneref = function(instance)
+	if typeof(instance) ~= "Instance" then return instance end
+	local proxy = newproxy(true)
+	local mt = getmetatable(proxy)
+	local function safeCall(func, ...)
+		local ok, result = pcall(func, ...)
+		return ok and result or nil
+	end
+	mt.__index = function(_, key)
+		local value = safeCall(function() return instance[key] end)
+		if typeof(value) == "function" then
+			return function(_, ...) return instance[key](instance, ...) end
+		end
+		return value
+	end
+	mt.__newindex = function(_, key, value)
+		safeCall(function() instance[key] = value end)
+	end
+	mt.__tostring = function()
+		return instance:GetFullName()
+	end
+	mt.__metatable = "cloneref_protected"
+	mt.__eq = function(_, other) return other == instance end
+	mt.__call = function(_, ...) return instance(...) end
+	return proxy
+end
+
+local Players = cloneref(game:GetService("Players"))
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local Tween = cloneref(game:GetService("TweenService"))
+local RunService = cloneref(game:GetService("RunService"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() -- should clone this localplayer method if the game have anticlient modified
+local backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:WaitForChild("Backpack")
+local Char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() --and LocalPlayer.CharacterAppearanceLoaded:Wait()
+local Hum = Char and Char:FindFirstChildWhichIsA("Humanoid")
+local Root = (Hum and Hum.RootPart) or Char:FindFirstChild("HumanoidRootPart") or Char:FindFirstChild("Torso") or Char:FindFirstChild("UpperTorso")
+LocalPlayer.CharacterAdded:Connect(function()
+	repeat task.wait()
+	LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:WaitForChild("Backpack")
+    Char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Hum = Char and Char:FindFirstChildWhichIsA("Humanoid")
+    Root = (Hum and Hum.RootPart) or Char:FindFirstChild("HumanoidRootPart") or Char:FindFirstChild("Torso") or Char:FindFirstChild("UpperTorso")
+until LocalPlayer and backpack and Char and Hum and Root
+end)
+
 -- Game-specific state tracking
 local roles = {}
 local Murder, Sheriff, Hero = nil, nil, nil
