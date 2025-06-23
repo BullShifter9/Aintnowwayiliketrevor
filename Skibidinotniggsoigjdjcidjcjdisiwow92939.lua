@@ -1895,8 +1895,8 @@ if Tabs and Tabs.Visuals then
     })
 end
 
-Tabs.Combat:AddButton({
-	Name = "Grab Gun",
+Tabs.Combat:AddButton("Grab Gun", {
+	Title = "Grab Gun",
 	Callback = function()
 if Char and Char ~= nil and Root then
 local gun = Workspace:FindFirstChild("GunDrop",true)
