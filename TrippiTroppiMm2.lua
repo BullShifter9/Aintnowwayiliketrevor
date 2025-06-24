@@ -517,383 +517,205 @@ MainTab:AddToggle({
 })
 
 local function check()
-    local success, hookFunc = false, nil
-    if not getnamecallmethod or not checkcaller then return success end
-    local mt = getrawmetatable and getrawmetatable(game) or debug.getmetatable and debug.getmetatable(game)
-    local function handleNamecall(self, ...)
-        local method = getnamecallmethod and getnamecallmethod()
-        local args = {...}
-        if not checkcaller() then
-            if method == "InvokeServer" and tostring(self) == "RemoteFunction" and env.enabledGunBot then
-                return nil
-            end
-        end
-        return hookFunc(self, unpack(args))
-    end
-    if hookmetamethod and newcclosure then
-        hookFunc = hookmetamethod(game, "__namecall", newcclosure(handleNamecall))
-        success = true
-    elseif mt and setreadonly and newcclosure then
-        setreadonly(mt, false)
-        hookFunc = mt.__namecall
-        mt.__namecall = newcclosure(handleNamecall)
-        setreadonly(mt, true)
-        success = true
-    elseif hookmetamethod then
-        hookFunc = hookmetamethod(game, "__namecall", handleNamecall)
-        success = true
-    elseif mt and setreadonly then
-        setreadonly(mt, false)
-        hookFunc = mt.__namecall
-        mt.__namecall = handleNamecall
-        setreadonly(mt, true)
-        success = true
-    elseif mt and (makewriteable or make_writeable) then
-        (makewriteable or make_writeable)(mt)
-        hookFunc = mt.__namecall
-        mt.__namecall = handleNamecall
-        success = true
-    end
-    return success
+   local success, hookFunc = false, nil
+   if not getnamecallmethod or not checkcaller then return success end
+   local mt = getrawmetatable and getrawmetatable(game) or debug.getmetatable and debug.getmetatable(game)
+   local function handleNamecall(self, ...)
+       local method = getnamecallmethod and getnamecallmethod()
+       local args = {...}
+       if not checkcaller() then
+           if method == "InvokeServer" and tostring(self) == "RemoteFunction" and env.enabledGunBot then
+               return nil
+           end
+       end
+       return hookFunc(self, unpack(args))
+   end
+   if hookmetamethod and newcclosure then
+       hookFunc = hookmetamethod(game, "__namecall", newcclosure(handleNamecall))
+       success = true
+   elseif mt and setreadonly and newcclosure then
+       setreadonly(mt, false)
+       hookFunc = mt.__namecall
+       mt.__namecall = newcclosure(handleNamecall)
+       setreadonly(mt, true)
+       success = true
+   elseif hookmetamethod then
+       hookFunc = hookmetamethod(game, "__namecall", handleNamecall)
+       success = true
+   elseif mt and setreadonly then
+       setreadonly(mt, false)
+       hookFunc = mt.__namecall
+       mt.__namecall = handleNamecall
+       setreadonly(mt, true)
+       success = true
+   elseif mt and (makewriteable or make_writeable) then
+       (makewriteable or make_writeable)(mt)
+       hookFunc = mt.__namecall
+       mt.__namecall = handleNamecall
+       success = true
+   end
+   return success
 end
 
--- Enhanced Prediction System
-local PredictionData = {
-    positionHistory = {},
-    velocityHistory = {},
-    jumpHistory = {},
-    movementPatterns = {},
-    lastUpdate = {},
-    smoothingData = {}
-}
-
--- Ultra Enhanced Prediction (Fixed for accuracy)
-local function UltraEnhancedPrediction(targetPlayer, targetPos)
-    if not targetPlayer or not targetPlayer.Character then return targetPos end
-    
-    local character = targetPlayer.Character
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart then return targetPos end
-    
-    local currentTime = tick()
-    local playerId = targetPlayer.UserId
-    
-    -- Initialize tracking data
-    if not PredictionData.positionHistory[playerId] then
-        PredictionData.positionHistory[playerId] = {}
-        PredictionData.velocityHistory[playerId] = {}
-        PredictionData.jumpHistory[playerId] = {}
-        PredictionData.movementPatterns[playerId] = {
-            avgSpeed = 0,
-            zigzagFreq = 0,
-            jumpFreq = 0,
-            lastDirection = Vector3.new(0, 0, 0),
-            strafePattern = 0
-        }
-        PredictionData.smoothingData[playerId] = {
-            lastPrediction = targetPos,
-            confidence = 0.5
-        }
-    end
-    
-    local posHistory = PredictionData.positionHistory[playerId]
-    local velHistory = PredictionData.velocityHistory[playerId]
-    local jumpHistory = PredictionData.jumpHistory[playerId]
-    local patterns = PredictionData.movementPatterns[playerId]
-    local smoothing = PredictionData.smoothingData[playerId]
-    
-    -- Get current data
-    local currentVel = rootPart.Velocity
-    local currentSpeed = currentVel.Magnitude
-    local isJumping = humanoid.Jump or currentVel.Y > 12
-    
-    -- Update histories with size limits
-    table.insert(posHistory, {pos = targetPos, time = currentTime})
-    table.insert(velHistory, {vel = currentVel, time = currentTime, speed = currentSpeed})
-    table.insert(jumpHistory, {jump = isJumping, time = currentTime})
-    
-    -- Keep only recent data (optimized for performance)
-    local maxHistorySize = 8
-    if #posHistory > maxHistorySize then
-        table.remove(posHistory, 1)
-    end
-    if #velHistory > maxHistorySize then
-        table.remove(velHistory, 1)
-    end
-    if #jumpHistory > 6 then
-        table.remove(jumpHistory, 1)
-    end
-    
-    -- Fixed ping calculation for better accuracy
-    local ping = LocalPlayer:GetNetworkPing() * 1000
-    local compensationTime = (ping / 1000) + 0.08
-    
-    -- Fixed distance-based compensation
-    local distance = (targetPos - Root.Position).Magnitude
-    local distanceCompensation = math.min(distance / 120, 1.2)
-    compensationTime = compensationTime * distanceCompensation
-    
-    -- Simplified movement pattern analysis for accuracy
-    local directionChanges = 0
-    local avgAcceleration = Vector3.new(0, 0, 0)
-    
-    if #velHistory >= 3 then
-        local totalAccel = Vector3.new(0, 0, 0)
-        
-        for i = 2, #velHistory do
-            local prevVel = velHistory[i-1]
-            local currVel = velHistory[i]
-            local timeDiff = currVel.time - prevVel.time
-            
-            if timeDiff > 0 then
-                local accel = (currVel.vel - prevVel.vel) / timeDiff
-                totalAccel = totalAccel + accel
-                
-                -- Fixed direction change detection
-                if prevVel.speed > 3 and currVel.speed > 3 then
-                    local prevDir = prevVel.vel.Unit
-                    local currDir = currVel.vel.Unit
-                    local dotProduct = prevDir:Dot(currDir)
-                    if dotProduct < 0.7 then
-                        directionChanges = directionChanges + 1
-                    end
-                end
-            end
-        end
-        
-        avgAcceleration = totalAccel / (#velHistory - 1)
-        patterns.zigzagFreq = directionChanges / (#velHistory - 1)
-    end
-    
-    -- Jump pattern analysis
-    local jumpFrequency = 0
-    local recentJumps = 0
-    if #jumpHistory >= 2 then
-        for i = 1, #jumpHistory do
-            if jumpHistory[i].jump then
-                jumpFrequency = jumpFrequency + 1
-                if currentTime - jumpHistory[i].time < 0.5 then
-                    recentJumps = recentJumps + 1
-                end
-            end
-        end
-        jumpFrequency = jumpFrequency / #jumpHistory
-        patterns.jumpFreq = jumpFrequency
-    end
-    
-    -- Fixed prediction calculation
-    local basePrediction = targetPos + (currentVel * compensationTime)
-    
-    -- Improved acceleration compensation
-    if avgAcceleration.Magnitude > 0.5 then
-        basePrediction = basePrediction + (avgAcceleration * compensationTime * compensationTime * 0.4)
-    end
-    
-    -- Fixed zigzag prediction
-    local zigzagFactor = 0
-    if patterns.zigzagFreq > 0.25 and currentSpeed > 5 then
-        local zigzagIntensity = math.min(patterns.zigzagFreq * 1.5, 1.0)
-        local timeOffset = currentTime * (4 + zigzagIntensity * 2)
-        zigzagFactor = math.sin(timeOffset) * (currentSpeed * 0.15 * zigzagIntensity)
-        
-        local moveDirection = currentVel.Unit
-        local perpendicularDir = Vector3.new(-moveDirection.Z, 0, moveDirection.X)
-        basePrediction = basePrediction + (perpendicularDir * zigzagFactor)
-    end
-    
-    -- Fixed jump prediction
-    if isJumping or recentJumps > 0 then
-        local jumpTime = compensationTime
-        local gravityAccel = -196.2
-        
-        if patterns.jumpFreq > 0.3 then
-            local jumpCycle = math.sin(currentTime * 6) * 0.4 + 0.6
-            local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
-            basePrediction = basePrediction + Vector3.new(0, jumpOffset * jumpCycle, 0)
-        else
-            local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
-            basePrediction = basePrediction + Vector3.new(0, jumpOffset * 0.8, 0)
-        end
-    end
-    
-    -- Fixed smoothing for accuracy
-    local confidence = math.min(currentSpeed / 12, 1)
-    smoothing.confidence = (smoothing.confidence * 0.8) + (confidence * 0.2)
-    
-    local smoothingFactor = 0.2 + (smoothing.confidence * 0.3)
-    local finalPrediction = smoothing.lastPrediction:Lerp(basePrediction, smoothingFactor)
-    
-    smoothing.lastPrediction = finalPrediction
-    
-    return finalPrediction
+-- Enhanced Spark Prediction with Linear Velocity
+local function EnhancedSparkPrediction(targetPlayer, targetPos)
+   if not targetPlayer or not targetPlayer.Character then return targetPos end
+   
+   local character = targetPlayer.Character
+   local humanoid = character:FindFirstChild("Humanoid")
+   local rootPart = character:FindFirstChild("HumanoidRootPart")
+   
+   if not humanoid or not rootPart then return targetPos end
+   
+   -- Get linear velocity (horizontal only for better accuracy)
+   local velocity = rootPart.AssemblyLinearVelocity or rootPart.Velocity
+   local linearVelocity = velocity * Vector3.new(1, 0, 1) -- Remove Y component for linear prediction
+   local speed = linearVelocity.Magnitude
+   
+   if speed < 1 then return targetPos end
+   
+   -- Calculate distance and ping compensation
+   local myPosition = Root.Position
+   local distance = (targetPos - myPosition).Magnitude
+   local ping = LocalPlayer:GetNetworkPing()
+   
+   -- Enhanced prediction time calculation
+   local basePredictionTime = ping + 0.08
+   local distanceMultiplier = distance / 150
+   local predictionTime = basePredictionTime * (1 + distanceMultiplier * 0.3)
+   
+   -- Linear prediction with enhanced accuracy
+   local linearPrediction = linearVelocity * predictionTime * (distance / 100)
+   local predictedPos = targetPos + linearPrediction
+   
+   -- Enhanced jump prediction with proper physics
+   if humanoid.Jump or velocity.Y > 6 then
+       local jumpVelocity = velocity.Y
+       local gravity = -196.2
+       local jumpTime = predictionTime
+       
+       -- Calculate vertical displacement using kinematic equation
+       local verticalDisplacement = (jumpVelocity * jumpTime) + (0.5 * gravity * jumpTime * jumpTime)
+       predictedPos = predictedPos + Vector3.new(0, verticalDisplacement * 0.85, 0)
+   end
+   
+   -- Raycast prediction for better accuracy
+   local rayDirection = (predictedPos - myPosition).Unit * math.min(distance + 50, 300)
+   local raycastParams = RaycastParams.new()
+   raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+   raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+   
+   local raycastResult = workspace:Raycast(myPosition, rayDirection, raycastParams)
+   if raycastResult then
+       -- Adjust prediction if there's an obstacle
+       local hitDistance = (raycastResult.Position - myPosition).Magnitude
+       if hitDistance < distance then
+           predictedPos = raycastResult.Position
+       end
+   end
+   
+   return predictedPos
 end
 
--- Spark Method (Improved accuracy)
-local function ImprovedSparkPrediction(targetPlayer, targetPos)
-    if not targetPlayer or not targetPlayer.Character then return targetPos end
-    
-    local character = targetPlayer.Character
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart then return targetPos end
-    
-    local ping = LocalPlayer:GetNetworkPing() * 1000
-    local compensationTime = (ping / 1000) + 0.1
-    
-    local velocity = rootPart.Velocity
-    local speed = velocity.Magnitude
-    
-    if speed < 2 then return targetPos end
-    
-    -- Fixed distance-based compensation
-    local distance = (targetPos - Root.Position).Magnitude
-    compensationTime = compensationTime * math.min(distance / 80, 1.5)
-    
-    local predictedPos = targetPos + (velocity * compensationTime)
-    
-    -- Fixed jump prediction
-    if humanoid.Jump or velocity.Y > 6 then
-        local jumpTime = compensationTime
-        local gravityOffset = -196.2 * jumpTime * jumpTime * 0.5
-        predictedPos = predictedPos + Vector3.new(0, (velocity.Y * jumpTime) + gravityOffset * 0.9, 0)
-    end
-    
-    return predictedPos
-end
-
--- Fixed getMurdererTarget to prevent shooting everywhere
-local function getMurdererTargetWithPrediction(predictionMethod)
-    local success, data = pcall(function()
-        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-    
-    if not success or not data then return nil, false end
-    
-    -- Fixed murderer detection
-    local murdererFound = nil
-    for plr, plrData in pairs(data) do
-        if plrData.Role == "Murderer" and not plrData.Dead then
-            local player = Players:FindFirstChild(plr)
-            if player and player ~= LocalPlayer then
-                murdererFound = player
-                break
-            elseif player == LocalPlayer then
-                return nil, true -- We are the murderer
-            end
-        end
-    end
-    
-    if not murdererFound then return nil, false end
-    
-    local char = murdererFound.Character
-    if not char then return nil, false end
-    
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local basePos = hrp.Position
-        local predictedPos
-        
-        if predictionMethod == "Ultra" then
-            predictedPos = UltraEnhancedPrediction(murdererFound, basePos)
-        elseif predictionMethod == "Spark" then
-            predictedPos = ImprovedSparkPrediction(murdererFound, basePos)
-        else
-            predictedPos = basePos
-        end
-        
-        return predictedPos, false
-    end
-    
-    local head = char:FindFirstChild("Head")
-    if head then return head.Position, false end
-    
-    return nil, false
+-- Get murderer target with enhanced prediction
+local function getMurdererTargetWithPrediction()
+   local success, data = pcall(function()
+       return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+   end)
+   
+   if not success or not data then return nil, false end
+   
+   for plr, plrData in pairs(data) do
+       if plrData.Role == "Murderer" and not plrData.Dead then
+           local player = Players:FindFirstChild(plr)
+           if player then
+               if player == LocalPlayer then return nil, true end
+               local char = player.Character
+               if char then
+                   local hrp = char:FindFirstChild("HumanoidRootPart")
+                   if hrp then
+                       local basePos = hrp.Position
+                       local predictedPos = EnhancedSparkPrediction(player, basePos)
+                       return predictedPos, false
+                   end
+                   local head = char:FindFirstChild("Head")
+                   if head then return head.Position, false end
+               end
+           end
+       end
+   end
+   return nil, false
 end
 
 local isUseHook = check()
 
--- Updated prediction method selector
-local PredictionMethod = MainTab:AddDropdown({
-    Name = "Prediction Method",
-    Default = "Ultra",
-    Options = {"Ultra", "Spark"},
-    Callback = function(Value)
-        env.predictionMethod = Value
-    end    
-})
-
 local AimbotMem = MainTab:AddToggle({
-    Name = "Gun Silent Aim",
-    Default = false,
-    Callback = function(Value)
-        if isUseHook then
-            env.enabledGunBot = Value
-            env.GunBotConnection = env.GunBotConnection or {}
-            env.predictionMethod = env.predictionMethod or "Ultra"
-            
-            local function setupGunBot(character)
-                if not character then return end
-                local gun = character:FindFirstChild("Gun")
-                if not gun then
-                    if env.GunBotConnection.Connection then
-                        env.GunBotConnection.Connection:Disconnect()
-                        env.GunBotConnection.Connection = nil
-                    end
-                    return
-                end
-                local knifeScript = gun:FindFirstChild("KnifeLocal")
-                local cb = knifeScript and knifeScript:FindFirstChild("CreateBeam")
-                local remote = cb and cb:FindFirstChild("RemoteFunction")
-                if not knifeScript or not cb or not remote then return end
-                
-                if env.enabledGunBot then
-                    if env.GunBotConnection.Connection then
-                        env.GunBotConnection.Connection:Disconnect()
-                        env.GunBotConnection.Connection = nil
-                    end
-                    env.GunBotConnection.Connection = gun.Activated:Connect(function()
-                        local targetPos, isSelf = getMurdererTargetWithPrediction(env.predictionMethod)
-                        if targetPos and not isSelf and remote then
-                            remote:InvokeServer(1, targetPos, "AH2")
-                        end
-                    end)
-                else
-                    if env.GunBotConnection.Connection then
-                        env.GunBotConnection.Connection:Disconnect()
-                        env.GunBotConnection.Connection = nil
-                    end
-                end
-            end
-            
-            while env.enabledGunBot do
-                if Char and Char:FindFirstChild("Gun") then
-                    setupGunBot(Char)
-                end
-                task.wait(0.1)
-            end
-            
-            if not env.enabledGunBot then
-                if env.GunBotConnection.Connection then
-                    env.GunBotConnection.Connection:Disconnect()
-                    env.GunBotConnection.Connection = nil
-                end
-            end
-        else
-            if not env.AsChange then return end
-            if env.AsChange.Value then
-                env.AsChange:Set(false)
-                OrionLib:MakeNotification({
-                    Name = "Your Executor Is Not Support This Function",
-                    Content = "Sorry, use a better one",
-                    Image = "rbxassetid://7733658504",
-                    Time = 3
-                })
-            end
-        end
-    end    
+   Name = "Gun Silent Aim",
+   Default = false,
+   Callback = function(Value)
+       if isUseHook then
+           env.enabledGunBot = Value
+           env.GunBotConnection = env.GunBotConnection or {}
+           
+           local function setupGunBot(character)
+               if not character then return end
+               local gun = character:FindFirstChild("Gun")
+               if not gun then
+                   if env.GunBotConnection.Connection then
+                       env.GunBotConnection.Connection:Disconnect()
+                       env.GunBotConnection.Connection = nil
+                   end
+                   return
+               end
+               local knifeScript = gun:FindFirstChild("KnifeLocal")
+               local cb = knifeScript and knifeScript:FindFirstChild("CreateBeam")
+               local remote = cb and cb:FindFirstChild("RemoteFunction")
+               if not knifeScript or not cb or not remote then return end
+               
+               if env.enabledGunBot then
+                   if env.GunBotConnection.Connection then
+                       env.GunBotConnection.Connection:Disconnect()
+                       env.GunBotConnection.Connection = nil
+                   end
+                   env.GunBotConnection.Connection = gun.Activated:Connect(function()
+                       local targetPos, isSelf = getMurdererTargetWithPrediction()
+                       if not targetPos or isSelf or not remote then return end
+                       remote:InvokeServer(1, targetPos, "AH2")
+                   end)
+               else
+                   if env.GunBotConnection.Connection then
+                       env.GunBotConnection.Connection:Disconnect()
+                       env.GunBotConnection.Connection = nil
+                   end
+               end
+           end
+           
+           while env.enabledGunBot do
+               if Char and Char:FindFirstChild("Gun") then
+                   setupGunBot(Char)
+               end
+               task.wait(0.1)
+           end
+           
+           if not env.enabledGunBot then
+               if env.GunBotConnection.Connection then
+                   env.GunBotConnection.Connection:Disconnect()
+                   env.GunBotConnection.Connection = nil
+               end
+           end
+       else
+           if not env.AsChange then return end
+           if env.AsChange.Value then
+               env.AsChange:Set(false)
+               OrionLib:MakeNotification({
+                   Name = "Your Executor Is Not Support This Function",
+                   Content = "Sorry, use a better one",
+                   Image = "rbxassetid://7733658504",
+                   Time = 3
+               })
+           end
+       end
+   end    
 })
 
 -- Auto Notify Role Toggle
@@ -1056,9 +878,8 @@ MainTab:AddToggle({
     Default = false,
     Callback = function(Value)
         env.TIMER_ENABLED = Value
-        local timerGui = nil
         local timerLoop = nil
-        local roundStartTime = nil
+        local timerGui = nil
         
         local function createTimerGui()
             if timerGui then timerGui:Destroy() end
@@ -1071,14 +892,14 @@ MainTab:AddToggle({
             local frame = Instance.new("Frame")
             frame.Name = "TimerFrame"
             frame.Parent = timerGui
-            frame.Size = UDim2.new(0, 120, 0, 35)
-            frame.Position = UDim2.new(0.5, -60, 0, 10) -- Top center
-            frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            frame.Size = UDim2.new(0, 120, 0, 40)
+            frame.Position = UDim2.new(0.5, -60, 0, 10) -- Centered at top
+            frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
             frame.BorderSizePixel = 0
             frame.BackgroundTransparency = 0.3
             
             local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 6)
+            corner.CornerRadius = UDim.new(0, 8)
             corner.Parent = frame
             
             local stroke = Instance.new("UIStroke")
@@ -1098,64 +919,48 @@ MainTab:AddToggle({
             timerLabel.TextSize = 18
             timerLabel.TextColor3 = Color3.new(1, 1, 1)
             timerLabel.Font = Enum.Font.GothamBold
-            timerLabel.Text = "0:00"
-            timerLabel.TextScaled = true
+            timerLabel.Text = "00:00"
+            timerLabel.TextScaled = false
             
             return timerLabel
         end
         
-        local function formatTime(seconds)
-            local minutes = math.floor(seconds / 60)
-            local remainingSeconds = seconds % 60
-            return string.format("%d:%02d", minutes, remainingSeconds)
-        end
-        
-        local function detectRoundStart()
-            local success, data = pcall(function()
-                return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+        local function updateTimer()
+            local success, timeLeft = pcall(function()
+                return game:GetService("ReplicatedStorage").Remotes.Extras.GetTimer:InvokeServer()
             end)
             
-            if success and data then
-                for plr, plrData in pairs(data) do
-                    if plrData.Role and plrData.Role ~= "Spectator" then
-                        return true -- Round is active
-                    end
-                end
-            end
-            return false -- No active round
-        end
-        
-        local function updateTimer()
-            if not timerGui then return end
-            
-            local timerLabel = timerGui:FindFirstChild("TimerFrame") and timerGui.TimerFrame:FindFirstChild("TimerLabel")
-            if not timerLabel then return end
-            
-            local isRoundActive = detectRoundStart()
-            
-            if isRoundActive and not roundStartTime then
-                roundStartTime = tick() -- Start new round timer
-            elseif not isRoundActive and roundStartTime then
-                roundStartTime = nil -- Reset when round ends
-                timerLabel.Text = "0:00"
-                return
+            if not success or not timeLeft then
+                return "00:00"
             end
             
-            if roundStartTime then
-                local elapsedTime = math.floor(tick() - roundStartTime)
-                timerLabel.Text = formatTime(elapsedTime)
-            else
-                timerLabel.Text = "0:00"
-            end
+            -- Convert seconds to MM:SS format
+            local minutes = math.floor(timeLeft / 60)
+            local seconds = math.floor(timeLeft % 60)
+            
+            return string.format("%02d:%02d", minutes, seconds)
         end
         
         local function startTimer()
             if timerLoop then return end
-            createTimerGui()
+            local timerLabel = createTimerGui()
             
             timerLoop = task.spawn(function()
                 while env.TIMER_ENABLED do
-                    pcall(updateTimer)
+                    if timerLabel and timerLabel.Parent then
+                        local timeText = updateTimer()
+                        timerLabel.Text = timeText
+                        
+                        -- Change color based on time remaining
+                        local timeValue = tonumber(timeText:match("(%d+):")) * 60 + tonumber(timeText:match(":(%d+)"))
+                        if timeValue and timeValue <= 30 then
+                            timerLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red when low
+                        elseif timeValue and timeValue <= 60 then
+                            timerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Yellow when medium
+                        else
+                            timerLabel.TextColor3 = Color3.new(1, 1, 1) -- White when high
+                        end
+                    end
                     task.wait(1) -- Update every second
                 end
                 if timerGui then
@@ -1177,7 +982,6 @@ MainTab:AddToggle({
                 timerGui:Destroy()
                 timerGui = nil
             end
-            roundStartTime = nil
         end
     end
 })
