@@ -557,8 +557,240 @@ local function check()
    return success
 end
 
--- Enhanced Spark Prediction with Linear Velocity
-local function EnhancedSparkPrediction(targetPlayer, targetPos)
+-- Advanced Prediction Data Storage with Machine Learning-like Pattern Recognition
+local PredictionData = {}
+local NetworkCompensation = {
+   pingHistory = {},
+   avgPing = 0,
+   jitterCompensation = 0,
+   lastPingUpdate = 0
+}
+
+-- Kalman Filter-like Position Smoothing
+local function createKalmanFilter(initialValue)
+   return {
+       estimate = initialValue,
+       errorEstimate = 1.0,
+       measurementNoise = 0.1,
+       processNoise = 0.01,
+       kalmanGain = 0
+   }
+end
+
+local function updateKalmanFilter(filter, measurement)
+   -- Prediction step
+   filter.errorEstimate = filter.errorEstimate + filter.processNoise
+   
+   -- Update step
+   filter.kalmanGain = filter.errorEstimate / (filter.errorEstimate + filter.measurementNoise)
+   filter.estimate = filter.estimate + filter.kalmanGain * (measurement - filter.estimate)
+   filter.errorEstimate = (1 - filter.kalmanGain) * filter.errorEstimate
+   
+   return filter.estimate
+end
+
+-- Network Prediction with Adaptive Compensation
+local function updateNetworkMetrics()
+   local currentTime = tick()
+   if currentTime - NetworkCompensation.lastPingUpdate > 0.1 then
+       local ping = LocalPlayer:GetNetworkPing() * 1000
+       
+       table.insert(NetworkCompensation.pingHistory, {ping = ping, time = currentTime})
+       
+       if #NetworkCompensation.pingHistory > 20 then
+           table.remove(NetworkCompensation.pingHistory, 1)
+       end
+       
+       -- Calculate average ping and jitter
+       local totalPing = 0
+       local maxPing = 0
+       local minPing = math.huge
+       
+       for _, data in ipairs(NetworkCompensation.pingHistory) do
+           totalPing = totalPing + data.ping
+           maxPing = math.max(maxPing, data.ping)
+           minPing = math.min(minPing, data.ping)
+       end
+       
+       NetworkCompensation.avgPing = totalPing / #NetworkCompensation.pingHistory
+       NetworkCompensation.jitterCompensation = (maxPing - minPing) / 2
+       NetworkCompensation.lastPingUpdate = currentTime
+   end
+end
+
+-- Advanced Movement Pattern Analysis
+local function analyzeMovementPattern(data, currentVelocity)
+   local pattern = {
+       isStrafing = false,
+       strafeIntensity = 0,
+       isCircling = false,
+       circleRadius = 0,
+       isJumpSpamming = false,
+       movementEntropy = 0,
+       predictability = 0.5
+   }
+   
+   if #data.velocityHistory < 5 then return pattern end
+   
+   -- Analyze velocity changes for strafing
+   local directionChanges = 0
+   local totalAngleChange = 0
+   local speeds = {}
+   
+   for i = 2, #data.velocityHistory do
+       local prev = data.velocityHistory[i-1]
+       local curr = data.velocityHistory[i]
+       
+       if prev.vel.Magnitude > 2 and curr.vel.Magnitude > 2 then
+           local prevDir = prev.vel.Unit
+           local currDir = curr.vel.Unit
+           local dot = prevDir:Dot(currDir)
+           local angle = math.acos(math.clamp(dot, -1, 1))
+           
+           totalAngleChange = totalAngleChange + angle
+           
+           if angle > math.rad(30) then
+               directionChanges = directionChanges + 1
+           end
+       end
+       
+       table.insert(speeds, curr.vel.Magnitude)
+   end
+   
+   -- Calculate strafing pattern
+   pattern.isStrafing = directionChanges >= 3
+   pattern.strafeIntensity = math.min(directionChanges / (#data.velocityHistory - 1), 1)
+   
+   -- Detect circular movement
+   if #data.positionHistory >= 8 then
+       local positions = {}
+       for i = math.max(1, #data.positionHistory - 7), #data.positionHistory do
+           table.insert(positions, data.positionHistory[i].pos)
+       end
+       
+       -- Calculate center of movement
+       local center = Vector3.new(0, 0, 0)
+       for _, pos in ipairs(positions) do
+           center = center + pos
+       end
+       center = center / #positions
+       
+       -- Check if movement forms a circle
+       local distances = {}
+       for _, pos in ipairs(positions) do
+           table.insert(distances, (pos - center).Magnitude)
+       end
+       
+       local avgDistance = 0
+       for _, dist in ipairs(distances) do
+           avgDistance = avgDistance + dist
+       end
+       avgDistance = avgDistance / #distances
+       
+       local variance = 0
+       for _, dist in ipairs(distances) do
+           variance = variance + (dist - avgDistance) ^ 2
+       end
+       variance = variance / #distances
+       
+       if variance < 5 and avgDistance > 3 then
+           pattern.isCircling = true
+           pattern.circleRadius = avgDistance
+       end
+   end
+   
+   -- Jump spam detection
+   if #data.jumpHistory >= 4 then
+       local recentJumps = 0
+       local currentTime = tick()
+       for _, jump in ipairs(data.jumpHistory) do
+           if currentTime - jump.time < 2 and jump.isJumping then
+               recentJumps = recentJumps + 1
+           end
+       end
+       pattern.isJumpSpamming = recentJumps >= 3
+   end
+   
+   -- Calculate movement entropy (unpredictability)
+   local speedVariance = 0
+   local avgSpeed = 0
+   for _, speed in ipairs(speeds) do
+       avgSpeed = avgSpeed + speed
+   end
+   avgSpeed = avgSpeed / #speeds
+   
+   for _, speed in ipairs(speeds) do
+       speedVariance = speedVariance + (speed - avgSpeed) ^ 2
+   end
+   speedVariance = speedVariance / #speeds
+   
+   pattern.movementEntropy = math.min(speedVariance / 100, 1)
+   pattern.predictability = 1 - (pattern.movementEntropy * 0.5 + pattern.strafeIntensity * 0.3 + (pattern.isJumpSpamming and 0.2 or 0))
+   
+   return pattern
+end
+
+-- Physics-Based Trajectory Prediction
+local function predictTrajectory(position, velocity, acceleration, time, includeGravity)
+   local result = position + (velocity * time)
+   
+   if acceleration.Magnitude > 0.1 then
+       result = result + (0.5 * acceleration * time * time)
+   end
+   
+   if includeGravity then
+       local gravity = Vector3.new(0, -196.2, 0)
+       result = result + (0.5 * gravity * time * time)
+   end
+   
+   return result
+end
+
+-- Machine Learning-Inspired Weight Adjustment
+local function calculatePredictionWeights(pattern, distance, speed)
+   local weights = {
+       linear = 0.7,
+       acceleration = 0.2,
+       pattern = 0.1
+   }
+   
+   -- Adjust weights based on movement pattern
+   if pattern.isStrafing then
+       weights.pattern = weights.pattern + 0.15
+       weights.linear = weights.linear - 0.1
+   end
+   
+   if pattern.isCircling then
+       weights.pattern = weights.pattern + 0.2
+       weights.linear = weights.linear - 0.15
+       weights.acceleration = weights.acceleration - 0.05
+   end
+   
+   if pattern.isJumpSpamming then
+       weights.pattern = weights.pattern + 0.1
+       weights.acceleration = weights.acceleration + 0.05
+       weights.linear = weights.linear - 0.15
+   end
+   
+   -- Distance-based adjustment
+   local distanceFactor = math.min(distance / 100, 2)
+   weights.linear = weights.linear * (1 + distanceFactor * 0.1)
+   
+   -- Speed-based adjustment
+   local speedFactor = math.min(speed / 20, 1.5)
+   weights.acceleration = weights.acceleration * speedFactor
+   
+   -- Normalize weights
+   local totalWeight = weights.linear + weights.acceleration + weights.pattern
+   weights.linear = weights.linear / totalWeight
+   weights.acceleration = weights.acceleration / totalWeight
+   weights.pattern = weights.pattern / totalWeight
+   
+   return weights
+end
+
+-- Ultra-Advanced Prediction Function
+local function AccuratePrediction(targetPlayer, targetPos)
    if not targetPlayer or not targetPlayer.Character then return targetPos end
    
    local character = targetPlayer.Character
@@ -567,57 +799,211 @@ local function EnhancedSparkPrediction(targetPlayer, targetPos)
    
    if not humanoid or not rootPart then return targetPos end
    
-   -- Get linear velocity (horizontal only for better accuracy)
-   local velocity = rootPart.AssemblyLinearVelocity or rootPart.Velocity
-   local linearVelocity = velocity * Vector3.new(1, 0, 1) -- Remove Y component for linear prediction
-   local speed = linearVelocity.Magnitude
+   local playerId = targetPlayer.UserId
+   local currentTime = tick()
    
-   if speed < 1 then return targetPos end
+   -- Update network metrics
+   updateNetworkMetrics()
    
-   -- Calculate distance and ping compensation
-   local myPosition = Root.Position
-   local distance = (targetPos - myPosition).Magnitude
-   local ping = LocalPlayer:GetNetworkPing()
-   
-   -- Enhanced prediction time calculation
-   local basePredictionTime = ping + 0.08
-   local distanceMultiplier = distance / 150
-   local predictionTime = basePredictionTime * (1 + distanceMultiplier * 0.3)
-   
-   -- Linear prediction with enhanced accuracy
-   local linearPrediction = linearVelocity * predictionTime * (distance / 100)
-   local predictedPos = targetPos + linearPrediction
-   
-   -- Enhanced jump prediction with proper physics
-   if humanoid.Jump or velocity.Y > 6 then
-       local jumpVelocity = velocity.Y
-       local gravity = -196.2
-       local jumpTime = predictionTime
-       
-       -- Calculate vertical displacement using kinematic equation
-       local verticalDisplacement = (jumpVelocity * jumpTime) + (0.5 * gravity * jumpTime * jumpTime)
-       predictedPos = predictedPos + Vector3.new(0, verticalDisplacement * 0.85, 0)
+   -- Initialize prediction data for player
+   if not PredictionData[playerId] then
+       PredictionData[playerId] = {
+           positionHistory = {},
+           velocityHistory = {},
+           accelerationHistory = {},
+           jumpHistory = {},
+           lastUpdate = currentTime,
+           positionFilter = createKalmanFilter(targetPos),
+           velocityFilter = createKalmanFilter(Vector3.new(0, 0, 0)),
+           confidence = 0.5,
+           adaptiveFactors = {
+               pingCompensation = 1.0,
+               distanceCompensation = 1.0,
+               speedCompensation = 1.0
+           }
+       }
    end
    
-   -- Raycast prediction for better accuracy
-   local rayDirection = (predictedPos - myPosition).Unit * math.min(distance + 50, 300)
-   local raycastParams = RaycastParams.new()
-   raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-   raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+   local data = PredictionData[playerId]
+   local deltaTime = currentTime - data.lastUpdate
    
-   local raycastResult = workspace:Raycast(myPosition, rayDirection, raycastParams)
-   if raycastResult then
-       -- Adjust prediction if there's an obstacle
-       local hitDistance = (raycastResult.Position - myPosition).Magnitude
-       if hitDistance < distance then
-           predictedPos = raycastResult.Position
+   -- Get current movement data
+   local currentVelocity = rootPart.AssemblyLinearVelocity or rootPart.Velocity
+   local currentSpeed = currentVelocity.Magnitude
+   local isJumping = humanoid.Jump or currentVelocity.Y > 12 or humanoid:GetState() == Enum.HumanoidStateType.Jumping
+   
+   -- Apply Kalman filtering for smooth position tracking
+   local filteredPosition = updateKalmanFilter(data.positionFilter, targetPos)
+   local filteredVelocity = updateKalmanFilter(data.velocityFilter, currentVelocity)
+   
+   -- Update histories with time-based filtering
+   table.insert(data.positionHistory, {pos = filteredPosition, time = currentTime})
+   table.insert(data.velocityHistory, {vel = filteredVelocity, time = currentTime, speed = currentSpeed})
+   table.insert(data.jumpHistory, {isJumping = isJumping, time = currentTime})
+   
+   -- Calculate acceleration from velocity history
+   if #data.velocityHistory >= 2 then
+       local prevVel = data.velocityHistory[#data.velocityHistory - 1]
+       local acceleration = (filteredVelocity - prevVel.vel) / deltaTime
+       table.insert(data.accelerationHistory, {accel = acceleration, time = currentTime})
+   end
+   
+   -- Maintain history size for performance
+   local maxHistorySize = 15
+   if #data.positionHistory > maxHistorySize then table.remove(data.positionHistory, 1) end
+   if #data.velocityHistory > maxHistorySize then table.remove(data.velocityHistory, 1) end
+   if #data.accelerationHistory > maxHistorySize then table.remove(data.accelerationHistory, 1) end
+   if #data.jumpHistory > 10 then table.remove(data.jumpHistory, 1) end
+   
+   -- Analyze movement patterns
+   local movementPattern = analyzeMovementPattern(data, currentVelocity)
+   
+   -- Calculate distance and base prediction time
+   local myPosition = Root.Position
+   local distance = (targetPos - myPosition).Magnitude
+   local basePredictionTime = (NetworkCompensation.avgPing / 1000) + (NetworkCompensation.jitterCompensation / 2000)
+   
+   -- Advanced prediction time calculation with adaptive factors
+   local distanceCompensation = math.min(distance / 150, 2.0)
+   local speedCompensation = math.min(currentSpeed / 25, 1.8)
+   local confidenceCompensation = 1.0 + (data.confidence - 0.5) * 0.4
+   
+   -- Apply machine learning-like adaptive factors
+   data.adaptiveFactors.pingCompensation = data.adaptiveFactors.pingCompensation * 0.95 + (basePredictionTime * 20) * 0.05
+   data.adaptiveFactors.distanceCompensation = data.adaptiveFactors.distanceCompensation * 0.95 + distanceCompensation * 0.05
+   data.adaptiveFactors.speedCompensation = data.adaptiveFactors.speedCompensation * 0.95 + speedCompensation * 0.05
+   
+   local predictionTime = basePredictionTime * data.adaptiveFactors.distanceCompensation * data.adaptiveFactors.speedCompensation * confidenceCompensation
+   predictionTime = math.clamp(predictionTime, 0.05, 0.8) -- Reasonable bounds
+   
+   -- Multi-method prediction ensemble
+   local predictions = {}
+   
+   -- 1. Linear prediction
+   local linearPrediction = targetPos + (filteredVelocity * predictionTime)
+   predictions.linear = linearPrediction
+   
+   -- 2. Acceleration-based prediction
+   local accelerationPrediction = linearPrediction
+   if #data.accelerationHistory >= 2 then
+       local recentAccel = Vector3.new(0, 0, 0)
+       for i = math.max(1, #data.accelerationHistory - 3), #data.accelerationHistory do
+           recentAccel = recentAccel + data.accelerationHistory[i].accel
+       end
+       recentAccel = recentAccel / math.min(#data.accelerationHistory, 3)
+       
+       accelerationPrediction = predictTrajectory(targetPos, filteredVelocity, recentAccel, predictionTime, false)
+   end
+   predictions.acceleration = accelerationPrediction
+   
+   -- 3. Pattern-based prediction
+   local patternPrediction = linearPrediction
+   
+   if movementPattern.isStrafing then
+       -- Predict strafe pattern using sine wave approximation
+       local strafeFrequency = 5 + movementPattern.strafeIntensity * 3
+       local strafeAmplitude = currentSpeed * 0.3 * movementPattern.strafeIntensity
+       local strafePhase = currentTime * strafeFrequency
+       
+       local perpendicularDir = Vector3.new(-filteredVelocity.Z, 0, filteredVelocity.X)
+       if perpendicularDir.Magnitude > 0 then
+           perpendicularDir = perpendicularDir.Unit
+           local strafeOffset = perpendicularDir * (math.sin(strafePhase) * strafeAmplitude)
+           patternPrediction = patternPrediction + strafeOffset
        end
    end
    
-   return predictedPos
+   if movementPattern.isCircling then
+       -- Predict circular movement
+       local angularVelocity = currentSpeed / movementPattern.circleRadius
+       local futureAngle = angularVelocity * predictionTime
+       
+       local centerOffset = targetPos - myPosition
+       local rotatedOffset = Vector3.new(
+           centerOffset.X * math.cos(futureAngle) - centerOffset.Z * math.sin(futureAngle),
+           centerOffset.Y,
+           centerOffset.X * math.sin(futureAngle) + centerOffset.Z * math.cos(futureAngle)
+       )
+       patternPrediction = myPosition + rotatedOffset
+   end
+   
+   predictions.pattern = patternPrediction
+   
+   -- Calculate prediction weights based on analysis
+   local weights = calculatePredictionWeights(movementPattern, distance, currentSpeed)
+   
+   -- Weighted ensemble prediction
+   local finalPrediction = (predictions.linear * weights.linear) + 
+                          (predictions.acceleration * weights.acceleration) + 
+                          (predictions.pattern * weights.pattern)
+   
+   -- Advanced jump prediction with physics simulation
+   if isJumping or movementPattern.isJumpSpamming then
+       local jumpVelocity = currentVelocity.Y
+       local gravity = -196.2
+       local jumpTime = predictionTime
+       
+       -- Simulate jump trajectory
+       local verticalDisplacement = (jumpVelocity * jumpTime) + (0.5 * gravity * jumpTime * jumpTime)
+       
+       -- Adjust for jump spam pattern
+       if movementPattern.isJumpSpamming then
+           local jumpCycle = math.sin(currentTime * 12) * 0.4 + 0.6
+           verticalDisplacement = verticalDisplacement * jumpCycle
+       end
+       
+       finalPrediction = finalPrediction + Vector3.new(0, verticalDisplacement * 0.85, 0)
+   end
+   
+   -- Raycast-based obstacle avoidance and validation
+   local rayDirection = (finalPrediction - myPosition)
+   local rayDistance = rayDirection.Magnitude
+   if rayDistance > 0 then
+       rayDirection = rayDirection.Unit * math.min(rayDistance, 500)
+       
+       local raycastParams = RaycastParams.new()
+       raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+       raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPlayer.Character}
+       raycastParams.IgnoreWater = true
+       
+       local raycastResult = workspace:Raycast(myPosition, rayDirection, raycastParams)
+       if raycastResult then
+           local hitDistance = (raycastResult.Position - myPosition).Magnitude
+           if hitDistance < rayDistance * 0.9 then
+               -- Adjust prediction to avoid obstacle
+               local obstacleAvoidance = raycastResult.Normal * 3
+               finalPrediction = raycastResult.Position + obstacleAvoidance
+           end
+       end
+   end
+   
+   -- Update confidence based on prediction accuracy
+   if data.lastPrediction then
+       local actualMovement = targetPos - data.lastActualPosition
+       local predictedMovement = data.lastPrediction - data.lastActualPosition
+       
+       if actualMovement.Magnitude > 0.5 then
+           local accuracy = 1 - math.min((actualMovement - predictedMovement).Magnitude / actualMovement.Magnitude, 1)
+           data.confidence = data.confidence * 0.9 + accuracy * 0.1
+       end
+   end
+   
+   -- Store for next iteration
+   data.lastPrediction = finalPrediction
+   data.lastActualPosition = targetPos
+   data.lastUpdate = currentTime
+   
+   -- Confidence-based smoothing to reduce jitter
+   local smoothingFactor = 0.15 + (data.confidence * 0.25)
+   if data.smoothedPrediction then
+       finalPrediction = data.smoothedPrediction:lerp(finalPrediction, smoothingFactor)
+   end
+   data.smoothedPrediction = finalPrediction
+   
+   return finalPrediction
 end
 
--- Get murderer target with enhanced prediction
+-- Enhanced target acquisition with role validation
 local function getMurdererTargetWithPrediction()
    local success, data = pcall(function()
        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
@@ -625,26 +1011,59 @@ local function getMurdererTargetWithPrediction()
    
    if not success or not data then return nil, false end
    
+   -- Find murderer with enhanced validation
+   local murdererPlayer = nil
+   local murdererData = nil
+   
    for plr, plrData in pairs(data) do
        if plrData.Role == "Murderer" and not plrData.Dead then
            local player = Players:FindFirstChild(plr)
            if player then
-               if player == LocalPlayer then return nil, true end
-               local char = player.Character
-               if char then
-                   local hrp = char:FindFirstChild("HumanoidRootPart")
-                   if hrp then
-                       local basePos = hrp.Position
-                       local predictedPos = EnhancedSparkPrediction(player, basePos)
-                       return predictedPos, false
-                   end
-                   local head = char:FindFirstChild("Head")
-                   if head then return head.Position, false end
+               if player == LocalPlayer then 
+                   return nil, true -- We are the murderer
+               end
+               
+               -- Validate player is actually in game and has character
+               if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                   murdererPlayer = player
+                   murdererData = plrData
+                   break
                end
            end
        end
    end
-   return nil, false
+   
+   if not murdererPlayer then return nil, false end
+   
+   local character = murdererPlayer.Character
+   if not character then return nil, false end
+   
+   -- Prioritize HumanoidRootPart for better prediction
+   local targetPart = character:FindFirstChild("HumanoidRootPart")
+   if not targetPart then
+       targetPart = character:FindFirstChild("Head")
+       if not targetPart then
+           targetPart = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+       end
+   end
+   
+   if not targetPart then return nil, false end
+   
+   -- Apply advanced prediction
+   local basePos = targetPart.Position
+   local predictedPos = AccuratePrediction(murdererPlayer, basePos)
+   
+   -- Additional validation - ensure prediction is reasonable
+   local distance = (predictedPos - Root.Position).Magnitude
+   local originalDistance = (basePos - Root.Position).Magnitude
+   
+   -- If prediction is too far from original position, fall back to simpler prediction
+   if (predictedPos - basePos).Magnitude > originalDistance * 0.5 then
+       local simpleVelocity = targetPart.Parent:FindFirstChild("HumanoidRootPart").Velocity
+       predictedPos = basePos + (simpleVelocity * 0.15)
+   end
+   
+   return predictedPos, false
 end
 
 local isUseHook = check()
@@ -667,6 +1086,7 @@ local AimbotMem = MainTab:AddToggle({
                    end
                    return
                end
+               
                local knifeScript = gun:FindFirstChild("KnifeLocal")
                local cb = knifeScript and knifeScript:FindFirstChild("CreateBeam")
                local remote = cb and cb:FindFirstChild("RemoteFunction")
@@ -677,10 +1097,20 @@ local AimbotMem = MainTab:AddToggle({
                        env.GunBotConnection.Connection:Disconnect()
                        env.GunBotConnection.Connection = nil
                    end
+                   
                    env.GunBotConnection.Connection = gun.Activated:Connect(function()
+                       -- Add small human-like delay
+                       local humanDelay = math.random(5, 25) / 1000
+                       task.wait(humanDelay)
+                       
                        local targetPos, isSelf = getMurdererTargetWithPrediction()
-                       if not targetPos or isSelf or not remote then return end
-                       remote:InvokeServer(1, targetPos, "AH2")
+                       if targetPos and not isSelf and remote then
+                           -- Validate target is still valid before shooting
+                           local distance = (targetPos - Root.Position).Magnitude
+                           if distance > 10 and distance < 300 then -- Reasonable range check
+                               remote:InvokeServer(1, targetPos, "AH2")
+                           end
+                       end
                    end)
                else
                    if env.GunBotConnection.Connection then
@@ -690,19 +1120,21 @@ local AimbotMem = MainTab:AddToggle({
                end
            end
            
-           while env.enabledGunBot do
-               if Char and Char:FindFirstChild("Gun") then
-                   setupGunBot(Char)
+           -- Enhanced connection management
+           task.spawn(function()
+               while env.enabledGunBot do
+                   if Char and Char:FindFirstChild("Gun") then
+                       setupGunBot(Char)
+                   end
+                   task.wait(0.1)
                end
-               task.wait(0.1)
-           end
-           
-           if not env.enabledGunBot then
+               
+               -- Clean up when disabled
                if env.GunBotConnection.Connection then
                    env.GunBotConnection.Connection:Disconnect()
                    env.GunBotConnection.Connection = nil
                end
-           end
+           end)
        else
            if not env.AsChange then return end
            if env.AsChange.Value then
@@ -717,6 +1149,7 @@ local AimbotMem = MainTab:AddToggle({
        end
    end    
 })
+   
 
 -- Auto Notify Role Toggle
 MainTab:AddToggle({
