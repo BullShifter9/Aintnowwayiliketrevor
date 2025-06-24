@@ -567,7 +567,7 @@ local PredictionData = {
     smoothingData = {}
 }
 
--- Ultra Enhanced Prediction
+-- Ultra Enhanced Prediction (Fixed for accuracy)
 local function UltraEnhancedPrediction(targetPlayer, targetPos)
     if not targetPlayer or not targetPlayer.Character then return targetPos end
     
@@ -615,36 +615,32 @@ local function UltraEnhancedPrediction(targetPlayer, targetPos)
     table.insert(jumpHistory, {jump = isJumping, time = currentTime})
     
     -- Keep only recent data (optimized for performance)
-    local maxHistorySize = 15
+    local maxHistorySize = 8
     if #posHistory > maxHistorySize then
         table.remove(posHistory, 1)
     end
     if #velHistory > maxHistorySize then
         table.remove(velHistory, 1)
     end
-    if #jumpHistory > 10 then
+    if #jumpHistory > 6 then
         table.remove(jumpHistory, 1)
     end
     
-    -- Enhanced ping calculation with stability
+    -- Fixed ping calculation for better accuracy
     local ping = LocalPlayer:GetNetworkPing() * 1000
-    local stabilizedPing = math.max(ping, 50) -- Minimum 50ms for stability
-    local compensationTime = (stabilizedPing / 1000) + 0.12 -- Reduced base compensation
+    local compensationTime = (ping / 1000) + 0.08
     
-    -- Distance-based compensation adjustment
+    -- Fixed distance-based compensation
     local distance = (targetPos - Root.Position).Magnitude
-    local distanceCompensation = math.min(distance / 80, 2.0) -- Scale with distance
+    local distanceCompensation = math.min(distance / 120, 1.2)
     compensationTime = compensationTime * distanceCompensation
     
-    -- Advanced movement pattern analysis
+    -- Simplified movement pattern analysis for accuracy
     local directionChanges = 0
     local avgAcceleration = Vector3.new(0, 0, 0)
-    local velocityConsistency = 1.0
     
-    if #velHistory >= 4 then
+    if #velHistory >= 3 then
         local totalAccel = Vector3.new(0, 0, 0)
-        local speedVariation = 0
-        local avgSpeed = 0
         
         for i = 2, #velHistory do
             local prevVel = velHistory[i-1]
@@ -652,20 +648,15 @@ local function UltraEnhancedPrediction(targetPlayer, targetPos)
             local timeDiff = currVel.time - prevVel.time
             
             if timeDiff > 0 then
-                -- Calculate acceleration
                 local accel = (currVel.vel - prevVel.vel) / timeDiff
                 totalAccel = totalAccel + accel
                 
-                -- Track speed changes
-                speedVariation = speedVariation + math.abs(currVel.speed - prevVel.speed)
-                avgSpeed = avgSpeed + currVel.speed
-                
-                -- Direction change detection (improved)
-                if prevVel.speed > 5 and currVel.speed > 5 then
+                -- Fixed direction change detection
+                if prevVel.speed > 3 and currVel.speed > 3 then
                     local prevDir = prevVel.vel.Unit
                     local currDir = currVel.vel.Unit
                     local dotProduct = prevDir:Dot(currDir)
-                    if dotProduct < 0.5 then -- More sensitive direction change
+                    if dotProduct < 0.7 then
                         directionChanges = directionChanges + 1
                     end
                 end
@@ -673,22 +664,17 @@ local function UltraEnhancedPrediction(targetPlayer, targetPos)
         end
         
         avgAcceleration = totalAccel / (#velHistory - 1)
-        avgSpeed = avgSpeed / (#velHistory - 1)
-        velocityConsistency = math.max(0.1, 1 - (speedVariation / math.max(avgSpeed * #velHistory, 1)))
-        
-        -- Update patterns
-        patterns.avgSpeed = avgSpeed
         patterns.zigzagFreq = directionChanges / (#velHistory - 1)
     end
     
-    -- Jump pattern analysis (enhanced)
+    -- Jump pattern analysis
     local jumpFrequency = 0
     local recentJumps = 0
-    if #jumpHistory >= 3 then
+    if #jumpHistory >= 2 then
         for i = 1, #jumpHistory do
             if jumpHistory[i].jump then
                 jumpFrequency = jumpFrequency + 1
-                if currentTime - jumpHistory[i].time < 0.8 then
+                if currentTime - jumpHistory[i].time < 0.5 then
                     recentJumps = recentJumps + 1
                 end
             end
@@ -697,61 +683,54 @@ local function UltraEnhancedPrediction(targetPlayer, targetPos)
         patterns.jumpFreq = jumpFrequency
     end
     
-    -- Advanced prediction calculation
+    -- Fixed prediction calculation
     local basePrediction = targetPos + (currentVel * compensationTime)
     
-    -- Acceleration compensation (enhanced)
-    if avgAcceleration.Magnitude > 0.1 then
-        basePrediction = basePrediction + (avgAcceleration * compensationTime * compensationTime * 0.8)
+    -- Improved acceleration compensation
+    if avgAcceleration.Magnitude > 0.5 then
+        basePrediction = basePrediction + (avgAcceleration * compensationTime * compensationTime * 0.4)
     end
     
-    -- Zigzag prediction (much improved)
+    -- Fixed zigzag prediction
     local zigzagFactor = 0
-    if patterns.zigzagFreq > 0.3 and currentSpeed > 8 then
-        -- Advanced zigzag prediction using sine wave approximation
-        local zigzagIntensity = math.min(patterns.zigzagFreq * 2, 1.5)
-        local timeOffset = currentTime * (6 + zigzagIntensity * 4)
-        zigzagFactor = math.sin(timeOffset) * (currentSpeed * 0.25 * zigzagIntensity)
+    if patterns.zigzagFreq > 0.25 and currentSpeed > 5 then
+        local zigzagIntensity = math.min(patterns.zigzagFreq * 1.5, 1.0)
+        local timeOffset = currentTime * (4 + zigzagIntensity * 2)
+        zigzagFactor = math.sin(timeOffset) * (currentSpeed * 0.15 * zigzagIntensity)
         
-        -- Calculate perpendicular direction for strafe
         local moveDirection = currentVel.Unit
         local perpendicularDir = Vector3.new(-moveDirection.Z, 0, moveDirection.X)
         basePrediction = basePrediction + (perpendicularDir * zigzagFactor)
     end
     
-    -- Enhanced jump prediction
+    -- Fixed jump prediction
     if isJumping or recentJumps > 0 then
-        local jumpPower = 50 -- Default Roblox jump power
         local jumpTime = compensationTime
-        local gravityAccel = -196.2 -- Roblox gravity
+        local gravityAccel = -196.2
         
-        if patterns.jumpFreq > 0.4 then
-            -- Spam jumping pattern
-            local jumpCycle = math.sin(currentTime * 10) * 0.6 + 0.4
+        if patterns.jumpFreq > 0.3 then
+            local jumpCycle = math.sin(currentTime * 6) * 0.4 + 0.6
             local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
             basePrediction = basePrediction + Vector3.new(0, jumpOffset * jumpCycle, 0)
         else
-            -- Normal jump prediction
             local jumpOffset = (currentVel.Y * jumpTime) + (0.5 * gravityAccel * jumpTime * jumpTime)
-            basePrediction = basePrediction + Vector3.new(0, jumpOffset * 0.7, 0)
+            basePrediction = basePrediction + Vector3.new(0, jumpOffset * 0.8, 0)
         end
     end
     
-    -- Confidence-based smoothing (prevents jittery aiming)
-    local confidence = velocityConsistency * math.min(currentSpeed / 16, 1)
-    smoothing.confidence = (smoothing.confidence * 0.7) + (confidence * 0.3)
+    -- Fixed smoothing for accuracy
+    local confidence = math.min(currentSpeed / 12, 1)
+    smoothing.confidence = (smoothing.confidence * 0.8) + (confidence * 0.2)
     
-    -- Apply smoothing based on confidence
-    local smoothingFactor = 0.15 + (smoothing.confidence * 0.25)
+    local smoothingFactor = 0.2 + (smoothing.confidence * 0.3)
     local finalPrediction = smoothing.lastPrediction:Lerp(basePrediction, smoothingFactor)
     
-    -- Store for next iteration
     smoothing.lastPrediction = finalPrediction
     
     return finalPrediction
 end
 
--- Spark Method (Improved)
+-- Spark Method (Improved accuracy)
 local function ImprovedSparkPrediction(targetPlayer, targetPos)
     if not targetPlayer or not targetPlayer.Character then return targetPos end
     
@@ -762,30 +741,30 @@ local function ImprovedSparkPrediction(targetPlayer, targetPos)
     if not humanoid or not rootPart then return targetPos end
     
     local ping = LocalPlayer:GetNetworkPing() * 1000
-    local compensationTime = (ping / 1000) + 0.14
+    local compensationTime = (ping / 1000) + 0.1
     
     local velocity = rootPart.Velocity
     local speed = velocity.Magnitude
     
-    if speed < 3 then return targetPos end
+    if speed < 2 then return targetPos end
     
-    -- Distance-based compensation
+    -- Fixed distance-based compensation
     local distance = (targetPos - Root.Position).Magnitude
-    compensationTime = compensationTime * math.min(distance / 60, 1.8)
+    compensationTime = compensationTime * math.min(distance / 80, 1.5)
     
     local predictedPos = targetPos + (velocity * compensationTime)
     
-    -- Improved jump prediction
-    if humanoid.Jump or velocity.Y > 8 then
+    -- Fixed jump prediction
+    if humanoid.Jump or velocity.Y > 6 then
         local jumpTime = compensationTime
         local gravityOffset = -196.2 * jumpTime * jumpTime * 0.5
-        predictedPos = predictedPos + Vector3.new(0, (velocity.Y * jumpTime) + gravityOffset, 0)
+        predictedPos = predictedPos + Vector3.new(0, (velocity.Y * jumpTime) + gravityOffset * 0.9, 0)
     end
     
     return predictedPos
 end
 
--- Enhanced getMurdererTarget with improved prediction
+-- Fixed getMurdererTarget to prevent shooting everywhere
 local function getMurdererTargetWithPrediction(predictionMethod)
     local success, data = pcall(function()
         return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
@@ -793,34 +772,44 @@ local function getMurdererTargetWithPrediction(predictionMethod)
     
     if not success or not data then return nil, false end
     
+    -- Fixed murderer detection
+    local murdererFound = nil
     for plr, plrData in pairs(data) do
         if plrData.Role == "Murderer" and not plrData.Dead then
             local player = Players:FindFirstChild(plr)
-            if player then
-                if player == LocalPlayer then return nil, true end
-                local char = player.Character
-                if char then
-                    local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local basePos = hrp.Position
-                        local predictedPos
-                        
-                        if predictionMethod == "Ultra" then
-                            predictedPos = UltraEnhancedPrediction(player, basePos)
-                        elseif predictionMethod == "Spark" then
-                            predictedPos = ImprovedSparkPrediction(player, basePos)
-                        else
-                            predictedPos = basePos -- Fallback
-                        end
-                        
-                        return predictedPos, false
-                    end
-                    local head = char:FindFirstChild("Head")
-                    if head then return head.Position, false end
-                end
+            if player and player ~= LocalPlayer then
+                murdererFound = player
+                break
+            elseif player == LocalPlayer then
+                return nil, true -- We are the murderer
             end
         end
     end
+    
+    if not murdererFound then return nil, false end
+    
+    local char = murdererFound.Character
+    if not char then return nil, false end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local basePos = hrp.Position
+        local predictedPos
+        
+        if predictionMethod == "Ultra" then
+            predictedPos = UltraEnhancedPrediction(murdererFound, basePos)
+        elseif predictionMethod == "Spark" then
+            predictedPos = ImprovedSparkPrediction(murdererFound, basePos)
+        else
+            predictedPos = basePos
+        end
+        
+        return predictedPos, false
+    end
+    
+    local head = char:FindFirstChild("Head")
+    if head then return head.Position, false end
+    
     return nil, false
 end
 
@@ -867,8 +856,9 @@ local AimbotMem = MainTab:AddToggle({
                     end
                     env.GunBotConnection.Connection = gun.Activated:Connect(function()
                         local targetPos, isSelf = getMurdererTargetWithPrediction(env.predictionMethod)
-                        if not targetPos or isSelf or not remote then return end
-                        remote:InvokeServer(1, targetPos, "AH2")
+                        if targetPos and not isSelf and remote then
+                            remote:InvokeServer(1, targetPos, "AH2")
+                        end
                     end)
                 else
                     if env.GunBotConnection.Connection then
@@ -882,7 +872,7 @@ local AimbotMem = MainTab:AddToggle({
                 if Char and Char:FindFirstChild("Gun") then
                     setupGunBot(Char)
                 end
-                task.wait(0.1) -- Faster update rate
+                task.wait(0.1)
             end
             
             if not env.enabledGunBot then
@@ -1060,3 +1050,134 @@ MainTab:AddToggle({
     end
 })
 
+-- Round Timer Toggle
+MainTab:AddToggle({
+    Name = "Round Timer",
+    Default = false,
+    Callback = function(Value)
+        env.TIMER_ENABLED = Value
+        local timerGui = nil
+        local timerLoop = nil
+        local roundStartTime = nil
+        
+        local function createTimerGui()
+            if timerGui then timerGui:Destroy() end
+            
+            timerGui = Instance.new("ScreenGui")
+            timerGui.Name = "RoundTimerGui"
+            timerGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+            timerGui.ResetOnSpawn = false
+            
+            local frame = Instance.new("Frame")
+            frame.Name = "TimerFrame"
+            frame.Parent = timerGui
+            frame.Size = UDim2.new(0, 120, 0, 35)
+            frame.Position = UDim2.new(0.5, -60, 0, 10) -- Top center
+            frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            frame.BorderSizePixel = 0
+            frame.BackgroundTransparency = 0.3
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 6)
+            corner.Parent = frame
+            
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = Color3.fromRGB(255, 255, 255)
+            stroke.Thickness = 1
+            stroke.Transparency = 0.7
+            stroke.Parent = frame
+            
+            local timerLabel = Instance.new("TextLabel")
+            timerLabel.Name = "TimerLabel"
+            timerLabel.Parent = frame
+            timerLabel.Size = UDim2.new(1, 0, 1, 0)
+            timerLabel.Position = UDim2.new(0, 0, 0, 0)
+            timerLabel.BackgroundTransparency = 1
+            timerLabel.TextStrokeTransparency = 0
+            timerLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+            timerLabel.TextSize = 18
+            timerLabel.TextColor3 = Color3.new(1, 1, 1)
+            timerLabel.Font = Enum.Font.GothamBold
+            timerLabel.Text = "0:00"
+            timerLabel.TextScaled = true
+            
+            return timerLabel
+        end
+        
+        local function formatTime(seconds)
+            local minutes = math.floor(seconds / 60)
+            local remainingSeconds = seconds % 60
+            return string.format("%d:%02d", minutes, remainingSeconds)
+        end
+        
+        local function detectRoundStart()
+            local success, data = pcall(function()
+                return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+            end)
+            
+            if success and data then
+                for plr, plrData in pairs(data) do
+                    if plrData.Role and plrData.Role ~= "Spectator" then
+                        return true -- Round is active
+                    end
+                end
+            end
+            return false -- No active round
+        end
+        
+        local function updateTimer()
+            if not timerGui then return end
+            
+            local timerLabel = timerGui:FindFirstChild("TimerFrame") and timerGui.TimerFrame:FindFirstChild("TimerLabel")
+            if not timerLabel then return end
+            
+            local isRoundActive = detectRoundStart()
+            
+            if isRoundActive and not roundStartTime then
+                roundStartTime = tick() -- Start new round timer
+            elseif not isRoundActive and roundStartTime then
+                roundStartTime = nil -- Reset when round ends
+                timerLabel.Text = "0:00"
+                return
+            end
+            
+            if roundStartTime then
+                local elapsedTime = math.floor(tick() - roundStartTime)
+                timerLabel.Text = formatTime(elapsedTime)
+            else
+                timerLabel.Text = "0:00"
+            end
+        end
+        
+        local function startTimer()
+            if timerLoop then return end
+            createTimerGui()
+            
+            timerLoop = task.spawn(function()
+                while env.TIMER_ENABLED do
+                    pcall(updateTimer)
+                    task.wait(1) -- Update every second
+                end
+                if timerGui then
+                    timerGui:Destroy()
+                    timerGui = nil
+                end
+                timerLoop = nil
+            end)
+        end
+        
+        if Value then
+            startTimer()
+        else
+            if timerLoop then
+                task.cancel(timerLoop)
+                timerLoop = nil
+            end
+            if timerGui then
+                timerGui:Destroy()
+                timerGui = nil
+            end
+            roundStartTime = nil
+        end
+    end
+})
