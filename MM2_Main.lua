@@ -14,7 +14,7 @@
 ------------------------------------------------------------
 -- 1.  LOAD THE GUI LIBRARY
 ------------------------------------------------------------
-local OMNILIB_URL = "https://raw.githubusercontent.com/YourName/YourRepo/main/OmniLib.lua"
+local OMNILIB_URL = "https://raw.githubusercontent.com/BullShifter9/Aintnowwayiliketrevor/refs/heads/main/OmniLib.lua"
 
 local OmniLib = loadstring(game:HttpGet(OMNILIB_URL))()
 
