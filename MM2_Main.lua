@@ -14,7 +14,7 @@
 ------------------------------------------------------------
 -- 1.  LOAD THE GUI LIBRARY  (Mm2Ui — replaces OmniLib)
 ------------------------------------------------------------
-local MM2UI_URL = "https://raw.githubusercontent.com/YourName/YourRepo/main/Mm2Ui.lua"
+local MM2UI_URL = "https://raw.githubusercontent.com/BullShifter9/Aintnowwayiliketrevor/refs/heads/main/Mm2Ui.lua"
 
 local OmniLib = loadstring(game:HttpGet(MM2UI_URL))()
 
