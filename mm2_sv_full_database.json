@@ -1,0 +1,2874 @@
+{
+  "chroma traveler's gun": {
+    "name": "Chroma Traveler's Gun",
+    "value": 210000,
+    "demand": 9,
+    "rarity": "chroma",
+    "stability": "Overpaid For",
+    "origin": "Hallows 2023 (Unboxed)"
+  },
+  "chroma evergun": {
+    "name": "Chroma Evergun",
+    "value": 91000,
+    "demand": 8,
+    "rarity": "chroma",
+    "stability": "Overpaid For",
+    "origin": "Xmas 2023 (Gifting)"
+  },
+  "chroma evergreen": {
+    "name": "Chroma Evergreen",
+    "value": 60000,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Doing Well",
+    "origin": "Xmas 2023 (Unboxed)"
+  },
+  "chroma bauble": {
+    "name": "Chroma Bauble",
+    "value": 51000,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Receding",
+    "origin": "Xmas 2024 (Gifting)"
+  },
+  "chroma vampire's gun": {
+    "name": "Chroma Vampire's Gun",
+    "value": 44000,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Hallows 2024 (Unboxed)"
+  },
+  "chroma constellation": {
+    "name": "Chroma Constellation",
+    "value": 41000,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Xmas 2024 (Unboxed)"
+  },
+  "chroma alienbeam": {
+    "name": "Chroma Alienbeam",
+    "value": 29000,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Overpaid For",
+    "origin": "Hallows 2025 (Unboxed)"
+  },
+  "chroma raygun": {
+    "name": "Chroma Raygun",
+    "value": 15500,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Doing Well",
+    "origin": "Hallows 2025 (Tier 25)"
+  },
+  "chroma blizzard": {
+    "name": "Chroma Blizzard",
+    "value": 15500,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2025 Item Pack"
+  },
+  "chroma sunrise": {
+    "name": "Chroma Sunrise",
+    "value": 10500,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Doing Well",
+    "origin": "Summer 2025 (Unboxed)"
+  },
+  "chroma snowcannon": {
+    "name": "Chroma Snowcannon",
+    "value": 10000,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Receding",
+    "origin": "Xmas 2025 (Tier 30)"
+  },
+  "chroma treat": {
+    "name": "Chroma Treat",
+    "value": 9500,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Overpaid For",
+    "origin": "Valentine 2026 Item Pack"
+  },
+  "chroma snowstorm": {
+    "name": "Chroma Snowstorm",
+    "value": 9500,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2025 Item Pack"
+  },
+  "chroma sweet": {
+    "name": "Chroma Sweet",
+    "value": 8500,
+    "demand": 7,
+    "rarity": "chroma",
+    "stability": "Overpaid For",
+    "origin": "Valentine 2026 Item Pack"
+  },
+  "chroma heart wand": {
+    "name": "Chroma Heart Wand",
+    "value": 7000,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Fluctuating",
+    "origin": "Valentine 2026 (Unboxed)"
+  },
+  "chroma snow dagger": {
+    "name": "Chroma Snow Dagger",
+    "value": 6500,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Xmas 2025 (Unboxed)"
+  },
+  "chroma sunset": {
+    "name": "Chroma Sunset",
+    "value": 6250,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Doing Well",
+    "origin": "Summer 2025 (Tier 25)"
+  },
+  "chroma ornament": {
+    "name": "Chroma Ornament",
+    "value": 4200,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Fluctuating",
+    "origin": "Xmas 2025 (Gifting)"
+  },
+  "chroma watergun": {
+    "name": "Chroma Watergun",
+    "value": 3450,
+    "demand": 6,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Summer 2024 (Unboxed)"
+  },
+  "chroma darkbringer": {
+    "name": "Chroma Darkbringer",
+    "value": 95,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Mystery Crate #2"
+  },
+  "chroma lightbringer": {
+    "name": "Chroma Lightbringer",
+    "value": 90,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Mystery Crate #2"
+  },
+  "chroma candleflame": {
+    "name": "Chroma Candleflame",
+    "value": 70,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Unboxed)"
+  },
+  "chroma cookiecane": {
+    "name": "Chroma Cookiecane",
+    "value": 60,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Xmas 2022 (Unboxed)"
+  },
+  "chroma elderwood blade": {
+    "name": "Chroma Elderwood Blade",
+    "value": 60,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Unboxed)"
+  },
+  "chroma swirly gun": {
+    "name": "Chroma Swirly Gun",
+    "value": 60,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Unboxed)"
+  },
+  "chroma luger": {
+    "name": "Chroma Luger",
+    "value": 60,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Gun Box #1"
+  },
+  "chroma laser": {
+    "name": "Chroma Laser",
+    "value": 55,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Gun Box #3"
+  },
+  "chroma deathshard": {
+    "name": "Chroma Deathshard",
+    "value": 50,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Knife Box #1"
+  },
+  "chroma shark": {
+    "name": "Chroma Shark",
+    "value": 50,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Gun Box #2"
+  },
+  "chroma slasher": {
+    "name": "Chroma Slasher",
+    "value": 50,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Knife Box #4"
+  },
+  "chroma fang": {
+    "name": "Chroma Fang",
+    "value": 45,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Knife Box #2"
+  },
+  "chroma gemstone": {
+    "name": "Chroma Gemstone",
+    "value": 45,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Mystery Crate #1"
+  },
+  "chroma heat": {
+    "name": "Chroma Heat",
+    "value": 45,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Rainbow Box"
+  },
+  "chroma tides": {
+    "name": "Chroma Tides",
+    "value": 42,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Knife Box #5"
+  },
+  "chroma boneblade": {
+    "name": "Chroma Boneblade",
+    "value": 40,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "chroma gingerblade": {
+    "name": "Chroma Gingerblade",
+    "value": 40,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Unboxed)"
+  },
+  "chroma saw": {
+    "name": "Chroma Saw",
+    "value": 40,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Knife Box #3"
+  },
+  "chroma seer": {
+    "name": "Chroma Seer",
+    "value": 40,
+    "demand": 2,
+    "rarity": "chroma",
+    "stability": "Stable",
+    "origin": "Season 1 Crafting"
+  },
+  "chroma fire bat": {
+    "name": "Chroma Fire Bat",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire bear": {
+    "name": "Chroma Fire Bear",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire bunny": {
+    "name": "Chroma Fire Bunny",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire cat": {
+    "name": "Chroma Fire Cat",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire dog": {
+    "name": "Chroma Fire Dog",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire fox": {
+    "name": "Chroma Fire Fox",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "chroma fire pig": {
+    "name": "Chroma Fire Pig",
+    "value": 8,
+    "demand": 1,
+    "rarity": "chroma",
+    "stability": "Underpaid For",
+    "origin": "Season 1 Pet Egg"
+  },
+  "gingerscope": {
+    "name": "Gingerscope",
+    "value": 17000,
+    "demand": 7,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Xmas 2023 (Tier 20)"
+  },
+  "traveler's axe": {
+    "name": "Traveler's Axe",
+    "value": 7800,
+    "demand": 6,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Tier 30)"
+  },
+  "celestial": {
+    "name": "Celestial",
+    "value": 1800,
+    "demand": 5,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Xmas 2024 (Tier 20)"
+  },
+  "vampire's axe": {
+    "name": "Vampire's Axe",
+    "value": 950,
+    "demand": 5,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Hallows 2024 (Tier 20)"
+  },
+  "harvester": {
+    "name": "Harvester",
+    "value": 400,
+    "demand": 4,
+    "rarity": "ancient",
+    "stability": "Fluctuating",
+    "origin": "Hallows 2021 (Tier 30)"
+  },
+  "icepiercer": {
+    "name": "Icepiercer",
+    "value": 300,
+    "demand": 4,
+    "rarity": "ancient",
+    "stability": "Fluctuating",
+    "origin": "Xmas 2022 (Tier 20)"
+  },
+  "icebreaker": {
+    "name": "Icebreaker",
+    "value": 115,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Tier 20)"
+  },
+  "batwing": {
+    "name": "Batwing",
+    "value": 57,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Hallows 2018 Item Pack"
+  },
+  "swirly axe": {
+    "name": "Swirly Axe",
+    "value": 55,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Tier 20)"
+  },
+  "elderwood scythe": {
+    "name": "Elderwood Scythe",
+    "value": 55,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 40)"
+  },
+  "hallowscythe": {
+    "name": "Hallowscythe",
+    "value": 45,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Hallows 2020 (Tier 30)"
+  },
+  "logchopper": {
+    "name": "Logchopper",
+    "value": 20,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 30)"
+  },
+  "icewing": {
+    "name": "Icewing",
+    "value": 13,
+    "demand": 2,
+    "rarity": "ancient",
+    "stability": "Doing Well",
+    "origin": "Xmas 2018 Item Pack"
+  },
+  "ghost (vintage)": {
+    "name": "Ghost (Vintage)",
+    "value": 10,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (1,200 Coins)"
+  },
+  "blood": {
+    "name": "Blood",
+    "value": 8,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (4,000 Coins)"
+  },
+  "laser (vintage)": {
+    "name": "Laser (Vintage)",
+    "value": 8,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (1,200 Coins)"
+  },
+  "america (vintage)": {
+    "name": "America (Vintage)",
+    "value": 7,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 July 4th (25 Cash)"
+  },
+  "prince": {
+    "name": "Prince",
+    "value": 6,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (2,000 Coins)"
+  },
+  "shadow (vintage)": {
+    "name": "Shadow (Vintage)",
+    "value": 6,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (3,000 Coins)"
+  },
+  "phaser": {
+    "name": "Phaser",
+    "value": 5,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (2,000 Coins)"
+  },
+  "cowboy": {
+    "name": "Cowboy",
+    "value": 4,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (800 Coins)"
+  },
+  "golden": {
+    "name": "Golden",
+    "value": 4,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (3,500 Coins)"
+  },
+  "splitter": {
+    "name": "Splitter",
+    "value": 3,
+    "demand": 1,
+    "rarity": "vintage",
+    "stability": "Stable",
+    "origin": "MM1 (800 Coins)"
+  },
+  "traveler's gun": {
+    "name": "Traveler's Gun",
+    "value": 4200,
+    "demand": 6,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Unboxed)"
+  },
+  "evergun": {
+    "name": "Evergun",
+    "value": 3600,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2023 (Gifting)"
+  },
+  "constellation": {
+    "name": "Constellation",
+    "value": 3050,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2024 (Unboxed)"
+  },
+  "evergreen": {
+    "name": "Evergreen",
+    "value": 2750,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2023 (Unboxed)"
+  },
+  "turkey": {
+    "name": "Turkey",
+    "value": 1800,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Thanksgiving 2023 Pack"
+  },
+  "vampire's gun": {
+    "name": "Vampire's Gun",
+    "value": 1800,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2024 (Unboxed)"
+  },
+  "darkshot": {
+    "name": "Darkshot",
+    "value": 1060,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2023 Item Pack"
+  },
+  "darksword": {
+    "name": "Darksword",
+    "value": 1040,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2023 Item Pack"
+  },
+  "alienbeam": {
+    "name": "Alienbeam",
+    "value": 1000,
+    "demand": 6,
+    "rarity": "godly",
+    "stability": "Overpaid For",
+    "origin": "Hallows 2025 (Unboxed)"
+  },
+  "blossom": {
+    "name": "Blossom",
+    "value": 985,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Valentine 2023 Item Pack"
+  },
+  "sakura": {
+    "name": "Sakura",
+    "value": 975,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Valentine 2023 Item Pack"
+  },
+  "bauble": {
+    "name": "Bauble",
+    "value": 925,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2024 (Gifting)"
+  },
+  "raygun": {
+    "name": "Raygun",
+    "value": 575,
+    "demand": 5,
+    "rarity": "godly",
+    "stability": "Doing Well",
+    "origin": "Hallows 2025 (Tier 25)"
+  },
+  "sunrise": {
+    "name": "Sunrise",
+    "value": 525,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2025 (Unboxed)"
+  },
+  "heart wand": {
+    "name": "Heart Wand",
+    "value": 375,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Fluctuating",
+    "origin": "Valentine 2026 (Unboxed)"
+  },
+  "snowcannon": {
+    "name": "Snowcannon",
+    "value": 325,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2025 (Tier 30)"
+  },
+  "rainbow gun": {
+    "name": "Rainbow Gun",
+    "value": 310,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Doing Well",
+    "origin": "Easter 2023 Item Pack"
+  },
+  "soul": {
+    "name": "Soul",
+    "value": 305,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2024 Item Pack"
+  },
+  "rainbow": {
+    "name": "Rainbow",
+    "value": 300,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Doing Well",
+    "origin": "Easter 2023 Item Pack"
+  },
+  "spirit": {
+    "name": "Spirit",
+    "value": 295,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2024 Item Pack"
+  },
+  "sunset (knife)": {
+    "name": "Sunset (Knife)",
+    "value": 275,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2025 (Tier 25)"
+  },
+  "flora": {
+    "name": "Flora",
+    "value": 265,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Easter 2025 Item Pack"
+  },
+  "bloom": {
+    "name": "Bloom",
+    "value": 255,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Easter 2025 Item Pack"
+  },
+  "sweet": {
+    "name": "Sweet",
+    "value": 250,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Fluctuating",
+    "origin": "Valentine 2026 Item Pack"
+  },
+  "treat": {
+    "name": "Treat",
+    "value": 250,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Fluctuating",
+    "origin": "Valentine 2026 Item Pack"
+  },
+  "snow dagger": {
+    "name": "Snow Dagger",
+    "value": 220,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2025 (Unboxed)"
+  },
+  "bat": {
+    "name": "Bat",
+    "value": 205,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Zombie)"
+  },
+  "flowerwood gun": {
+    "name": "Flowerwood Gun",
+    "value": 165,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Easter 2024 Item Pack"
+  },
+  "flowerwood": {
+    "name": "Flowerwood",
+    "value": 160,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Easter 2024 Item Pack"
+  },
+  "blizzard": {
+    "name": "Blizzard",
+    "value": 155,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2025 Item Pack"
+  },
+  "snowstorm": {
+    "name": "Snowstorm",
+    "value": 155,
+    "demand": 4,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2025 Item Pack"
+  },
+  "xenoknife": {
+    "name": "Xenoknife",
+    "value": 150,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2025 Item Pack"
+  },
+  "xenoshot": {
+    "name": "Xenoshot",
+    "value": 150,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2025 Item Pack"
+  },
+  "ocean": {
+    "name": "Ocean",
+    "value": 145,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2023 Item Pack"
+  },
+  "waves": {
+    "name": "Waves",
+    "value": 140,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2023 Item Pack"
+  },
+  "candy": {
+    "name": "Candy",
+    "value": 135,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2015 (Unboxed)"
+  },
+  "watergun": {
+    "name": "Watergun",
+    "value": 115,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2024 (Unboxed)"
+  },
+  "heartblade": {
+    "name": "Heartblade",
+    "value": 115,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "February Offer"
+  },
+  "borealis": {
+    "name": "Borealis",
+    "value": 105,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2024 Item Pack"
+  },
+  "australis": {
+    "name": "Australis",
+    "value": 100,
+    "demand": 3,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2024 Item Pack"
+  },
+  "pearl": {
+    "name": "Pearl",
+    "value": 60,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Summer 2024 Item Pack"
+  },
+  "pearlshine": {
+    "name": "Pearlshine",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "iceblaster": {
+    "name": "Iceblaster",
+    "value": 60,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Unboxed)"
+  },
+  "luger": {
+    "name": "Luger",
+    "value": 60,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Gun Box #1"
+  },
+  "sugar": {
+    "name": "Sugar",
+    "value": 60,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Unboxed)"
+  },
+  "candleflame": {
+    "name": "Candleflame",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Unboxed)"
+  },
+  "elderwood blade": {
+    "name": "Elderwood Blade",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Unboxed)"
+  },
+  "makeshift": {
+    "name": "Makeshift",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Survivor)"
+  },
+  "phantom": {
+    "name": "Phantom",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2022 Item Pack"
+  },
+  "spectre": {
+    "name": "Spectre",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2022 Item Pack"
+  },
+  "darkbringer": {
+    "name": "Darkbringer",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Mystery Crate #2"
+  },
+  "elderwood revolver": {
+    "name": "Elderwood Revolver",
+    "value": 55,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "lightbringer": {
+    "name": "Lightbringer",
+    "value": 50,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Mystery Crate #2"
+  },
+  "red luger": {
+    "name": "Red Luger",
+    "value": 50,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Crafted)"
+  },
+  "ornament godly": {
+    "name": "Ornament Godly",
+    "value": 45,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Fluctuating",
+    "origin": "Xmas 2025 (Gifting)"
+  },
+  "swirly gun": {
+    "name": "Swirly Gun",
+    "value": 40,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Unboxed)"
+  },
+  "green luger": {
+    "name": "Green Luger",
+    "value": 30,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Crafted)"
+  },
+  "hallowgun": {
+    "name": "Hallowgun",
+    "value": 27,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2020 (Unboxed)"
+  },
+  "laser": {
+    "name": "Laser",
+    "value": 27,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Gun Box #3"
+  },
+  "swirly blade": {
+    "name": "Swirly Blade",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Gifting)"
+  },
+  "amerilaser": {
+    "name": "Amerilaser",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "American Item Pack"
+  },
+  "icebeam": {
+    "name": "Icebeam",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2021 Item Pack"
+  },
+  "iceflake": {
+    "name": "Iceflake",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2021 Item Pack"
+  },
+  "plasmabeam": {
+    "name": "Plasmabeam",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Plasmabeam Item Pack"
+  },
+  "plasmablade": {
+    "name": "Plasmablade",
+    "value": 25,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Plasmablade Item Pack"
+  },
+  "shark": {
+    "name": "Shark",
+    "value": 23,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Gun Box #2"
+  },
+  "deathshard": {
+    "name": "Deathshard",
+    "value": 22,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Knife Box #1"
+  },
+  "slasher": {
+    "name": "Slasher",
+    "value": 22,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Knife Box #4"
+  },
+  "fang": {
+    "name": "Fang",
+    "value": 20,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Knife Box #2"
+  },
+  "gemstone": {
+    "name": "Gemstone",
+    "value": 20,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Mystery Crate #1"
+  },
+  "heat": {
+    "name": "Heat",
+    "value": 20,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Rainbow Box"
+  },
+  "tides": {
+    "name": "Tides",
+    "value": 19,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Knife Box #5"
+  },
+  "boneblade": {
+    "name": "Boneblade",
+    "value": 18,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "gingerblade": {
+    "name": "Gingerblade",
+    "value": 18,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Unboxed)"
+  },
+  "saw": {
+    "name": "Saw",
+    "value": 18,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Knife Box #3"
+  },
+  "seer": {
+    "name": "Seer",
+    "value": 18,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Season 1 Crafting"
+  },
+  "cookiecane": {
+    "name": "Cookiecane",
+    "value": 16,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2022 (Unboxed)"
+  },
+  "nightblade": {
+    "name": "Nightblade",
+    "value": 15,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "ghostblade": {
+    "name": "Ghostblade",
+    "value": 12,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "battleaxe": {
+    "name": "Battleaxe",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "battleaxe ii": {
+    "name": "Battleaxe II",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "gingermint": {
+    "name": "Gingermint",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "heartbreaker": {
+    "name": "Heartbreaker",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "old glory": {
+    "name": "Old Glory",
+    "value": 10,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "American Item Pack"
+  },
+  "ginger luger": {
+    "name": "Ginger Luger",
+    "value": 8,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Crafted)"
+  },
+  "cookieblade": {
+    "name": "Cookieblade",
+    "value": 7,
+    "demand": 2,
+    "rarity": "godly",
+    "stability": "Stable",
+    "origin": "Crafting"
+  },
+  "jd": {
+    "name": "JD",
+    "value": 35,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Fluctuating",
+    "origin": "JD Giveaway"
+  },
+  "latte (gun)": {
+    "name": "Latte (Gun)",
+    "value": 130,
+    "demand": 3,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Thanksgiving 2023 Pack"
+  },
+  "latte (knife)": {
+    "name": "Latte (Knife)",
+    "value": 130,
+    "demand": 3,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Thanksgiving 2023 Pack"
+  },
+  "cotton candy": {
+    "name": "Cotton Candy",
+    "value": 40,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Fluctuating",
+    "origin": "Candy Tycoon Promo"
+  },
+  "beach": {
+    "name": "Beach",
+    "value": 30,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Summer 2023 (Tier 12)"
+  },
+  "spectral (knife)": {
+    "name": "Spectral (Knife)",
+    "value": 20,
+    "demand": 3,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 29)"
+  },
+  "traveler (gun)": {
+    "name": "Traveler (Gun)",
+    "value": 20,
+    "demand": 3,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Tier 29)"
+  },
+  "vampire gun (2022)": {
+    "name": "Vampire Gun (2022)",
+    "value": 13,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Tier 19)"
+  },
+  "aurora gun (2021)": {
+    "name": "Aurora Gun (2021)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Tier 19)"
+  },
+  "cavern (knife)": {
+    "name": "Cavern (Knife)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 29)"
+  },
+  "skulls": {
+    "name": "Skulls",
+    "value": 7,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "broken": {
+    "name": "Broken",
+    "value": 7,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Valentine's 2023 (Tier 5)"
+  },
+  "ginger gun (2018)": {
+    "name": "Ginger Gun (2018)",
+    "value": 6,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 50)"
+  },
+  "arctic gun": {
+    "name": "Arctic Gun",
+    "value": 5,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2022 (Tier 19)"
+  },
+  "bunnies": {
+    "name": "Bunnies",
+    "value": 5,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Easter 2025 (Tier 6)"
+  },
+  "icedriller": {
+    "name": "Icedriller",
+    "value": 5,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Tier 19)"
+  },
+  "nightsky": {
+    "name": "Nightsky",
+    "value": 5,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2024 (Tier 19)"
+  },
+  "ghost (knife)": {
+    "name": "Ghost (Knife)",
+    "value": 5,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 50)"
+  },
+  "scratch (2016)": {
+    "name": "Scratch (2016)",
+    "value": 4,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "witched": {
+    "name": "Witched",
+    "value": 3,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 35)"
+  },
+  "blue elite": {
+    "name": "Blue Elite",
+    "value": 3,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2017 (Buying Elite)"
+  },
+  "green elite": {
+    "name": "Green Elite",
+    "value": 3,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Buying Elite)"
+  },
+  "santa's magic": {
+    "name": "Santa's Magic",
+    "value": 3,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Challenge)"
+  },
+  "santa's spirit": {
+    "name": "Santa's Spirit",
+    "value": 3,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Challenge)"
+  },
+  "spectral (gun)": {
+    "name": "Spectral (Gun)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Unboxed)"
+  },
+  "traveler (knife)": {
+    "name": "Traveler (Knife)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Unboxed)"
+  },
+  "vampire knife (2022)": {
+    "name": "Vampire Knife (2022)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Unboxed)"
+  },
+  "scratch (2017)": {
+    "name": "Scratch (2017)",
+    "value": 2,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "ghost gun": {
+    "name": "Ghost Gun",
+    "value": 2,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "chromatic (knife)": {
+    "name": "Chromatic (Knife)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Easter 2023 Bingo"
+  },
+  "energized (gun)": {
+    "name": "Energized (Gun)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Hallows 2025 (Tier 23)"
+  },
+  "frostfade (knife)": {
+    "name": "Frostfade (Knife)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2023 (Tier 19)"
+  },
+  "icecracker": {
+    "name": "Icecracker",
+    "value": 1,
+    "demand": 2,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Unboxed)"
+  },
+  "red fire": {
+    "name": "Red Fire",
+    "value": 1,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2017 (Challenge)"
+  },
+  "cavern (gun)": {
+    "name": "Cavern (Gun)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "legendary",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "cane knife (2018)": {
+    "name": "Cane Knife (2018)",
+    "value": 525,
+    "demand": 3,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 30)"
+  },
+  "silent night (knife)": {
+    "name": "Silent Night (Knife)",
+    "value": 50,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Tier 15)"
+  },
+  "dungeon": {
+    "name": "Dungeon",
+    "value": 30,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "zombified": {
+    "name": "Zombified",
+    "value": 27,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Zombie)"
+  },
+  "makeshift (knife)": {
+    "name": "Makeshift (Knife)",
+    "value": 25,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2022 (Survivor)"
+  },
+  "aurora (knife)": {
+    "name": "Aurora (Knife)",
+    "value": 13,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 20)"
+  },
+  "silent night (gun)": {
+    "name": "Silent Night (Gun)",
+    "value": 13,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Unboxed)"
+  },
+  "icicles (gun)": {
+    "name": "Icicles (Gun)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 22)"
+  },
+  "starry (gun)": {
+    "name": "Starry (Gun)",
+    "value": 8,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Tier 17)"
+  },
+  "vampire (gun) 2018": {
+    "name": "Vampire (Gun) 2018",
+    "value": 8,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 22)"
+  },
+  "darkknife": {
+    "name": "Darkknife",
+    "value": 7,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Tier 25)"
+  },
+  "swirl": {
+    "name": "Swirl",
+    "value": 7,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2021 (Tier 15)"
+  },
+  "toxic (knife)": {
+    "name": "Toxic (Knife)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 30)"
+  },
+  "candy swirl (gun)": {
+    "name": "Candy Swirl (Gun)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 24)"
+  },
+  "floral (knife)": {
+    "name": "Floral (Knife)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Summer 2023 (Tier 10)"
+  },
+  "magma": {
+    "name": "Magma",
+    "value": 5,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "monster (rare)": {
+    "name": "Monster (Rare)",
+    "value": 5,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 15)"
+  },
+  "jack": {
+    "name": "Jack",
+    "value": 3,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2015 (Bingo)"
+  },
+  "magma (gun)": {
+    "name": "Magma (Gun)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 20)"
+  },
+  "snakebite (knife)": {
+    "name": "Snakebite (Knife)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 23)"
+  },
+  "watcher (gun)": {
+    "name": "Watcher (Gun)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 24)"
+  },
+  "bats": {
+    "name": "Bats",
+    "value": 3,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "green marble": {
+    "name": "Green Marble",
+    "value": 3,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "orange marble": {
+    "name": "Orange Marble",
+    "value": 2,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "toxic (gun)": {
+    "name": "Toxic (Gun)",
+    "value": 2,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "ghastly (gun)": {
+    "name": "Ghastly (Gun)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2023 (Tier 21)"
+  },
+  "sunset (gun)": {
+    "name": "Sunset (Gun)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Summer 2023 (Tier 9)"
+  },
+  "gingerbread (2017)": {
+    "name": "Gingerbread (2017)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2017 (Unboxed)"
+  },
+  "aurora (gun) 2019": {
+    "name": "Aurora (Gun) 2019",
+    "value": 1,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "candy swirl (knife)": {
+    "name": "Candy Swirl (Knife)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "snakebite (gun)": {
+    "name": "Snakebite (Gun)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "vampire (knife) 2018": {
+    "name": "Vampire (Knife) 2018",
+    "value": 1,
+    "demand": 1,
+    "rarity": "rare",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "bones (2019)": {
+    "name": "Bones (2019)",
+    "value": 70,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "zombified (knife)": {
+    "name": "Zombified (Knife)",
+    "value": 65,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "gingerbread (knife) 2019": {
+    "name": "Gingerbread (Knife) 2019",
+    "value": 50,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 9)"
+  },
+  "sweater (knife) 2018": {
+    "name": "Sweater (Knife) 2018",
+    "value": 50,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 14)"
+  },
+  "brains (2019)": {
+    "name": "Brains (2019)",
+    "value": 40,
+    "demand": 3,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "branches": {
+    "name": "Branches",
+    "value": 25,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 10)"
+  },
+  "zombified (gun)": {
+    "name": "Zombified (Gun)",
+    "value": 15,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 6)"
+  },
+  "frozen (gun) unc": {
+    "name": "Frozen (Gun) Unc",
+    "value": 10,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 16)"
+  },
+  "mummy 2018 (gun)": {
+    "name": "Mummy 2018 (Gun)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 8)"
+  },
+  "skulls (2021)": {
+    "name": "Skulls (2021)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 14)"
+  },
+  "void": {
+    "name": "Void",
+    "value": 10,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Prime Gaming Promo"
+  },
+  "zombie (gun) 2018": {
+    "name": "Zombie (Gun) 2018",
+    "value": 10,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 11)"
+  },
+  "potion (knife) 2018": {
+    "name": "Potion (Knife) 2018",
+    "value": 8,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 14)"
+  },
+  "lights (gun)": {
+    "name": "Lights (Gun)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 14)"
+  },
+  "snowflake 2018 knife": {
+    "name": "Snowflake 2018 Knife",
+    "value": 5,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 8)"
+  },
+  "potion (gun) 2018": {
+    "name": "Potion (Gun) 2018",
+    "value": 5,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "holly (gun) 2018": {
+    "name": "Holly (Gun) 2018",
+    "value": 4,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 11)"
+  },
+  "webs": {
+    "name": "Webs",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "frozen (knife) unc": {
+    "name": "Frozen (Knife) Unc",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "gingerbread (gun) 2019": {
+    "name": "Gingerbread (Gun) 2019",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "mummy 2018 (knife)": {
+    "name": "Mummy 2018 (Knife)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "zombie (knife) 2018": {
+    "name": "Zombie (Knife) 2018",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "pumpkin pie": {
+    "name": "Pumpkin Pie",
+    "value": 3,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Thanksgiving 2023 (Tier 3)"
+  },
+  "potion (2017)": {
+    "name": "Potion (2017)",
+    "value": 3,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "gothic (gun)": {
+    "name": "Gothic (Gun)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 8)"
+  },
+  "mummy (2017)": {
+    "name": "Mummy (2017)",
+    "value": 2,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "lights (knife)": {
+    "name": "Lights (Knife)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Unboxed)"
+  },
+  "moons": {
+    "name": "Moons",
+    "value": 1,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "vampire (2016)": {
+    "name": "Vampire (2016)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "wolf": {
+    "name": "Wolf",
+    "value": 1,
+    "demand": 1,
+    "rarity": "uncommon",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "glitch1": {
+    "name": "Glitch1",
+    "value": 85,
+    "demand": 3,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Godly Batwing Deletion"
+  },
+  "glitch2": {
+    "name": "Glitch2",
+    "value": 55,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Black Luger Deletion"
+  },
+  "bats (knife) 2018": {
+    "name": "Bats (Knife) 2018",
+    "value": 110,
+    "demand": 3,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 5)"
+  },
+  "pine (knife)": {
+    "name": "Pine (Knife)",
+    "value": 90,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 4)"
+  },
+  "gifts (knife)": {
+    "name": "Gifts (Knife)",
+    "value": 70,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 6)"
+  },
+  "ghoulish": {
+    "name": "Ghoulish",
+    "value": 30,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows Catalog Promo"
+  },
+  "sparkle9": {
+    "name": "Sparkle9",
+    "value": 30,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "sparkle10": {
+    "name": "Sparkle10",
+    "value": 20,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "sparkle8": {
+    "name": "Sparkle8",
+    "value": 20,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "sparkle7": {
+    "name": "Sparkle7",
+    "value": 18,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "snowman gun (2018)": {
+    "name": "Snowman Gun (2018)",
+    "value": 17,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 4)"
+  },
+  "wrapped gun (2018)": {
+    "name": "Wrapped Gun (2018)",
+    "value": 17,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 5)"
+  },
+  "elf (knife) 2015": {
+    "name": "Elf (Knife) 2015",
+    "value": 17,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2015 (Unboxed)"
+  },
+  "rip gun": {
+    "name": "RIP Gun",
+    "value": 12,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 3)"
+  },
+  "sparkle6": {
+    "name": "Sparkle6",
+    "value": 12,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "coal (knife) 2018": {
+    "name": "Coal (Knife) 2018",
+    "value": 10,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2018 (Tier 2)"
+  },
+  "snowflakes (gun)": {
+    "name": "Snowflakes (Gun)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 3)"
+  },
+  "candy corn (2017)": {
+    "name": "Candy Corn (2017)",
+    "value": 10,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "combat ii": {
+    "name": "Combat II",
+    "value": 10,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (C0MB4T2)"
+  },
+  "prism": {
+    "name": "Prism",
+    "value": 8,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (PR1SM)"
+  },
+  "skool": {
+    "name": "Skool",
+    "value": 8,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (B4CK2SK00L)"
+  },
+  "sparkle5": {
+    "name": "Sparkle5",
+    "value": 8,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "tailslide": {
+    "name": "Tailslide",
+    "value": 8,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "sparkle4": {
+    "name": "Sparkle4",
+    "value": 8,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "phantom (common)": {
+    "name": "Phantom (Common)",
+    "value": 8,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "frosted (knife)": {
+    "name": "Frosted (Knife)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 2)"
+  },
+  "ollie": {
+    "name": "Ollie",
+    "value": 7,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "sidewinder": {
+    "name": "Sidewinder",
+    "value": 7,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "pumpkin (2019)": {
+    "name": "Pumpkin (2019)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "ecto": {
+    "name": "Ecto",
+    "value": 5,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "grave (gun)": {
+    "name": "Grave (Gun)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 3)"
+  },
+  "zombie knife (2017)": {
+    "name": "Zombie Knife (2017)",
+    "value": 5,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (Unboxed)"
+  },
+  "asteroid": {
+    "name": "Asteroid",
+    "value": 5,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "No Mans Sky Tycoon Promo"
+  },
+  "euro": {
+    "name": "Euro",
+    "value": 4,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "slime (knife)": {
+    "name": "Slime (Knife)",
+    "value": 4,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 2)"
+  },
+  "alex": {
+    "name": "Alex",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (AL3X)"
+  },
+  "corl": {
+    "name": "Corl",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (C0RL)"
+  },
+  "denis": {
+    "name": "Denis",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (D3NIS)"
+  },
+  "sketchy": {
+    "name": "Sketchy",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (SK3TCHY)"
+  },
+  "slime (gun)": {
+    "name": "Slime (Gun)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "sub": {
+    "name": "Sub",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Item Code (SUB0)"
+  },
+  "webbed (gun)": {
+    "name": "Webbed (Gun)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "ghosty (knife)": {
+    "name": "Ghosty (Knife)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "sparkle1": {
+    "name": "Sparkle1",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "sparkle2": {
+    "name": "Sparkle2",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "sparkle3": {
+    "name": "Sparkle3",
+    "value": 3,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Sparkle Item Pack"
+  },
+  "mummified": {
+    "name": "Mummified",
+    "value": 2,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 4)"
+  },
+  "candy corn (2019)": {
+    "name": "Candy Corn (2019)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Unboxed)"
+  },
+  "grind": {
+    "name": "Grind",
+    "value": 2,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "indy": {
+    "name": "Indy",
+    "value": 2,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Skate Item Pack"
+  },
+  "bats (gun) 2018": {
+    "name": "Bats (Gun) 2018",
+    "value": 1,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "grave (knife)": {
+    "name": "Grave (Knife)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "haunted (gun)": {
+    "name": "Haunted (Gun)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Unboxed)"
+  },
+  "haunted (knife)": {
+    "name": "Haunted (Knife)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 4)"
+  },
+  "reindeer (2025)": {
+    "name": "Reindeer (2025)",
+    "value": 1,
+    "demand": 2,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Xmas 2025 Santa's Quest"
+  },
+  "bones (2016)": {
+    "name": "Bones (2016)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "brains (2016)": {
+    "name": "Brains (2016)",
+    "value": 1,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "witch": {
+    "name": "Witch",
+    "value": 1,
+    "demand": 1,
+    "rarity": "common",
+    "stability": "Stable",
+    "origin": "Hallows 2016 (Unboxed)"
+  },
+  "zombie dog": {
+    "name": "Zombie Dog",
+    "value": 450,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 25)"
+  },
+  "elf (2019)": {
+    "name": "Elf (2019)",
+    "value": 200,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 12)"
+  },
+  "blue pumpkin (2018)": {
+    "name": "Blue Pumpkin (2018)",
+    "value": 140,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Doing Well",
+    "origin": "Hallows 2018 (Tier 18)"
+  },
+  "red pumpkin (2018)": {
+    "name": "Red Pumpkin (2018)",
+    "value": 100,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 12)"
+  },
+  "dogey": {
+    "name": "Dogey",
+    "value": 90,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Classic Pet Box"
+  },
+  "green pumpkin (2018)": {
+    "name": "Green Pumpkin (2018)",
+    "value": 60,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2018 (Tier 9)"
+  },
+  "black cat": {
+    "name": "Black Cat",
+    "value": 60,
+    "demand": 3,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 5)"
+  },
+  "santa 2019": {
+    "name": "Santa 2019",
+    "value": 35,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Xmas 2019 (Tier 17)"
+  },
+  "pumpkin (2017)": {
+    "name": "Pumpkin (2017)",
+    "value": 25,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2017 (HW2017)"
+  },
+  "piggy": {
+    "name": "Piggy",
+    "value": 20,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Classic Pet Box"
+  },
+  "mr. reindeer": {
+    "name": "Mr. Reindeer",
+    "value": 15,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Xmas 2020 (Tier 10)"
+  },
+  "fairy": {
+    "name": "Fairy",
+    "value": 13,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "In-Game Shop (Expired)"
+  },
+  "jetstream": {
+    "name": "Jetstream",
+    "value": 13,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "In-Game Shop (Expired)"
+  },
+  "nobledragon": {
+    "name": "Nobledragon",
+    "value": 13,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "seahorsey": {
+    "name": "Seahorsey",
+    "value": 13,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "chilly": {
+    "name": "Chilly",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "green pumpkin (2019)": {
+    "name": "Green Pumpkin (2019)",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2019 (Tier 20)"
+  },
+  "pengy": {
+    "name": "Pengy",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "purple pumpkin (2018)": {
+    "name": "Purple Pumpkin (2018)",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2018 (Tier 35)"
+  },
+  "red pumpkin (2019)": {
+    "name": "Red Pumpkin (2019)",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2019 (Tier 28)"
+  },
+  "rudolph": {
+    "name": "Rudolph",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2019 (Tier 21)"
+  },
+  "vampire bat": {
+    "name": "Vampire Bat",
+    "value": 12,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2019 (Tier 31)"
+  },
+  "<3": {
+    "name": "<3",
+    "value": 10,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Valentine's 2016"
+  },
+  "eyeball": {
+    "name": "Eyeball",
+    "value": 10,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "In-Game Shop (Expired)"
+  },
+  "reindeer": {
+    "name": "Reindeer",
+    "value": 10,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2016 (Bought)"
+  },
+  "tankie": {
+    "name": "Tankie",
+    "value": 10,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "elf": {
+    "name": "Elf",
+    "value": 8,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Xmas 2016 (Bought)"
+  },
+  "overseer eye": {
+    "name": "Overseer Eye",
+    "value": 8,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "In-Game Shop (Expired)"
+  },
+  "red pumpkin (2020)": {
+    "name": "Red Pumpkin (2020)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2020 (Tier 26)"
+  },
+  "red pumpkin (2021)": {
+    "name": "Red Pumpkin (2021)",
+    "value": 7,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 27)"
+  },
+  "skully": {
+    "name": "Skully",
+    "value": 7,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 21)"
+  },
+  "green pumpkin (2020)": {
+    "name": "Green Pumpkin (2020)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2020 (Tier 18)"
+  },
+  "green pumpkin (2021)": {
+    "name": "Green Pumpkin (2021)",
+    "value": 5,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 17)"
+  },
+  "mechbug": {
+    "name": "Mechbug",
+    "value": 5,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "ufo": {
+    "name": "UFO",
+    "value": 5,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "blue pumpkin (2020)": {
+    "name": "Blue Pumpkin (2020)",
+    "value": 3,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2020 (Tier 12)"
+  },
+  "blue pumpkin (2019)": {
+    "name": "Blue Pumpkin (2019)",
+    "value": 2,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2019 (Tier 9)"
+  },
+  "shadow pumpkin": {
+    "name": "Shadow Pumpkin",
+    "value": 2,
+    "demand": 2,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Hallows 2021 (Tier 11)"
+  },
+  "badger": {
+    "name": "Badger",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Stable",
+    "origin": "Classic Pet Box"
+  },
+  "steambird": {
+    "name": "Steambird",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Steampunk Item Pack"
+  },
+  "traveller": {
+    "name": "Traveller",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2017 Item Pack"
+  },
+  "deathspeaker": {
+    "name": "Deathspeaker",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Classic Pet Box"
+  },
+  "electro": {
+    "name": "Electro",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Futuristic Item Pack"
+  },
+  "frostbird": {
+    "name": "Frostbird",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2018 (Tier 100)"
+  },
+  "ghosty": {
+    "name": "Ghosty",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Hallows 2019 Item Pack"
+  },
+  "ice phoenix": {
+    "name": "Ice Phoenix",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Xmas 2017 Item Pack"
+  },
+  "phoenix": {
+    "name": "Phoenix",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "8-Bit Item Pack"
+  },
+  "sammy": {
+    "name": "Sammy",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "American Item Pack"
+  },
+  "skelly": {
+    "name": "Skelly",
+    "value": 1,
+    "demand": 1,
+    "rarity": "pet",
+    "stability": "Underpaid For",
+    "origin": "Shadow Item Pack"
+  },
+  "corrupt": {
+    "name": "Corrupt",
+    "value": 800,
+    "demand": 4,
+    "rarity": "unique",
+    "stability": "Stable",
+    "origin": "Data Loss"
+  }
+}
