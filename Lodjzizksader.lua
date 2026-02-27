@@ -16,11 +16,11 @@
 
 -- ── CONFIG — edit before deploying ──────────────────────────────────────────
 local CONFIG = {
-    API_URL         = "https://your-api.onrender.com",  -- ← your Render URL
-    API_KEY         = "your-secret-api-key",             -- ← match server
+    API_URL         = "https://hwid-drz0.onrender.com",  -- ← your Render URL
+    API_KEY         = "FUCKNIGGERS",             -- ← match server
     POLL_INTERVAL   = 3,    -- seconds between /poll calls
     TIMEOUT         = 12,   -- HTTP timeout in seconds
-    HWID_FILE       = "uilib_hwid.dat",   -- persisted via writefile
+    HWID_FILE       = "acache.dat",   -- persisted via writefile
     RETRY_MAX       = 3,    -- retries on server_error
 }
 
