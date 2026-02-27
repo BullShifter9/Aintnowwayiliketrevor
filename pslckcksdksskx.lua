@@ -23,7 +23,7 @@ end
 --  HWID AUTH CONFIG
 -- ════════════════════════════════════════════════════════════════
 local AUTH_API = "https://hwid-drz0.onrender.com"
-local AUTH_KEY = "YOUR_API_KEY_HERE"
+local AUTH_KEY = "FUCKNIGGERS"
 
 local _UIS_auth = game:GetService("UserInputService")
 local _HTTP     = game:GetService("HttpService")
