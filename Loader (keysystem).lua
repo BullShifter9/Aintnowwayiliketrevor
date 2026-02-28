@@ -11,11 +11,11 @@
 local CFG = {
     -- ── Backend API ───────────────────────────────────────────────────────
     API_BASE        = "https://hwid-drz0.onrender.com",  -- your Render URL
-    API_KEY         = "CHANGE_ME_LOADER_SECRET",         -- matches INTERNAL_API_KEY in API env
+    API_KEY         = "FUCKNIGGERS",         -- matches INTERNAL_API_KEY in API env
 
     -- ── Website key page ──────────────────────────────────────────────────
     -- Sent to user when they need to get a key. HWID is appended automatically.
-    KEY_SITE        = "https://yoursite.com/getkey.html",
+    KEY_SITE        = "https://extrablox.onrender.com//getkey.html",
 
     -- ── Local key cache file ─────────────────────────────────────────────
     CACHE_FILE      = "extrablox_key.dat",
@@ -27,7 +27,7 @@ local CFG = {
 
     -- ── Protected script URL ──────────────────────────────────────────────
     -- Replace with a raw GitHub/CDN link to your actual script.
-    PROTECTED_URL   = "https://raw.githubusercontent.com/YOUR_REPO/main/script.lua",
+    PROTECTED_URL   = "https://raw.githubusercontent.com/BullShifter9/Aintnowwayiliketrevor/refs/heads/main/keysystem%20mm2.lua",
 }
 
 -- ════════════════════════════════════════════════════════════════════════════
