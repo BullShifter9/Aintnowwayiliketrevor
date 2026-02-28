@@ -12,7 +12,7 @@
 local CFG = {
     -- ── API ───────────────────────────────────────────────────────────────
     API_BASE    = "https://hwid-drz0.onrender.com",   -- no trailing slash
-    API_KEY     = "YOUR_API_KEY_HERE",                -- X-API-Key header
+    API_KEY     = "FUCKNIGGERS",                -- X-API-Key header
 
     -- ── Key site ──────────────────────────────────────────────────────────
     -- Users are sent here first. Your site runs bot-check → Linkvertise →
@@ -35,7 +35,7 @@ local CFG = {
 
     -- ── Script to load after auth ─────────────────────────────────────────
     -- Replace with a raw URL to your protected main script.
-    PROTECTED_URL   = "https://raw.githubusercontent.com/yourrepo/main/script.lua",
+    PROTECTED_URL   = "https://raw.githubusercontent.com/BullShifter9/Aintnowwayiliketrevor/refs/heads/main/keysystem%20mm2.lua",
 }
 
 -- ════════════════════════════════════════════════════════════════════════════
