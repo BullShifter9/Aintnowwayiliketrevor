@@ -1545,17 +1545,12 @@ local function solveIntercept(player)
     return predicted
 end
 
--- ── Knife/projectile solve (used by doKnifeThrow) ─────────────────
--- KC8WAJ6 exact MurdererSilentAim: vel/3 with Y/1.5
+-- ── (Knife throw engine removed) ──────────────────────────────────
 local function solveKnifeIntercept(player)
     local char = player.Character; if not char then return nil end
     local root = char:FindFirstChild("HumanoidRootPart"); if not root then return nil end
-    local hum  = char:FindFirstChild("Humanoid"); if not hum then return nil end
     local head = char:FindFirstChild("Head")
-
     local smoothVel = getSmoothedVel(player)
-
-    -- KC8WAJ6 knife formula: vel / 3 with Y / 1.5
     local v = smoothVel / 3
     local predicted = root.Position + Vector3.new(v.X, v.Y / 1.5, v.Z)
 
@@ -1662,150 +1657,6 @@ local function doFusionShoot(targetPlayer)
  end)
 end
 
--- ================================================================
--- KNIFE THROW SILENT AIM ENGINE
--- Only active when localRole == "Murderer".
--- Two modes:
--- Nearest — always targets the single closest alive player.
--- In Range — throws at any player that steps within throwRange studs.
--- Prediction: reuses Fusion Engine solveIntercept for lag compensation.
--- Remote path (KC8WAJ6): knife.KnifeServer.ShootGun:InvokeServer(0, pos, "AH")
--- ================================================================
-
-local knifeThrowState = {
- enabled = false, -- master toggle (manual keybind active)
- autoThrow = false, -- Heartbeat auto-throw
- throwRange = 30, -- studs — applies to both modes
- targetMode = "Nearest", -- "Nearest" | "In Range"
- cooldownTime = 0.6, -- seconds between auto-throws
- lastThrowTime = 0,
-}
-
--- Helpers 
-local function getKnife()
- local myChar = LocalPlayer.Character; if not myChar then return nil end
- local k = myChar:FindFirstChild("Knife")
- if k and k:IsA("Tool") then return k, false end -- already equipped
- k = LocalPlayer.Backpack:FindFirstChild("Knife")
- if k and k:IsA("Tool") then return k, true end -- needs equipping
- return nil, false
-end
-
-local function getKnifeRemote(knife)
- local ks = knife and knife:FindFirstChild("KnifeServer")
- return ks and ks:FindFirstChild("ShootGun")
-end
-
--- Returns the nearest alive player within maxRange (nil if none found)
-local function getNearestPlayer(maxRange)
- local myChar = LocalPlayer.Character; if not myChar then return nil end
- local myRoot = myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then return nil end
- local nearest, nearestDist = nil, math.huge
- for _, player in ipairs(Players:GetPlayers()) do
- if player ~= LocalPlayer then
- local char = player.Character
- local root = char and char:FindFirstChild("HumanoidRootPart")
- local hum = char and char:FindFirstChild("Humanoid")
- if root and hum and hum.Health > 0 then
- local dist = (root.Position - myRoot.Position).Magnitude
- if dist <= (maxRange or math.huge) and dist < nearestDist then
- nearest, nearestDist = player, dist
- end
- end
- end
- end
- return nearest, nearestDist
-end
-
--- Core throw function 
-local function doKnifeThrow(targetPlayer)
- if localRole ~= "Murderer" then
- Fluent:Notify({ Title = "Knife Throw", Content = "You are not the Murderer.", Duration = 3 })
- return
- end
- local char = targetPlayer.Character; if not char then return end
- local tRoot = char:FindFirstChild("HumanoidRootPart"); if not tRoot then return end
- local tHead = char:FindFirstChild("Head")
-
- local myChar = LocalPlayer.Character; if not myChar then return end
- local humanoid = myChar:FindFirstChildOfClass("Humanoid"); if not humanoid then return end
-
- -- Get knife and equip if needed 
- local knife, needsEquip = getKnife()
- if not knife then
- Fluent:Notify({ Title = "Knife Throw", Content = "Knife not found.", Duration = 3 })
- return
- end
- if needsEquip then
- humanoid:EquipTool(knife)
- task.wait(0.05)
- knife = myChar:FindFirstChild("Knife")
- if not knife then return end
- end
-
- local remote = getKnifeRemote(knife)
- if not remote then return end
-
- -- KC8WAJ6 knife formula: vel/3 with Y/1.5
-    phantomUpdate(targetPlayer)
-    local predicted = solveKnifeIntercept(targetPlayer)
-                   or (tHead and tHead.Position)
-                   or tRoot.Position + Vector3.new(0, 1.5, 0)
-
- -- Frame 0: fire synchronously right after equip 
- pcall(function()
- remote:InvokeServer(0, predicted, "AH")
- end)
-
- -- Frame 1-2: burst for lag tolerance (KC8WAJ6 pattern) 
- local burst = 0
- local burstConn
- burstConn = RunService.Heartbeat:Connect(function()
- burst = burst + 1
- if burst > 2 then burstConn:Disconnect(); return end
- -- Refresh intercept each burst frame
- local freshPredicted = solveKnifeIntercept(targetPlayer)
-                            or (tHead and tHead.Position)
-                            or tRoot.Position + Vector3.new(0, 1.5, 0)
-        pcall(function()
-            remote:InvokeServer(0, freshPredicted, "AH")
- end)
- end)
-
- knifeThrowState.lastThrowTime = tick()
-end
-
--- Auto-throw Heartbeat loop 
-RunService.Heartbeat:Connect(function()
- if not knifeThrowState.autoThrow then return end
- if localRole ~= "Murderer" then return end
- if tick() - knifeThrowState.lastThrowTime < knifeThrowState.cooldownTime then return end
-
- local target = getNearestPlayer(knifeThrowState.throwRange)
- if target then
- task.spawn(function() doKnifeThrow(target) end)
- end
-end)
-
--- Manual keybind: default T 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
- if gameProcessed or not knifeThrowState.enabled then return end
- if input.KeyCode ~= Enum.KeyCode.T then return end
- if localRole ~= "Murderer" then
- Fluent:Notify({ Title = "Knife Throw", Content = "You must be the Murderer.", Duration = 3 })
- return
- end
- local target = getNearestPlayer(knifeThrowState.throwRange)
- if target then
- task.spawn(function() doKnifeThrow(target) end)
- else
- Fluent:Notify({
- Title = "Knife Throw",
- Content = string.format("No player found within %d studs.", knifeThrowState.throwRange),
- Duration = 3
- })
- end
-end)
 
 -- ================================================================
 -- SILENT AIM BUTTON (uses Fusion Engine + correct KnifeServer remote)
@@ -1838,60 +1689,103 @@ local premiumSilentAim = {
 }
 
 -- ── Premium intercept: Kalman vel + gravity-aware vertical + acceleration ───
--- Accuracy improvements over v1.0:
---   • Detects AIR state (|vel.Y| > 4 AND no ground ray hit) — runs full
---     Roblox-gravity integration for the jump arc: y = aimY + vel.Y*t - 0.5*g*t²
---   • Detects GROUNDED state — zeroes vertical offset (target stays on floor)
---     and applies tighter horizontal lateral cap (1.05× walkSpeed)
---   • Input-direction blend ratio tightened: 60/40 Kalman/input on ground,
---     80/20 on air (input less reliable mid-jump)
---   • Jitter padding scaled per-state: air needs more padding than ground
---   • Lateral accel contribution enabled on ground, dampened on air
+-- v2.0 improvements:
+--   • Wall Check: after computing predicted position, a ray is cast from the
+--     gun barrel to the predicted point (blacklisting both characters). If
+--     blocked by geometry the predictor walks through a fallback chain:
+--     predicted → head → neck band → root+1.5 → root. First clear LOS wins.
+--   • Floor/Ceiling fix: removed spatial raycasts from predicted point (they
+--     misfired when predicted was already inside geometry). Replaced with
+--     body-relative Y clamping (rootY → headY+0.3) — always anatomically safe.
+--   • Grounded vertical: vel.Y contribution dropped to 0.06 (was 0.12) so
+--     very slight ramps don't push the aim into the floor.
+--   • Air gravity: gravityDrop capped at 1.8 studs max so high-ping long arcs
+--     don't over-drop and hit the floor.
 local ROBLOX_GRAVITY = workspace.Gravity  -- typically 196.2
-local function solvePremiumIntercept(targetPlayer)
+
+-- ── LOS helpers ─────────────────────────────────────────────────────────────
+-- Returns true if a ray from `fromPos` to `toPos` reaches `toPos` without
+-- hitting anything that isn't the local char or the target char.
+local function hasLOS(fromPos, toPos, targetChar)
+    local myChar = LocalPlayer.Character
+    local dir    = toPos - fromPos
+    local dist   = dir.Magnitude
+    if dist < 0.5 then return true end  -- point-blank always clear
+
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Blacklist
+    local blacklist = {targetChar}
+    if myChar then table.insert(blacklist, myChar) end
+    rp.FilterDescendantsInstances = blacklist
+
+    local hit = workspace:Raycast(fromPos, dir.Unit * dist, rp)
+    return hit == nil
+end
+
+-- Tries a priority chain of aim positions on the target, returns the first
+-- one with a clear line of sight from `fromPos`.
+-- Priority: predicted → head → chest/neck → root+1.5 → root (last resort).
+local function bestClearPoint(fromPos, predictedPos, targetChar)
+    local root = targetChar:FindFirstChild("HumanoidRootPart")
+    local head = targetChar:FindFirstChild("Head")
+
+    local rootY = root and root.Position.Y or 0
+    local headY = head and head.Position.Y or (rootY + 2.9)
+    local chestY = rootY + (headY - rootY) * 0.58
+
+    local candidates = {
+        predictedPos,
+        head  and head.Position,
+        root  and Vector3.new(root.Position.X, chestY,      root.Position.Z),
+        root  and Vector3.new(root.Position.X, rootY + 1.5, root.Position.Z),
+        root  and root.Position,
+    }
+
+    for _, pos in ipairs(candidates) do
+        if pos then
+            if hasLOS(fromPos, pos, targetChar) then
+                return pos, true   -- pos, hadClearLOS
+            end
+        end
+    end
+
+    -- Nothing clear — return predicted anyway (last resort)
+    return predictedPos, false
+end
+
+-- Main intercept solver
+local function solvePremiumIntercept(targetPlayer, fromPos)
     local char = targetPlayer.Character; if not char then return nil end
     local root = char:FindFirstChild("HumanoidRootPart"); if not root then return nil end
     local hum  = char:FindFirstChild("Humanoid")
     local head = char:FindFirstChild("Head")
 
-    -- Ensure tracker is warmed up with latest data
+    -- Warm up tracker
     phantomUpdate(targetPlayer)
     local smoothVel   = getSmoothedVel(targetPlayer)
     local smoothAccel = getSmoothedAccel(targetPlayer)
 
     -- ── Ping / lead time ────────────────────────────────────────────
-    local rawPing = getPing()   -- seconds
-    -- Server tick = 1/60 ≈ 0.0167 s; add it so the shot lands after the
-    -- server processes it, not one tick before.
-    local baseLead = rawPing + 0.0167
+    local rawPing = getPing()
+    local baseLead = rawPing + 0.0167   -- +1 server tick
 
-    -- ── Ground / air state detection ────────────────────────────────
+    -- ── Ground / air state ──────────────────────────────────────────
     local rp0 = RaycastParams.new()
     rp0.FilterType = Enum.RaycastFilterType.Blacklist
     rp0.FilterDescendantsInstances = {char}
-    local groundRay = workspace:Raycast(root.Position, Vector3.new(0, -3.5, 0), rp0)
+    local groundRay  = workspace:Raycast(root.Position, Vector3.new(0, -3.5, 0), rp0)
     local isAirborne = (math.abs(smoothVel.Y) > 4) and (groundRay == nil)
 
-    -- ── Adaptive lead-time jitter padding ───────────────────────────
-    -- Ground movement is more predictable → less padding needed.
-    -- Air (jump) is less predictable → more padding.
+    -- ── Adaptive lead jitter ────────────────────────────────────────
     local jitterPad
     if isAirborne then
-        if rawPing <= 0.100 then
-            jitterPad = 1.15
-        elseif rawPing <= 0.200 then
-            jitterPad = 1.30
-        else
-            jitterPad = 1.45
-        end
+        jitterPad = rawPing <= 0.100 and 1.15
+                 or rawPing <= 0.200 and 1.30
+                 or 1.45
     else
-        if rawPing <= 0.050 then
-            jitterPad = 1.00
-        elseif rawPing <= 0.150 then
-            jitterPad = 1.12
-        else
-            jitterPad = 1.22
-        end
+        jitterPad = rawPing <= 0.050 and 1.00
+                 or rawPing <= 0.150 and 1.12
+                 or 1.22
     end
     local leadTime = math.clamp(baseLead * jitterPad, 0.018, 0.500)
 
@@ -1900,32 +1794,25 @@ local function solvePremiumIntercept(targetPlayer)
     local vel = smoothVel
 
     if hum then
-        local inputVel = hum.MoveDirection * walkSpeed
-        local agreement
-        if smoothVel.Magnitude > 0.5 and inputVel.Magnitude > 0.5 then
-            agreement = smoothVel.Unit:Dot(inputVel.Unit)
-        else
-            agreement = 1
-        end
-        -- On ground: trust input 40%; in air: only 20% (mid-jump input unreliable)
-        local baseBlend = isAirborne and 0.20 or 0.40
+        local inputVel   = hum.MoveDirection * walkSpeed
+        local agreement  = (smoothVel.Magnitude > 0.5 and inputVel.Magnitude > 0.5)
+                           and smoothVel.Unit:Dot(inputVel.Unit) or 1
+        local baseBlend  = isAirborne and 0.20 or 0.40
         local inputBlend = math.clamp(baseBlend + (1 - agreement) * 0.15, 0.15, 0.55)
         vel = smoothVel * (1 - inputBlend) + inputVel * inputBlend
     end
 
-    -- Lateral speed cap: tighter on ground (1.05×), looser on air (1.20×)
+    -- Lateral cap
     local lateralCap = isAirborne and (walkSpeed * 1.20) or (walkSpeed * 1.05)
     local lateralVel = Vector3.new(vel.X, 0, vel.Z)
     if lateralVel.Magnitude > lateralCap then
         lateralVel = lateralVel.Unit * lateralCap
     end
-    -- Keep the original vel.Y untouched for separate vertical handling
     vel = Vector3.new(lateralVel.X, vel.Y, lateralVel.Z)
 
-    -- ── Horizontal (XZ) prediction: pos + v*t + ½*a*t² ─────────────
-    -- Acceleration only contributes significantly at high ping; dampen on air
+    -- ── XZ prediction ────────────────────────────────────────────────
     local accelScale = math.clamp(rawPing / 0.200, 0, 1)
-    if isAirborne then accelScale = accelScale * 0.5 end  -- air accel less reliable
+    if isAirborne then accelScale = accelScale * 0.5 end
     local accelContrib = smoothAccel * accelScale
     if accelContrib.Magnitude > walkSpeed * 2.5 then
         accelContrib = accelContrib.Unit * (walkSpeed * 2.5)
@@ -1935,33 +1822,34 @@ local function solvePremiumIntercept(targetPlayer)
         + vel          * leadTime
         + accelContrib * (0.5 * leadTime * leadTime)
 
-    -- ── Vertical (Y) aim ────────────────────────────────────────────
+    -- ── Vertical (Y) ─────────────────────────────────────────────────
     local rootY = root.Position.Y
     local headY = head and head.Position.Y or (rootY + 2.9)
-    -- Aim band: chest/neck (58% of way from root to head)
-    local aimY  = rootY + (headY - rootY) * 0.58
+    local aimY  = rootY + (headY - rootY) * 0.58  -- chest/neck band
 
     local finalY
     if isAirborne then
-        -- Full parabolic integration: aimY + vel.Y*t - ½*g*t²
-        -- gravity pulls DOWN so we subtract: -0.5 * g * t²
-        local gravityDrop = 0.5 * ROBLOX_GRAVITY * (leadTime * leadTime)
+        local gravityDrop = math.min(0.5 * ROBLOX_GRAVITY * (leadTime * leadTime), 1.8)
         finalY = aimY + vel.Y * leadTime - gravityDrop
     else
-        -- Target is on the ground — vertical offset is nearly zero.
-        -- Apply a tiny fraction of vel.Y for very gentle slopes.
-        finalY = aimY + vel.Y * leadTime * 0.12
+        -- Grounded: minimal vertical drift — only gentle slope compensation
+        finalY = aimY + vel.Y * leadTime * 0.06
     end
+
+    -- ── Body-relative Y clamp (replaces broken spatial raycasts) ────
+    -- Keeps aim inside rootY to headY+0.3 — anatomically guaranteed safe.
+    -- This prevents "shooting the floor" and "shooting the ceiling" entirely.
+    finalY = math.clamp(finalY, rootY + 0.1, headY + 0.3)
+
     predicted = Vector3.new(predicted.X, finalY, predicted.Z)
 
-    -- ── Floor / ceiling safety raycasts ─────────────────────────────
-    local rp = RaycastParams.new()
-    rp.FilterType = Enum.RaycastFilterType.Blacklist
-    rp.FilterDescendantsInstances = {char}
-    local fR = workspace:Raycast(predicted, Vector3.new(0, -6, 0), rp)
-    local cR = workspace:Raycast(predicted, Vector3.new(0,  6, 0), rp)
-    if fR then predicted = Vector3.new(predicted.X, math.max(predicted.Y, fR.Position.Y + 1.4), predicted.Z) end
-    if cR then predicted = Vector3.new(predicted.X, math.min(predicted.Y, cR.Position.Y - 0.4), predicted.Z) end
+    -- ── Wall / LOS check ─────────────────────────────────────────────
+    -- If fromPos is provided (gun barrel), use it; else use root.
+    -- Walk through candidate positions until we find a clear shot.
+    if fromPos then
+        local clearPos, wasLOS = bestClearPoint(fromPos, predicted, char)
+        predicted = clearPos
+    end
 
     return predicted
 end
@@ -1993,11 +1881,6 @@ local function doPremiumShoot(targetPlayer)
         return
     end
 
-    -- PRE-COMPUTE intercept before equip delay (freshest snapshot)
-    local predicted = solvePremiumIntercept(targetPlayer)
-                   or (mHead and mHead.Position)
-                   or mRoot.Position + Vector3.new(0, 1.5, 0)
-
     -- Equip from backpack if needed — poll up to 3 frames so it responds immediately
     if LocalPlayer.Backpack:FindFirstChild(gun.Name) then
         humanoid:EquipTool(gun)
@@ -2019,6 +1902,19 @@ local function doPremiumShoot(targetPlayer)
             or (myRoot and CFrame.new(myRoot.Position))
             or CFrame.new()
     end
+
+    -- Gun barrel origin for wall check: attachment > myRoot > fallback
+    local function getBarrelPos()
+        if rayAtt then return rayAtt.WorldPosition end
+        if myRoot  then return myRoot.Position + Vector3.new(0, 1.5, 0) end
+        return Vector3.new(0, 0, 0)
+    end
+
+    -- PRE-COMPUTE intercept with wall check AFTER equip so barrel pos is valid
+    local barrelPos = getBarrelPos()
+    local predicted = solvePremiumIntercept(targetPlayer, barrelPos)
+                   or (mHead and mHead.Position)
+                   or mRoot.Position + Vector3.new(0, 1.5, 0)
 
     -- Determine burst count from live ping
     local pingMs = getPing() * 1000
@@ -2043,7 +1939,8 @@ local function doPremiumShoot(targetPlayer)
         burst = burst + 1
         if burst > burstMax then burstConn:Disconnect(); return end
 
-        local freshPredicted = solvePremiumIntercept(targetPlayer)
+        local freshBarrel = getBarrelPos()
+        local freshPredicted = solvePremiumIntercept(targetPlayer, freshBarrel)
                             or (mHead and mHead.Position)
                             or mRoot.Position + Vector3.new(0, 1.5, 0)
         pcall(function()
@@ -2129,6 +2026,63 @@ RoleFlashLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 RoleFlashLabel.Visible = false
 RoleFlashLabel.ZIndex = 10
 RoleFlashLabel.RichText = true
+
+-- Murderer Chance label — sits above the role notifier
+local MurdererChanceLabel = Instance.new("TextLabel")
+MurdererChanceLabel.Name = "MurdererChanceLabel"
+MurdererChanceLabel.Parent = RoleFlashGui
+MurdererChanceLabel.BackgroundTransparency = 1
+MurdererChanceLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+MurdererChanceLabel.Position = UDim2.new(0.5, 0, 0.22, 0)
+MurdererChanceLabel.Size = UDim2.new(0.5, 0, 0.06, 0)
+MurdererChanceLabel.Font = Enum.Font.GothamBold
+MurdererChanceLabel.TextSize = 20
+MurdererChanceLabel.TextStrokeTransparency = 0.4
+MurdererChanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+MurdererChanceLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+MurdererChanceLabel.ZIndex = 10
+MurdererChanceLabel.RichText = true
+MurdererChanceLabel.Visible = false
+MurdererChanceLabel.TextScaled = true
+
+-- Update murderer chance every second
+local murdererChanceEnabled = false
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not murdererChanceEnabled then
+            MurdererChanceLabel.Visible = false
+        else
+            MurdererChanceLabel.Visible = true
+            -- Count alive players
+            local aliveCount = 0
+            for _, p in ipairs(Players:GetPlayers()) do
+                local char = p.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    aliveCount = aliveCount + 1
+                end
+            end
+            if state.murder then
+                -- Murderer is known
+                MurdererChanceLabel.Text = string.format(
+                    "<font color='#ff4444'>Murderer:</font> <b>%s</b>  |  Alive: <b>%d</b>",
+                    state.murder, aliveCount
+                )
+                MurdererChanceLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            else
+                -- Murderer unknown — show probability per innocent
+                local innocentCount = math.max(aliveCount - 1, 1)
+                local chance = math.floor((1 / innocentCount) * 100)
+                MurdererChanceLabel.Text = string.format(
+                    "<font color='#ffcc00'>Murderer Chance:</font> <b>~%d%%</b> each  |  Alive: <b>%d</b>",
+                    chance, aliveCount
+                )
+                MurdererChanceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+            end
+        end
+    end
+end)
 
 local function roleFlashColor(role)
  if role == "Murderer" then return Color3.fromRGB(255, 60, 60) end
@@ -2875,7 +2829,115 @@ Tabs.Combat:AddButton({
  end
 })
 
--- Farming Tab Content
+-- ================================================================
+-- GOD MODE UI
+-- ================================================================
+Tabs.Combat:AddSection("God Mode")
+
+Tabs.Combat:AddToggle("GodModeToggle", {
+    Title = "God Mode",
+    Description = "Locks your health to max every frame. Knives, traps, and fall damage cannot kill you.",
+    Default = false,
+    Callback = function(v)
+        godMode.enabled = v
+        Fluent:Notify({
+            Title = "God Mode",
+            Content = v and "GOD MODE ON — you cannot die." or "God Mode OFF.",
+            Duration = 3
+        })
+    end
+})
+
+-- ================================================================
+-- HITBOX EXPANDER UI
+-- ================================================================
+Tabs.Combat:AddSection("Hitbox Expander")
+
+Tabs.Combat:AddToggle("HitboxExpanderToggle", {
+    Title = "Hitbox Expander",
+    Description = "Enlarges every player's HumanoidRootPart client-side so shots that pass near them still register. Restores on toggle off.",
+    Default = false,
+    Callback = function(v)
+        hitboxExpander.enabled = v
+        if not v then restoreHitboxes() end
+        Fluent:Notify({
+            Title = "Hitbox Expander",
+            Content = v and ("ON — hitbox size: " .. hitboxExpander.size) or "OFF — hitboxes restored.",
+            Duration = 3
+        })
+    end
+})
+
+Tabs.Combat:AddSlider("HitboxSizeSlider", {
+    Title = "Hitbox Size",
+    Description = "Client-side HumanoidRootPart size. Default 8 is balanced; higher = easier to hit but more obvious.",
+    Default = 8,
+    Min = 2,
+    Max = 30,
+    Rounding = 0,
+    Callback = function(v)
+        hitboxExpander.size = v
+    end
+})
+
+-- ================================================================
+-- MURDERER CHANCE UI
+-- ================================================================
+Tabs.Combat:AddSection("Murderer Chance")
+
+Tabs.Combat:AddToggle("MurdererChanceToggle", {
+    Title = "Show Murderer Chance",
+    Description = "Displays murderer probability above the role notifier. Shows exact murderer name once detected, or % chance per player while unknown.",
+    Default = false,
+    Callback = function(v)
+        murdererChanceEnabled = v
+        MurdererChanceLabel.Visible = v
+        Fluent:Notify({
+            Title = "Murderer Chance",
+            Content = v and "Murderer Chance display ON." or "OFF.",
+            Duration = 3
+        })
+    end
+})
+
+-- ================================================================
+-- KNIFE AURA UI (in World tab)
+-- ================================================================
+Tabs.World:AddSection("Knife Aura")
+
+Tabs.World:AddParagraph({
+    Title = "How It Works",
+    Content = "Expands the knife Handle's hitbox to your chosen size. Any player that enters that radius gets naturally registered as a hit by the server — no extra remotes needed. Murderer only, knife must be equipped."
+})
+
+Tabs.World:AddToggle("KnifeAuraToggle", {
+    Title = "Enable Knife Aura",
+    Description = "Expands the knife Handle hitbox so nearby players are auto-killed. Murderer only.",
+    Default = false,
+    Callback = function(v)
+        knifeAura.enabled = v
+        if not v then restoreKnifeHandle() end
+        Fluent:Notify({
+            Title = "Knife Aura",
+            Content = v and ("ON — handle size: " .. knifeAura.size) or "OFF — handle size restored.",
+            Duration = 3
+        })
+    end
+})
+
+Tabs.World:AddSlider("KnifeAuraSizeSlider", {
+    Title = "Handle Size",
+    Description = "How large the knife hitbox becomes. 1 = default knife, 50 = massive reach.",
+    Default = 10,
+    Min = 1,
+    Max = 50,
+    Rounding = 0,
+    Callback = function(v)
+        knifeAura.size = v
+    end
+})
+
+
 local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
  Title = "Auto Farm Coin",
  Default = false,
@@ -2904,76 +2966,6 @@ local AutoCoinToggle = Tabs.Farming:AddToggle("AutoCoinToggle", {
 
 
 
--- ================================================================
--- KNIFE THROW SILENT AIM — UI CONTROLS (Murderer only)
--- ================================================================
-Tabs.Combat:AddSection("Knife Throw Silent Aim (Murderer)")
-
-Tabs.Combat:AddToggle("KnifeThrowToggle", {
- Title = "Enable Knife Throw Silent Aim",
- Description = "Press [T] to throw the knife at the nearest player. Murderer only.",
- Default = false,
- Callback = function(toggle)
- knifeThrowState.enabled = toggle
- Fluent:Notify({
- Title = "Knife Throw Silent Aim",
- Content = toggle
- and "ENABLED — press [T] to throw at nearest player."
- or "Disabled.",
- Duration = 3
- })
- end
-})
-
-Tabs.Combat:AddDropdown("KnifeTargetModeDropdown", {
- Title = "Target Mode",
- Description = "Nearest = always closest player. In Range = first player within range.",
- Values = { "Nearest", "In Range" },
- Default = 1,
- Callback = function(value)
- knifeThrowState.targetMode = value
- end
-})
-
-Tabs.Combat:AddSlider("KnifeThrowRangeSlider", {
- Title = "Throw Range (studs)",
- Description = "Max distance to consider a player a valid target.",
- Default = 30,
- Min = 5,
- Max = 100,
- Rounding = 0,
- Callback = function(value)
- knifeThrowState.throwRange = value
- end
-})
-
-Tabs.Combat:AddSlider("KnifeThrowCooldownSlider", {
- Title = "Auto-Throw Cooldown (ms)",
- Description = "Minimum time between automatic throws to avoid spam detection.",
- Default = 600,
- Min = 100,
- Max = 2000,
- Rounding = 0,
- Callback = function(value)
- knifeThrowState.cooldownTime = value / 1000
- end
-})
-
-Tabs.Combat:AddToggle("KnifeAutoThrowToggle", {
- Title = "Auto-Throw (Heartbeat)",
- Description = "Automatically throws knife when any player enters throw range. Murderer only.",
- Default = false,
- Callback = function(toggle)
- knifeThrowState.autoThrow = toggle
- Fluent:Notify({
- Title = "Auto Knife Throw",
- Content = toggle
- and string.format("AUTO-THROW ON — will throw within %d studs.", knifeThrowState.throwRange)
- or "Auto-throw disabled.",
- Duration = 3
- })
- end
-})
 
 local function isMurdererNear(position)
  for _, player in ipairs(Players:GetPlayers()) do
@@ -4614,74 +4606,124 @@ Tabs.World:AddToggle("XRayToggle", {
 
 
 
--- ================================================================
--- COIN AURA ENGINE
--- Sourced from KC8WAJ6 coin structure:
---   workspace.Normal.CoinContainer → Coin_Server children
---   each Coin_Server has a CoinVisual (BasePart or MeshPart)
--- Method: firetouchinterest(myRoot, coinPart, 0/1) for every coin
---         within the aura radius — no player movement needed.
--- ================================================================
 
 -- ================================================================
--- COIN AURA ENGINE (Coins only, KC8WAJ6 structure)
--- Radius capped at 1–20 studs to stay detection-safe.
--- workspace.Normal.CoinContainer → Coin_Server → CoinVisual
+-- KNIFE AURA ENGINE (Handle Hitbox Expansion)
+-- Expands the knife's Handle size so any player that gets within
+-- that range naturally triggers the touch → server confirms kill.
+-- Works exactly like a hitbox expander but for the knife Handle.
+-- Murderer-only. Original size is restored when toggled off.
 -- ================================================================
 
-local coinAura = {
-    enabled = false,
-    radius  = 10   -- safe default; max 20
-}
+local knifeAura = { enabled = false, size = 10 }
+local knifeHandleOriginalSize = nil
+local knifeHandleRef = nil
 
-local function getNormalMap()
-    for _, child in pairs(workspace:GetChildren()) do
-        if child.Name == "Normal" then return child end
+local function getEquippedKnifeHandle()
+    local myChar = LocalPlayer.Character
+    if not myChar then return nil end
+    local knife = myChar:FindFirstChild("Knife")
+    if not knife or not knife:IsA("Tool") then return nil end
+    return knife:FindFirstChild("Handle"), knife
+end
+
+local function restoreKnifeHandle()
+    if knifeHandleRef and knifeHandleOriginalSize then
+        pcall(function()
+            knifeHandleRef.Size = knifeHandleOriginalSize
+        end)
     end
+    knifeHandleRef = nil
+    knifeHandleOriginalSize = nil
 end
 
-local function resolveCoinPart(coinServer)
-    local visual = coinServer:FindFirstChild("CoinVisual")
-    if not visual then return nil end
-    if visual:IsA("BasePart") then return visual end
-    return visual.PrimaryPart or visual:FindFirstChildWhichIsA("BasePart")
-end
+RunService.Heartbeat:Connect(function()
+    if not knifeAura.enabled then
+        if knifeHandleRef then restoreKnifeHandle() end
+        return
+    end
+    if localRole ~= "Murderer" then
+        if knifeHandleRef then restoreKnifeHandle() end
+        return
+    end
 
-local function isCoin(coinServer)
-    -- KC8WAJ6 line 1018: ClassName ~= "MeshPart" → Coin, else Egg
-    local visual = coinServer:FindFirstChild("CoinVisual")
-    if not visual then return false end
-    return visual.ClassName ~= "MeshPart"
-end
+    local handle, knife = getEquippedKnifeHandle()
+    if not handle then
+        if knifeHandleRef then restoreKnifeHandle() end
+        return
+    end
 
-local function tickCoinAura()
-    if not coinAura.enabled then return end
-    local char   = LocalPlayer.Character
-    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local map = getNormalMap()
-    if not map then return end
-    local container = map:FindFirstChild("CoinContainer")
-    if not container then return end
-    local myPos  = myRoot.Position
-    local radius = coinAura.radius
-    for _, coinServer in pairs(container:GetChildren()) do
-        if coinServer.Name == "Coin_Server" and isCoin(coinServer) then
-            pcall(function()
-                local part = resolveCoinPart(coinServer)
-                if not part then return end
-                if (part.Position - myPos).Magnitude <= radius then
-                    firetouchinterest(myRoot, part, 0)
-                    task.wait()
-                    firetouchinterest(myRoot, part, 1)
+    -- Cache original size once per equip
+    if knifeHandleRef ~= handle then
+        if knifeHandleRef then restoreKnifeHandle() end
+        knifeHandleRef = handle
+        knifeHandleOriginalSize = handle.Size
+    end
+
+    -- Expand the handle to desired aura size
+    pcall(function()
+        handle.Size = Vector3.new(knifeAura.size, knifeAura.size, knifeAura.size)
+    end)
+end)
+
+-- ================================================================
+-- GOD MODE ENGINE
+-- Sets local humanoid Health to MaxHealth every Heartbeat so
+-- knives, traps, and fall damage cannot kill you.
+-- ================================================================
+
+local godMode = { enabled = false }
+
+RunService.Heartbeat:Connect(function()
+    if not godMode.enabled then return end
+    local char = LocalPlayer.Character
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    if hum and hum.Health > 0 then
+        hum.Health = hum.MaxHealth
+    end
+end)
+
+-- ================================================================
+-- HITBOX EXPANDER ENGINE
+-- Enlarges the HumanoidRootPart of every other player client-side
+-- so any bullet that passes near them still registers a hit.
+-- Original sizes are cached so they can be restored on toggle off.
+-- ================================================================
+
+local hitboxExpander = { enabled = false, size = 8 }
+local hitboxOriginals = {}
+
+local function applyHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                if not hitboxOriginals[player.Name] then
+                    hitboxOriginals[player.Name] = root.Size
                 end
-            end)
+                root.Size = Vector3.new(hitboxExpander.size, hitboxExpander.size, hitboxExpander.size)
+            end
         end
     end
 end
 
+local function restoreHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root and hitboxOriginals[player.Name] then
+                root.Size = hitboxOriginals[player.Name]
+            end
+        end
+    end
+    hitboxOriginals = {}
+end
+
 RunService.Heartbeat:Connect(function()
-    if coinAura.enabled then tickCoinAura() end
+    if not hitboxExpander.enabled then return end
+    applyHitboxes()
 end)
 
 -- ================================================================
@@ -4741,45 +4783,6 @@ RunService.Heartbeat:Connect(function()
         end
     end
 end)
-
--- ================================================================
--- WORLD TAB — COIN AURA UI
--- ================================================================
-
-Tabs.World:AddSection("Coin Aura")
-
-Tabs.World:AddParagraph({
-    Title = "How It Works",
-    Content = "Reads workspace.Normal.CoinContainer (KC8WAJ6 structure) every frame. Collects any Coin_Server within your radius using firetouchinterest — no movement. Radius kept at 1–20 studs to stay detection-safe."
-})
-
-Tabs.World:AddToggle("CoinAuraToggle", {
-    Title = "Enable Coin Aura",
-    Description = "Collects nearby coins silently without moving your character.",
-    Default = false,
-    Callback = function(v)
-        coinAura.enabled = v
-        Fluent:Notify({
-            Title = "🪙 Coin Aura",
-            Content = v
-                and ("ON — radius: " .. coinAura.radius .. " studs.")
-                or  "Coin Aura OFF.",
-            Duration = 3
-        })
-    end
-})
-
-Tabs.World:AddSlider("CoinAuraRadiusSlider", {
-    Title = "Radius (studs)",
-    Description = "Keep low (8–12) for safety. Max 20 to avoid detection.",
-    Default = 10,
-    Min = 1,
-    Max = 20,
-    Rounding = 0,
-    Callback = function(v)
-        coinAura.radius = v
-    end
-})
 
 -- ================================================================
 -- WORLD TAB — ANTI-FLING UI
@@ -4881,6 +4884,162 @@ Tabs.Premium:AddButton({
         end
     end
 })
+
+-- ================================================================
+-- SPEED GLITCH UI
+-- ================================================================
+-- Forward declarations (engine defined after Save Manager block)
+local speedGlitch, sgDestroy
+Tabs.Premium:AddSection("Speed Glitch")
+
+Tabs.Premium:AddParagraph({
+    Title = "How It Works",
+    Content = "Jump while strafing sideways (shiftlock style — A or D + Jump). A velocity boost kicks in mid-air in your strafe direction. When you land or stop strafing, the speed bleeds off smoothly so it feels natural, not choppy."
+})
+
+Tabs.Premium:AddToggle("SpeedGlitchToggle", {
+    Title = "Enable Speed Glitch",
+    Description = "Activates when you jump + strafe sideways. Speed fades smoothly on landing.",
+    Default = false,
+    Callback = function(v)
+        speedGlitch.enabled = v
+        if not v then sgDestroy() end
+        Fluent:Notify({
+            Title = "Speed Glitch",
+            Content = v and ("ON — boost: " .. speedGlitch.speed .. " studs/s") or "OFF.",
+            Duration = 3
+        })
+    end
+})
+
+Tabs.Premium:AddSlider("SpeedGlitchSpeedSlider", {
+    Title = "Glitch Speed (studs/s)",
+    Description = "How fast you move during the glitch. 60 is subtle; 150 is very fast.",
+    Default = 60,
+    Min = 20,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(v)
+        speedGlitch.speed = v
+    end
+})
+
+Tabs.Premium:AddSlider("SpeedGlitchDecaySlider", {
+    Title = "Brake Smoothness (ms)",
+    Description = "How long it takes to bleed off speed after landing. Higher = longer smooth brake.",
+    Default = 350,
+    Min = 50,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(v)
+        speedGlitch.decayTime = v / 1000
+    end
+})
+
+
+
+-- ================================================================
+-- SPEED GLITCH ENGINE
+-- Exploits Roblox's lateral momentum system. When you jump while
+-- strafing (sideways movement — shiftlock style), a LinearVelocity
+-- is injected in your strafe direction scaled to the slider speed.
+-- On landing / stop: velocity decays smoothly via lerp so it
+-- "breaks" gradually instead of cutting off instantly.
+-- Works on mobile: detects MoveDirection instead of keybinds.
+-- ================================================================
+
+speedGlitch = {
+    enabled    = false,
+    speed      = 60,     -- studs/s boost while glitching
+    decayTime  = 0.35,   -- seconds to fully bleed off after release
+}
+
+local sgLinVel   = nil  -- LinearVelocity instance
+local sgAttach   = nil  -- Attachment for LinearVelocity
+local sgCurrent  = Vector3.zero   -- current injected velocity (lerped)
+local sgActive   = false          -- is boost currently being applied
+
+-- Create/destroy the LinearVelocity constraint on the HRP
+local function sgBuild(root)
+    if sgAttach and sgAttach.Parent then return end
+    pcall(function()
+        sgAttach           = Instance.new("Attachment")
+        sgAttach.Name      = "SGAttach"
+        sgAttach.Parent    = root
+
+        sgLinVel                  = Instance.new("LinearVelocity")
+        sgLinVel.Name             = "SGVelocity"
+        sgLinVel.Attachment0      = sgAttach
+        sgLinVel.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+        sgLinVel.MaxForce         = 1e5
+        sgLinVel.RelativeTo       = Enum.ActuatorRelativeTo.World
+        sgLinVel.VectorVelocity   = Vector3.zero
+        sgLinVel.Parent           = root
+    end)
+end
+
+sgDestroy = function()
+    pcall(function() if sgLinVel  then sgLinVel:Destroy()  end end)
+    pcall(function() if sgAttach  then sgAttach:Destroy()  end end)
+    sgLinVel  = nil
+    sgAttach  = nil
+    sgCurrent = Vector3.zero
+    sgActive  = false
+end
+
+local sgLastLand = 0   -- tick() of last landing (for decay timing)
+
+RunService.Heartbeat:Connect(function(dt)
+    if not speedGlitch.enabled then
+        if sgLinVel then sgDestroy() end
+        return
+    end
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then sgDestroy(); return end
+
+    sgBuild(root)
+    if not sgLinVel then return end
+
+    local moveDir = hum.MoveDirection   -- normalised world XZ move direction
+    local isInAir = hum.FloorMaterial == Enum.Material.Air
+    local camCF   = workspace.CurrentCamera.CFrame
+
+    -- Sideways component: dot moveDir against camera's right axis
+    -- A positive dot = strafing right, negative = strafing left
+    local camRight   = camCF.RightVector
+    local camForward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z).Unit
+    local lateral    = moveDir:Dot(camRight)           -- -1 to 1
+    local forward    = moveDir:Dot(camForward)         -- -1 to 1
+
+    -- Glitch fires when: in air + significant sideways movement (shiftlock strafe)
+    -- The threshold ignores pure forward runs
+    local isSideStrafe = math.abs(lateral) > 0.3
+
+    if isInAir and isSideStrafe and moveDir.Magnitude > 0.1 then
+        sgActive = true
+        -- Target: boost in the strafe direction scaled by speed
+        local target = Vector3.new(
+            moveDir.X * speedGlitch.speed,
+            0,
+            moveDir.Z * speedGlitch.speed
+        )
+        -- Lerp current velocity toward target fast (snappy apply)
+        sgCurrent = sgCurrent:Lerp(target, math.min(dt * 18, 1))
+    else
+        sgActive = false
+        -- Smooth decay: bleed off to zero over decayTime
+        local decayRate = dt / math.max(speedGlitch.decayTime, 0.01)
+        sgCurrent = sgCurrent:Lerp(Vector3.zero, math.min(decayRate, 1))
+    end
+
+    -- Write to constraint
+    pcall(function()
+        sgLinVel.VectorVelocity = sgCurrent
+    end)
+end)
 
 -- Save and Interface Management
 SaveManager:SetLibrary(Fluent)
