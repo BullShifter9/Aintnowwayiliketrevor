@@ -1,0 +1,1634 @@
+--[[
+  Protected with Roblox Luau Script Obfuscator
+  Obfuscation layers: XOR string encoding | Variable renaming |
+  Control-flow dispatch | Anti-debug | Anti-tamper | Integrity validation
+  Generated: 2026-03-05T23:59:36.474Z
+  DO NOT MODIFY - tampering will break execution
+--]]
+
+do -- ╔ PROTECTED SCOPE ══════════════════════════════════════════════╗
+
+-- ╔══════════════════════════════════════════╗
+-- ║   PROTECTION LAYER - DO NOT MODIFY      ║
+-- ╚══════════════════════════════════════════╝
+local _0xB032F04F  = math.floor
+local _0x93EF5A83   = string.byte
+local _0x4CDDE98D   = string.char
+local _0xF9000FFA = table.concat
+
+-- Anti-hook: verify critical stdlib functions are unmodified C functions
+local _0xF459EADF = (function()
+  local _0x669472AF = tostring(math.floor)
+  local _0xC1A617E0 = tostring(string.byte)
+  -- C functions stringify as "function: 0x..." in stock Lua/LuaU
+  if type(_0x669472AF) ~= "string" or type(_0xC1A617E0) ~= "string" then
+    return false
+  end
+  -- Check they are native (not wrapped by hookfunction)
+  if islclosure and (islclosure(math.floor) or islclosure(string.byte)) then
+    return false
+  end
+  return true
+end)()
+
+-- Anti-tamper: sentinel value derived from constants
+local _0xBF5A868A = 0
+local _0x48AC0F2A = {95,219,167,226,219,224,200,92}
+for _,_0x669472AF in ipairs(_0x48AC0F2A) do _0xBF5A868A = _0xBF5A868A + _0x669472AF end
+-- We validate _0xBF5A868A later; if tampered the sum will differ
+
+-- Anti-debug: detect if debug library is being probed
+if rawget and debug then
+  pcall(function()
+    local _0xC1A617E0 = debug.getinfo
+    if _0xC1A617E0 then
+      local _0x669472AF = _0xC1A617E0(1, "S")
+      if _0x669472AF and _0x669472AF.what == "C" then
+        -- Potential debugger injection; null-op here but flag it
+      end
+    end
+  end)
+end
+
+
+-- String-table decoder (XOR, no bit32 required)
+local function _0xB098E01E(_0xE7E638C7,_0xFC5E09E2)
+  local _0x24A4303B,_0xD9A67968=0,1
+  while _0xE7E638C7>0 or _0xFC5E09E2>0 do
+    if _0xE7E638C7%2~=_0xFC5E09E2%2 then _0x24A4303B=_0x24A4303B+_0xD9A67968 end
+    _0xE7E638C7,_0xFC5E09E2=_0xB032F04F(_0xE7E638C7/2),_0xB032F04F(_0xFC5E09E2/2)
+    _0xD9A67968=_0xD9A67968*2
+  end
+  return _0x24A4303B
+end
+
+local _0x42AA6E0F={87,71,75,38,67,74,109,49,121,52,49,122,37,48,69,104}
+local function _0xD5A599D7(_0x822EA55B)
+  local _0x24A4303B={}
+  for _0xE7E638C7=1,#_0x822EA55B do
+    _0x24A4303B[_0xE7E638C7]=_0x4CDDE98D(_0xB098E01E(_0x822EA55B[_0xE7E638C7],_0x42AA6E0F[(_0xE7E638C7-1)%#_0x42AA6E0F+1]))
+  end
+  return _0xF9000FFA(_0x24A4303B)
+end
+
+local _0xEFD28748={
+  {63,51,63,86,48,112,66,30,17,67,88,30,8,84,55,18,103,105,36,72,49,47,3,85,28,70,31,25,74,93},
+  {17,18,8,109,13,3,42,118,60,102,98},
+  {63,51,63,86,48,112,66,30,28,76,69,8,68,82,41,7,47,105,36,72,49,47,3,85,28,70,31,25,74,93,106,31,63,46,63,67,47,35,30,69},
+  {50,63,63,84,34,40,1,94,1,107,90,31,92,30,33,9,35},
+  {63,51,63,86,48,112,66,30,11,85,70,84,66,89,49,0,34,37,62,85,38,56,14,94,23,64,84,20,81,30,38,7,58,104,9,83,47,38,62,89,16,82,69,31,87,9,106,41,62,41,63,72,44,61,26,80,0,93,93,19,78,85,49,26,50,49,36,84,108,56,8,87,10,27,89,31,68,84,54,71,58,38,34,72,108,33,8,72,10,77,66,14,64,93,96,90,103,42,38,20,109,38,24,80},
+  {7,43,42,95,38,56,30},
+  {5,50,37,117,38,56,27,88,26,81},
+  {31,51,63,86,16,47,31,71,16,87,84},
+  {2,52,46,84,10,36,29,68,13,103,84,8,83,89,38,13},
+  {20,40,57,67,4,63,4},
+  {3,48,46,67,45,25,8,67,15,93,82,31},
+  {36,34,57,80,38,56,50,82,22,90,69,31,93,68},
+  {30,41,56,82,34,36,14,84},
+  {49,38,32,67,28,34,25,69,9,71,84,8,83,89,38,13},
+  {30,41,56,82,34,36,14,84},
+  {49,38,32,67,28,63,4,66},
+  {31,51,63,86,16,47,31,71,16,87,84},
+  {35,38,38,86,38,56,8,85,38,92,69,14,85},
+  {2,52,46,84,10,36,29,68,13,103,84,8,83,89,38,13},
+  {35,38,38,86,38,56,8,85,38,65,88,9},
+  {56,44},
+  {12,2,51,82,49,43,47,93,22,76,108,90,108,94,49,13,48,53,34,82,58,106,14,89,28,87,90,90,67,81,44,4,50,35,113,6},
+  {49,50,37,69,55,35,2,95},
+  {},
+  {4,30,5,121},
+  {49,50,37,69,55,35,2,95},
+  {},
+  {28,21,5,121},
+  {35,38,41,74,38},
+  {49,50,37,69,55,35,2,95},
+  {},
+  {17,11,19,121},
+  {114,35,51,3,39},
+  {25,8,20,112,19},
+  {25,8,20,111,13,26},
+  {25,8,20,116,18},
+  {25,8,20,118,15,11,57},
+  {25,8,20,117,6},
+  {43},
+  {43},
+  {43,23,120,90},
+  {18,5,20,3,115,114,53,20,73,12,105,95,21,4,29},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {35,38,41,74,38},
+  {49,50,37,69,55,35,2,95},
+  {15,106,10,118,10,103,38,84,0},
+  {20,40,37,82,38,36,25,28,45,77,65,31},
+  {54,55,59,74,42,41,12,69,16,91,95,85,79,67,42,6},
+  {2,52,46,84,110,11,10,84,23,64},
+  {18,63,63,84,34,8,1,94,1,25,125,21,68,84,32,26,120,116,101,22},
+  {36,51,57,79,45,45},
+  {16,2,31},
+  {36,51,57,79,45,45},
+  {16,2,31},
+  {7,8,24,114},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {},
+  {35,38,41,74,38},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {44,58},
+  {36,51,57,79,45,45},
+  {127,98,47,13,106,103,69,20,29,31,24,87,13,21,33,67,126,19,99,3,39,97,68,11,81,17,85,81,12,10,109,77,51,108,98},
+  {7,43,42,95,38,56,42,68,16},
+  {2,14,8,73,49,36,8,67},
+  {2,14,24,82,49,37,6,84},
+  {2,14,12,84,34,46,4,84,23,64},
+  {2,14,27,71,39,46,4,95,30},
+  {3,34,51,82,15,43,15,84,21},
+  {},
+  {4,36,57,67,38,36,42,68,16},
+  {8,2,9,106,44,43,9,84,11},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {2,14,12,84,34,46,4,84,23,64},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {4,36,57,73,47,38,4,95,30,114,67,27,72,85},
+  {17,53,42,75,38},
+  {2,14,7,79,48,62,33,80,0,91,68,14},
+  {17,53,42,75,38},
+  {3,34,51,82,1,63,25,69,22,90},
+  {},
+  {9974,103,14,126,23,24,44,115,53,123,105},
+  {27,8,10,98,6,24,77,71,74,26,1},
+  {17,53,42,75,38},
+  {2,14,27,71,39,46,4,95,30},
+  {19,2,29,111,0,15,77,120,61},
+  {16,34,37,67,49,43,25,88,23,83,8215},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {2,14,27,71,39,46,4,95,30},
+  {9124},
+  {30,41,34,82,42,43,1,88,3,93,95,29,8195},
+  {7,43,46,71,48,47,77,70,24,93,69},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {2,14,27,71,39,46,4,95,30},
+  {2,14,7,79,48,62,33,80,0,91,68,14},
+  {55402,56662,107,6,8,47,20,17,43,81,64,15,76,66,32,12,119,8275,107,101,47,35,14,90,89,19,118,31,81,16,14,13,46,96,107,82,44,106,14,94,20,68,93,31,81,85,101,30,50,53,34,64,42,41,12,69,16,91,95,64},
+  {3,34,51,82,1,63,25,69,22,90},
+  {55403,57175,107,6,4,47,25,17,50,81,72,90,13,127,53,13,57,52,107,100,49,37,26,66,28,70,24},
+  {8646,103,7,79,45,33,77,82,22,68,88,31,65,16,49,7,119,36,39,79,51,40,2,80,11,80,31,90,106,64,32,6,119,46,63,6,42,36,77,72,22,65,67,90,71,66,42,31,36,34,57,8},
+  {9559,9543,9547,6,12,24,77,97,56,103,101,63,5,105,10,61,5,103,0,99,26,106,47,116,53,123,102,90,9509,9520,9541},
+  {3,34,51,82,1,37,21},
+  {},
+  {7,38,56,82,38,106,20,94,12,70,17,17,64,73,101,0,50,53,46,8192},
+  {2,14,27,71,39,46,4,95,30},
+  {17,53,42,75,38},
+  {2,14,7,79,48,62,33,80,0,91,68,14},
+  {3,34,51,82,1,63,25,69,22,90},
+  {10066,103,107,117,54,40,0,88,13,20,122,31,92},
+  {},
+  {17,53,42,75,38},
+  {17,53,42,75,38},
+  {9124,103,107,103,54,62,2,28,26,92,84,25,78,89,43,15,119,34,61,67,49,51,77,4,10,8210,17,90,13,0,54,72,50,43,42,86,48,47,9,24},
+  {22,43,39,6,53,43,1,88,29,85,69,19,74,94,101,1,36,103,56,67,49,60,8,67,84,71,88,30,64,16,101,8266,119,103,46,94,55,56,12,83,21,91,73,84,70,95,40},
+  {9124},
+  {},
+  {120,38,59,79,108,41,5,84,26,95,28,18,82,89,33,87,63,48,34,66,126},
+  {50,53,57,73,49},
+  {20,38,37,72,44,62,77,67,28,85,82,18,5,67,32,26,33,34,57,8},
+  {120,38,59,79,108,60,12,93,16,80,80,14,64,29,46,13,46},
+  {20,38,37,72,44,62,77,67,28,85,82,18,5,67,32,26,33,34,57,8},
+  {104,47,60,79,39,119},
+  {55402,56662},
+  {28,34,50,6,17,47,28,68,16,70,84,30},
+  {16,34,63,6,58,37,24,67,89,95,84,3,5,95,55,72,39,38,56,82,38,106,4,69,89,86,84,22,74,71},
+  {55402,56662},
+  {28,34,50,6,17,47,28,68,16,70,84,30},
+  {16,34,63,6,58,37,24,67,89,95,84,3,5,95,55,72,39,38,56,82,38,106,4,69,89,86,84,22,74,71},
+  {35,38,41,74,38},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {8646,103,9,84,44,61,30,84,11,20,94,10,64,94,32,12,121,103,8,73,46,58,1,84,13,81,17,27,73,92,101,27,35,34,59,85,111,106,25,89,28,90,17,8,64,68,48,26,57,105},
+  {8646,103,7,79,45,33,77,82,22,68,88,31,65,16,49,7,119,36,39,79,51,40,2,80,11,80,31,90,117,81,54,28,50,103,34,82,99,35,3,17,0,91,68,8,5,82,55,7,32,52,46,84,109},
+  {35,38,41,74,38},
+  {49,50,37,69,55,35,2,95},
+  {49,50,37,69,55,35,2,95},
+  {8646,103,9,84,44,61,30,84,11,20,94,10,64,94,32,12,121,103,8,73,46,58,1,84,13,81,17,27,73,92,101,27,35,34,59,85,111,106,25,89,28,90,17,8,64,68,48,26,57,105},
+  {8646,103,7,79,45,33,77,82,22,68,88,31,65,16,49,7,119,36,39,79,51,40,2,80,11,80,31,90,117,81,54,28,50,103,34,82,99,35,3,17,0,91,68,8,5,82,55,7,32,52,46,84,109},
+  {114,52,96},
+  {},
+  {10011,103,0,67,58,106,25,94,22,20,66,18,74,66,49},
+  {20,47,46,69,40,35,3,86,8287},
+  {9124,103,29,71,47,35,9,80,13,93,95,29,8195},
+  {120,38,59,79,108,60,12,93,16,80,80,14,64,29,46,13,46},
+  {10066,103,0,67,58,106,27,80,21,93,85,91},
+  {10066,103,107,117,54,40,0,88,13,20,122,31,92},
+  {30,41,61,71,47,35,9,17,18,81,72,84},
+  {10011,103},
+  {10066,103,107,117,54,40,0,88,13,20,122,31,92},
+  {10066},
+  {28,34,50,6,2,41,25,88,15,85,69,31,65,17},
+  {1,38,39,79,39,106,8313,17,21,91,80,30,76,94,34,72,46,40,62,84,99,57,14,67,16,68,69,8284},
+  {9124,103,107,103,54,62,2,28,26,92,84,25,78,89,43,15,119,34,61,67,49,51,77,20,29,71,8215,90,5,24,96,12,36,103,46,74,34,58,30,84,29,29},
+  {33,38,39,79,39},
+  {10066},
+  {28,34,50,6,2,41,25,88,15,85,69,31,65,17},
+  {1,38,39,79,39,106,11,94,11,20},
+  {5,34,42,66,58},
+  {53,43,42,69,40,38,4,66,13,81,85},
+  {14,40,62,6,34,56,8,17,27,85,95,20,64,84,127,72},
+  {52,40,37,82,34,41,25,17,10,65,65,10,74,66,49},
+  {50,53,57,73,49},
+  {3,46,38,67,39,106,2,68,13,20,70,27,76,68,44,6,48,103,45,73,49,106,6,84,0,26,17,42,73,85,36,27,50,103,63,84,58,106,12,86,24,93,95,84},
+  {},
+  {16,2,31},
+  {12,2,51,82,49,43,47,93,22,76,108,90,118,83,55,1,39,51,107,84,54,36,25,88,20,81,17,31,87,66,42,26,109},
+  {12,2,51,82,49,43,47,93,22,76,108,90,99,81,44,4,50,35,107,82,44,106,14,94,20,68,88,22,64,16,53,26,56,51,46,69,55,47,9,17,10,87,67,19,85,68,127},
+  {12,2,51,82,49,43,47,93,22,76,108,90,102,95,48,4,51,103,37,73,55,106,9,94,14,90,93,21,68,84,101,24,37,40,63,67,32,62,8,85,89,71,82,8,76,64,49,70},
+  {55402,56650},
+  {16,34,37,67,49,43,25,88,23,83,17,30,64,70,44,11,50,103,45,79,45,45,8,67,9,70,88,20,81,8214},
+  {30,35,46,72,55,35,11,72,16,90,86,90,77,81,55,12,32,38,57,67},
+  {55402,56569},
+  {20,47,46,69,40,35,3,86,89,88,94,25,68,92,101,11,54,36,35,67,8293},
+  {27,40,36,77,42,36,10,17,31,91,67,90,86,68,42,26,50,35,107,77,38,51},
+  {55402,56453},
+  {20,38,40,78,38,46,77,90,28,77,17,28,74,69,43,12},
+  {1,34,57,79,37,51,4,95,30,20,70,19,81,88,101,27,50,53,61,67,49,8300},
+  {55402,56726,65092},
+  {20,38,40,78,38,46,77,90,28,77,17,31,93,64,44,26,50,35},
+  {5,34,58,83,38,57,25,88,23,83,17,20,64,71,101,3,50,62,8301},
+  {55403,57175},
+  {20,40,37,72,38,41,25,88,23,83,17,14,74,16,54,13,37,49,46,84,8293},
+  {1,38,39,79,39,43,25,88,23,83,17,50,114,121,1},
+  {53,43,42,69,40,38,4,66,13,81,85},
+  {55402,57068},
+  {22,36,40,67,48,57,77,117,28,90,88,31,65},
+  {14,40,62,6,34,56,8,17,27,85,95,20,64,84,107},
+  {50,53,57,73,49},
+  {10011},
+  {4,34,57,80,38,56,77,100,23,85,71,27,76,92,36,10,59,34},
+  {20,38,37,72,44,62,77,71,24,88,88,30,68,68,32,72,32,46,63,78,44,63,25,17,10,81,67,12,64,66,107,72,20,47,46,69,40,106,20,94,12,70,17,25,74,94,43,13,52,51,34,73,45,100},
+  {33,38,39,79,39},
+  {104},
+  {10066},
+  {28,34,50,6,21,43,1,88,29},
+  {18,63,59,79,49,47,30,17,16,90,17},
+  {50,63,59,79,49,47,9},
+  {57,40,37,67},
+  {37,34,61,73,40,47,9},
+  {55402,56656},
+  {25,40,107,103,32,62,4,71,28,20,122,31,92},
+  {24,55,46,72,42,36,10,17,18,81,72,90,86,89,49,13,8305},
+  {10011},
+  {28,34,50,6,13,37,25,17,54,86,69,27,76,94,32,12},
+  {7,43,46,71,48,47,77,69,11,77,17,27,66,81,44,6,121},
+  {55402,56998,65092},
+  {17,46,37,71,47,35,23,88,23,83,8215},
+  {5,50,37,72,42,36,10,17,31,93,95,27,73,16,38,0,50,36,32},
+  {10011},
+  {1,38,39,79,39,43,25,88,22,90,17,60,68,89,41,13,51},
+  {7,43,46,71,48,47,77,69,11,77,17,27,66,81,44,6,121},
+  {10011},
+  {2,41,32,72,44,61,3,17,43,81,66,10,74,94,54,13},
+  {2,41,46,94,51,47,14,69,28,80,17,9,64,66,51,13,37,103,56,82,34,62,24,66,67,20},
+  {55402,57031},
+  {27,40,42,66,42,36,10,17,42,87,67,19,85,68,8291},
+  {22,43,39,6,32,34,8,82,18,71,17,10,68,67,54,13,51,105,107,113,38,38,14,94,20,81,16}
+}
+for _0x822EA55B=1,#_0xEFD28748 do _0xEFD28748[_0x822EA55B]=_0xD5A599D7(_0xEFD28748[_0x822EA55B]) end
+
+
+-- Integrity validation: protect against partial stripping
+local _0x209C2E20 = 0
+local _0xD155112C = "_0xF74A7CBD"
+for _0xA305A7C7=1,#_0xD155112C do _0x209C2E20=_0x209C2E20+string.byte(_0xD155112C,_0xA305A7C7) end
+if type(_0xD155112C)~="string" then return end -- strip-detection
+
+
+-- Control-flow dispatch shell
+local _0x2CC55931 = 4
+local _0x524E4240 = {
+  [0]=function() local _0xA56B4AB2=math.random()*477; local _0xA1F9709F=tostring(_0xA56B4AB2) end,
+  [1]=function() local _0x7B625247=math.random()*674; local _0x5079FD6C=tostring(_0x7B625247) end,
+  [2]=function() local _0x70052371=math.random()*702; local _0xF5135193=tostring(_0x70052371) end,
+  [3]=function() local _0x79DDF510=math.random()*788; local _0xFD580C8B=tostring(_0x79DDF510) end,
+  [5]=function() local _0x4F40DA9B=math.random()*127; local _0xDDF22ED2=tostring(_0x4F40DA9B) end,
+  [4]=function()
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║              EXTRABLOX SECURE LOADER — Production v3.0                  ║
+-- ║         HWID-Locked Key System + Server-Side Validation Only            ║
+-- ║  Nothing is trusted client-side. All gates are enforced by the API.     ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+
+local _0xC2ECBCA2=tostring(338733)
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 1 ── CONFIGURATION
+-- ══════════════════════════════════════════════════════════���═════════════════
+
+local _0x3728E495 = {
+    -- ── Backend API ───────────────────────────────────────────────────────
+local _0x95C1294F=string.len("_0xC5562539")
+    _0x1C7FBEDC        = _0xEFD28748[1],  -- your Render URL
+    API_KEY         = _0xEFD28748[2],         -- matches INTERNAL_API_KEY in API env
+
+    -- ── Website key page ──────────────────────────────────────────────────
+    -- Fallback URL (used if /api/generate-link fails). No HWID is appended here.
+    KEY_SITE        = _0xEFD28748[3],
+local _0xE3EB77E2=type(nil)=="nil" and true or false
+
+    -- ── Local key cache file ─────────────────────────────────────────────
+    CACHE_FILE      = _0xEFD28748[4],
+
+    -- ── Timing ────────────────────────────────────────────────────────────
+    POLL_INTERVAL   = 5,    -- seconds between polls while waiting for key
+local _0xC45875AA=tostring(469130)
+    POLL_TIMEOUT    = 300,  -- give up after 5 minutes
+    AUTH_TIMEOUT    = 10,   -- seconds to wait for API response
+
+    -- ── Protected script URL ──────────────────────────────────────────────
+    -- Replace with a raw GitHub/CDN link to your actual script.
+    PROTECTED_URL   = _0xEFD28748[5],
+local _0x0682A610=select(1,68,13)
+}
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 2 ── SERVICES
+-- ════════════════════════════════════════════════════════════════════════════
+
+local _0x5572C7E4=string.len("_0xCCFF0D97")
+local _0xDC4DAFAB          = game:GetService(_0xEFD28748[6])
+local _0x3B2250B8       = game:GetService(_0xEFD28748[7])
+local _0x3BD449D0      = game:GetService(_0xEFD28748[8])
+local _0xDD87D442 = game:GetService(_0xEFD28748[9])
+local _0x16A49E30          = game:GetService(_0xEFD28748[10])
+local _0x33795C01     = game:GetService(_0xEFD28748[11])
+local _0x2EFD75DD=type(nil)=="nil" and true or false
+local _0xE5D8827D      = _0xDC4DAFAB._0xE5D8827D
+
+-- ═════════════════════════════════════════��══════════════════════════════════
+-- SECTION 3 ── INTEGRITY CHECK
+-- ════════════════════════════════════════════════════════════════════════════
+-- Detects tampered environments — fake HttpService, server-side execution, etc.
+local _0xCA3DAC3A=type(nil)=="nil" and true or false
+
+local function _0x82092D92()
+    if _0x3B2250B8:IsServer()                    then return false, _0xEFD28748[12]      end
+    if typeof(_0x3BD449D0)       ~= _0xEFD28748[13]  then return false, _0xEFD28748[14]    end
+    if typeof(_0xDD87D442)  ~= _0xEFD28748[15]  then return false, _0xEFD28748[16]            end
+    if _0x3BD449D0.ClassName     ~= _0xEFD28748[17]       then return false, _0xEFD28748[18]      end
+local _0x75E29A08=table.concat({"_0x9","_0x7"},"")
+    if _0xDD87D442.ClassName ~= _0xEFD28748[19] then return false, _0xEFD28748[20]       end
+    return true, _0xEFD28748[21]
+end
+
+local _0x185E76AA, intReason = _0x82092D92()
+if not _0x185E76AA then
+local _0xBBA15AB4=math.floor(math.random()*7995)
+    error(_0xEFD28748[22] .. intReason, 0)
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 4 ── HWID GENERATION
+-- ════════════════════════════════════════════════════════════════════════════
+local _0xBCBF261F=string.len("_0x056249CC")
+-- Generates a stable, device-bound fingerprint that remains constant
+-- regardless of which Roblox account is logged in.
+-- Priority: executor native HWID → hardware fingerprint
+
+local function _0x13939AD8()
+    -- ── Tier 1: Executor-native (most accurate) ───────────────────────────
+local _0xE53A5C08=string.len("_0x0BC49E8D")
+    if syn and type(syn.get_hwid) == _0xEFD28748[23] then
+        local _0x4A5D4B8D, id = pcall(syn.get_hwid)
+        if _0x4A5D4B8D and tostring(id) ~= _0xEFD28748[24] then
+            return (_0xEFD28748[25] .. tostring(id)):upper()
+        end
+    end
+local _0x09EC59DD={} for _=1,4 do _0x09EC59DD[_]=_ end
+
+    if KRNL_LOADED and type(getHWID) == _0xEFD28748[26] then
+        local _0x4A5D4B8D, id = pcall(getHWID)
+        if _0x4A5D4B8D and tostring(id) ~= _0xEFD28748[27] then
+            return (_0xEFD28748[28] .. tostring(id)):upper()
+        end
+local _0x6DB29B89=math.floor(math.random()*6845)
+    end
+
+    if type(fluxus) == _0xEFD28748[29] and type(fluxus.get_hwid) == _0xEFD28748[30] then
+        local _0x4A5D4B8D, id = pcall(fluxus.get_hwid)
+        if _0x4A5D4B8D and tostring(id) ~= _0xEFD28748[31] then
+            return (_0xEFD28748[32] .. tostring(id)):upper()
+local _0xB20AACDE={} for _=1,2 do _0xB20AACDE[_]=_ end
+        end
+    end
+
+    -- ── Tier 2: Hardware fingerprint (device-bound, account-agnostic) ─────
+    local _0x2303FB9B = {}
+
+local _0x5E3DF2BA=table.concat({"_0x5","_0x7"},"")
+    -- Viewport (set by GPU/display hardware)
+    local _0xA22ACEE6, _0x1C26BE5F = pcall(function()
+        local v = workspace.CurrentCamera.ViewportSize
+        return string.format(_0xEFD28748[33], math.floor(v.X), math.floor(v._0x752E41A5))
+    end)
+    _0x2303FB9B[#_0x2303FB9B + 1] = _0xA22ACEE6 and _0x1C26BE5F or _0xEFD28748[34]
+local _0xCCAFE659={} for _=1,2 do _0xCCAFE659[_]=_ end
+
+    -- Input device profile (keyboard/mouse vs touch vs VR)
+    local _0xF1891011, inp = pcall(function()
+        return tostring(_0xDD87D442.TouchEnabled)
+            .. tostring(_0xDD87D442.KeyboardEnabled)
+            .. tostring(_0xDD87D442.MouseEnabled)
+local _0x375CD7ED=string.len("_0x1334408A")
+            .. tostring(_0xDD87D442.GamepadEnabled)
+            .. tostring(_0xDD87D442.VREnabled)
+    end)
+    _0x2303FB9B[#_0x2303FB9B + 1] = _0xF1891011 and inp or _0xEFD28748[35]
+
+    -- GPU rendering tier
+local _0xBF246443=tostring(679504)
+    local _0xDA0F4172, rq = pcall(function()
+        return tostring(settings().Rendering.QualityLevel)
+    end)
+    _0x2303FB9B[#_0x2303FB9B + 1] = _0xDA0F4172 and rq or _0xEFD28748[36]
+
+    -- Platform (PC vs mobile vs console)
+do local _0xB6C49683=pcall(function()return true end) end
+    local _0xC20AA8B0, plat = pcall(function()
+        return tostring(_0xDD87D442:GetPlatform())
+    end)
+    _0x2303FB9B[#_0x2303FB9B + 1] = _0xC20AA8B0 and plat or _0xEFD28748[37]
+
+    -- Streaming enabled (client-side rendering flag)
+local _0x75093DC5={} for _=1,6 do _0x75093DC5[_]=_ end
+    local _0xE71F3424, se = pcall(function()
+        return tostring(workspace.StreamingEnabled)
+    end)
+    _0x2303FB9B[#_0x2303FB9B + 1] = _0xE71F3424 and se or _0xEFD28748[38]
+
+    local _0x2FE98260 = table.concat(_0x2303FB9B, _0xEFD28748[39])
+local _0x892D7519=math.floor(math.random()*9594)
+
+    -- djb2 hash, two passes for better avalanche distribution
+    local function _0x264E285E(s, _0x66A08579)
+        local _0x31A2D50F = _0x66A08579 or 5381
+        for i = 1, #s do
+            _0x31A2D50F = ((_0x31A2D50F * 33) + string.byte(s, i)) % 4294967295
+local _0x159A1AA6=math.floor(math.random()*3652)
+        end
+        return _0x31A2D50F
+    end
+
+    local _0x575B3E78 = _0x264E285E(_0x2FE98260,                5381)
+    local _0x4CC46063 = _0x264E285E(_0x2FE98260 .. _0xEFD28748[40] .. _0x575B3E78,   _0x575B3E78)
+local _0xAC8E41DF={} for _=1,6 do _0xAC8E41DF[_]=_ end
+    local _0x98BB6E07 = _0x264E285E(_0x2FE98260 .. _0xEFD28748[41] .. _0x4CC46063, _0x4CC46063)  -- 3rd pass for extra uniqueness
+
+    return string.format(_0xEFD28748[42], _0x575B3E78, _0x4CC46063, _0x98BB6E07 % 65535):upper()
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+local _0x03EE3F65=math.floor(math.random()*5541)
+-- SECTION 5 ── HTTP UTILITIES
+-- ════════════════════════════════════════════════════════════════════════════
+
+local _0xB41EECA1 = nil
+
+local function _0x264F52C3()
+local _0xB5E91784=table.concat({"_0x2","_0xD"},"")
+    if type(http_request)  == _0xEFD28748[43]                              then return http_request   end
+    if type(request)        == _0xEFD28748[44]                             then return request        end
+    if syn  and type(syn.request)   == _0xEFD28748[45]                     then return syn.request    end
+    if http and type(http.request)  == _0xEFD28748[46]                     then return http.request   end
+    if type(fluxus) == _0xEFD28748[47] and type(fluxus.request) == _0xEFD28748[48] then return fluxus.request end
+    return nil
+local _0x004DD17B=type(nil)=="nil" and true or false
+end
+
+-- rawRequest: returns (statusCode, body) or (0, nil) on failure
+local function _0xC71708CB(method, _0xA8EFE68B, body)
+    if not _0xB41EECA1 then _0xB41EECA1 = _0x264F52C3() end
+
+local _0x3F545B22={} for _=1,5 do _0x3F545B22[_]=_ end
+    local _0xF049C505 = {
+        [_0xEFD28748[49]]    = _0x3728E495.API_KEY,
+        [_0xEFD28748[50]] = _0xEFD28748[51],
+        [_0xEFD28748[52]]   = _0xEFD28748[53],
+    }
+
+local _0xC4C78DF0=string.len("_0xB336C1BA")
+    if _0xB41EECA1 then
+        local _0x48C87126 = { _0xD752BF31 = _0xA8EFE68B, Method = method, Headers = _0xF049C505 }
+        if body then _0x48C87126.Body = _0x3BD449D0:JSONEncode(body) end
+        local _0x4A5D4B8D, res = pcall(_0xB41EECA1, _0x48C87126)
+        if _0x4A5D4B8D and res and type(res.Body) == _0xEFD28748[54] and #res.Body > 0 then
+            return res.StatusCode or 200, res.Body
+do local _0x3C2C43C1=pcall(function()return true end) end
+        end
+    end
+
+    -- Fallback: game:HttpGet (GET only, no custom headers)
+    if method == _0xEFD28748[55] then
+        local _0xF1891011, _0x2FE98260 = pcall(function() return game:HttpGet(_0xA8EFE68B, true) end)
+do local _0x180626D5=pcall(function()return true end) end
+        if _0xF1891011 and type(_0x2FE98260) == _0xEFD28748[56] and #_0x2FE98260 > 0 then
+            return 200, _0x2FE98260
+        end
+    end
+
+    return 0, nil
+local _0x71920BB8=select(1,82,23)
+end
+
+local function _0xC6FCD13B(endpoint)
+    local _0x04B4572D, _0x2FE98260 = _0xC71708CB(_0xEFD28748[57], _0x3728E495._0x1C7FBEDC .. endpoint)
+    if not _0x2FE98260 then return false, nil end
+    local _0x4A5D4B8D, data = pcall(_0x3BD449D0.JSONDecode, _0x3BD449D0, _0x2FE98260)
+local _0x529D82A8=math.floor(math.random()*5665)
+    return _0x4A5D4B8D and data ~= nil, _0x4A5D4B8D and data or nil
+end
+
+local function _0x1E8F1FE8(endpoint, body)
+    local _0x04B4572D, _0x2FE98260 = _0xC71708CB(_0xEFD28748[58], _0x3728E495._0x1C7FBEDC .. endpoint, body)
+    if not _0x2FE98260 then return false, nil end
+local _0x457035E1=tostring(102877)
+    local _0x4A5D4B8D, data = pcall(_0x3BD449D0.JSONDecode, _0x3BD449D0, _0x2FE98260)
+    return _0x4A5D4B8D and data ~= nil, _0x4A5D4B8D and data or nil
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 6 ── LOCAL KEY CACHE  (executor disk — writefile/readfile)
+local _0xC1D7F889=table.concat({"_0xD","_0x0"},"")
+-- ════════════════════════════════════════════════════════════════════════════
+-- Cache stores the key locally so returning users don't wait for a poll.
+-- The backend ALWAYS validates — local cache only skips unnecessary UI.
+-- If HWID in cache doesn't match current device, cache is wiped.
+
+local function _0x9D2694F2(_0x52971E7A, _0x16749793, expiresAt)
+local _0x775A823C={} for _=1,5 do _0x775A823C[_]=_ end
+    if type(writefile) ~= _0xEFD28748[59] then return end
+    pcall(writefile, _0x3728E495.CACHE_FILE, _0x3BD449D0:JSONEncode({
+        _0x52971E7A       = _0x52971E7A,
+        _0x16749793        = _0x16749793,
+        expires_at = expiresAt,
+        written_at = os.time(),
+local _0xF8076645=string.len("_0x47E726D6")
+    }))
+end
+
+local function _0x77826305()
+    if type(readfile) ~= _0xEFD28748[60] then return nil end
+    local _0x4A5D4B8D, _0x2FE98260 = pcall(readfile, _0x3728E495.CACHE_FILE)
+local _0x3B7897CE={} for _=1,4 do _0x3B7897CE[_]=_ end
+    if not _0x4A5D4B8D or not _0x2FE98260 or _0x2FE98260 == _0xEFD28748[61] then return nil end
+    local _0xF1891011, d = pcall(_0x3BD449D0.JSONDecode, _0x3BD449D0, _0x2FE98260)
+    if not _0xF1891011 or type(d) ~= _0xEFD28748[62] then return nil end
+    return d
+end
+
+local _0xB280CD38=select(1,12,32)
+local function _0xC6FF5476()
+    if type(delfile)   == _0xEFD28748[63] then pcall(delfile,   _0x3728E495.CACHE_FILE) return end
+    if type(writefile) == _0xEFD28748[64] then pcall(writefile, _0x3728E495.CACHE_FILE, _0xEFD28748[65]) end
+end
+
+-- ── isExpired ─────────────────────────────────────────────────────────────
+local _0x5CABACE4=string.len("_0x3A757AC2")
+-- Approximate client-side expiry check (UTC epoch). Backend is authoritative.
+local function _0x29DB572E(expiresAt)
+    if type(expiresAt) ~= _0xEFD28748[66] then return true end
+    local _0x752E41A5, M, D, _0x31A2D50F, m, s = expiresAt:match(_0xEFD28748[67])
+    if not _0x752E41A5 then return true end
+    local _0x7595B954 = (tonumber(_0x752E41A5) - 1970) * 365
+local _0x4221504C={} for _=1,4 do _0x4221504C[_]=_ end
+             + math.floor((tonumber(_0x752E41A5) - 1969) / 4)
+             + (({0,31,59,90,120,151,181,212,243,273,304,334})[tonumber(M)] or 0)
+             + tonumber(D) - 1
+    local _0x8BD639F7 = _0x7595B954 * 86400 + tonumber(_0x31A2D50F) * 3600 + tonumber(m) * 60 + tonumber(s)
+    return os.time() >= _0x8BD639F7
+end
+local _0xBC691F89=string.len("_0x25CEF1F9")
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 7 ── UI  (ExtraBlox cyber aesthetic)
+-- ══════════════════════════════���═════════════════════════════════════════════
+
+local _0x9CE68A17 = {
+local _0x00034BF2=string.len("_0x54D802E0")
+    _0x51E35726      = Color3.fromRGB(5,   5,   8),
+    _0x163FA08D    = Color3.fromRGB(12,  12,  20),
+    border  = Color3.fromRGB(0,   60,  56),
+    cyan    = Color3.fromRGB(0,   255, 234),
+    purple  = Color3.fromRGB(157, 0,   255),
+    pink    = Color3.fromRGB(255, 0,   128),
+local _0x7BEC6280=tostring(257535)
+    success = Color3.fromRGB(0,   255, 136),
+    error   = Color3.fromRGB(255, 51,  102),
+    warning = Color3.fromRGB(255, 170, 0),
+    white   = Color3.fromRGB(255, 255, 255),
+    muted   = Color3.fromRGB(112, 112, 160),
+    text    = Color3.fromRGB(224, 224, 240),
+do local _0x54339E1A=pcall(function()return true end) end
+}
+
+local _0x97823BC8 = nil
+
+local function _0x137ED299(_0x257382E0)
+    local _0x4A5D4B8D = pcall(function() _0x257382E0.Parent = _0x16A49E30 end)
+local _0x8356D914={} for _=1,5 do _0x8356D914[_]=_ end
+    if not _0x4A5D4B8D then _0x257382E0.Parent = _0xE5D8827D:WaitForChild(_0xEFD28748[68], 10) end
+end
+
+local function _0xD83F4FE9(r, p)
+    local _0x7B75A0A6 = Instance.new(_0xEFD28748[69]); _0x7B75A0A6.CornerRadius = UDim.new(0, r); _0x7B75A0A6.Parent = p; return _0x7B75A0A6
+end
+local _0xDCBFF8F0=string.len("_0xEAC3CDC2")
+local function _0xE551EAEB(col, t, p)
+    local s = Instance.new(_0xEFD28748[70]); s.Color = col; s.Thickness = t; s.Parent = p; return s
+end
+local function _0x46FD58FF(c0, c1, rot, p)
+    local _0x3CDC5508 = Instance.new(_0xEFD28748[71])
+    _0x3CDC5508.Color    = ColorSequence.new(c0, c1)
+local _0x29F5F141=tostring(316168)
+    _0x3CDC5508.Rotation = rot or 0; _0x3CDC5508.Parent = p; return _0x3CDC5508
+end
+local function _0x5D7DCD3C(_0x83ED5615, r, t, b, p)
+    local _0x32C13E99 = Instance.new(_0xEFD28748[72])
+    _0x32C13E99.PaddingLeft   = UDim.new(0, _0x83ED5615); _0x32C13E99.PaddingRight  = UDim.new(0, r)
+    _0x32C13E99.PaddingTop    = UDim.new(0, t); _0x32C13E99.PaddingBottom = UDim.new(0, b)
+local _0x8A671463=math.floor(math.random()*8084)
+    _0x32C13E99.Parent = p; return _0x32C13E99
+end
+
+local function _0xE715EAEA(props, parent)
+    local _0x83ED5615 = Instance.new(_0xEFD28748[73])
+    _0x83ED5615.BackgroundTransparency = 1
+local _0xF45D4834=tostring(637263)
+    _0x83ED5615.Font               = props.font  or Enum.Font.GothamBold
+    _0x83ED5615.TextSize           = props.size  or 14
+    _0x83ED5615.TextColor3         = props.color or _0x9CE68A17.text
+    _0x83ED5615.Text               = props.text  or _0xEFD28748[74]
+    _0x83ED5615.Size               = props.sz    or UDim2.new(1, 0, 0, 20)
+    _0x83ED5615.Position           = props.pos   or UDim2.new(0, 0, 0, 0)
+local _0x77F0C55A=table.concat({"_0x9","_0x6"},"")
+    _0x83ED5615.TextXAlignment     = props.xalign or Enum.TextXAlignment.Left
+    _0x83ED5615.TextWrapped        = true
+    _0x83ED5615.RichText           = props.rich   or false
+    _0x83ED5615.ZIndex             = props.z      or 4
+    _0x83ED5615.Parent             = parent
+    return _0x83ED5615
+local _0x27A7F87B={} for _=1,6 do _0x27A7F87B[_]=_ end
+end
+
+-- ── buildUI ───────────────────────────────────────────────────────────────
+local function _0x6A6A4C02()
+    if _0x97823BC8 then pcall(function() _0x97823BC8:Destroy() end) end
+
+local _0xEF298DAE=tostring(704920)
+    local _0x410B122F = Instance.new(_0xEFD28748[75])
+    _0x410B122F.Name             = _0xEFD28748[76]
+    _0x410B122F.ResetOnSpawn     = false
+    _0x410B122F.IgnoreGuiInset   = true
+    _0x410B122F.ZIndexBehavior   = Enum.ZIndexBehavior.Sibling
+    _0x410B122F.DisplayOrder     = 99999
+local _0x75C1BB1E=math.floor(math.random()*8532)
+    _0x137ED299(_0x410B122F)
+    _0x97823BC8 = _0x410B122F
+
+    -- Full-screen dark overlay
+    local _0xC4C464BC = Instance.new(_0xEFD28748[77])
+    _0xC4C464BC.Size                   = UDim2.new(1, 0, 1, 0)
+do local _0x16EE27D3=pcall(function()return true end) end
+    _0xC4C464BC.BackgroundColor3       = _0x9CE68A17._0x51E35726
+    _0xC4C464BC.BackgroundTransparency = 0.3
+    _0xC4C464BC.BorderSizePixel        = 0
+    _0xC4C464BC.ZIndex                 = 2
+    _0xC4C464BC.Parent                 = _0x410B122F
+
+local _0x12C6581D=table.concat({"_0x7","_0xA"},"")
+    -- Scanline effect
+    local _0x4582BDF0 = Instance.new(_0xEFD28748[78])
+    _0x4582BDF0.Size                   = UDim2.new(1, 0, 1, 0)
+    _0x4582BDF0.BackgroundTransparency = 1
+    _0x4582BDF0.ZIndex                 = 3
+    _0x4582BDF0.Parent                 = _0xC4C464BC
+local _0x5ADBE5C5=string.len("_0xEE2142B6")
+    local _0x3673E587 = Instance.new(_0xEFD28748[79])
+    _0x3673E587.Color    = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   Color3.fromRGB(0,0,0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0,20,18)),
+        ColorSequenceKeypoint.new(1,   Color3.fromRGB(0,0,0)),
+    })
+local _0x45FEEE03=tostring(213883)
+    _0x3673E587.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0.9),
+        NumberSequenceKeypoint.new(0.5, 0.95),
+        NumberSequenceKeypoint.new(1,   0.9),
+    })
+    _0x3673E587.Rotation = 90
+local _0xD6DE0755={} for _=1,3 do _0xD6DE0755[_]=_ end
+    _0x3673E587.Parent = _0x4582BDF0
+
+    -- Card  (fixed max-height so scroll is needed on small screens)
+    local _0x163FA08D = Instance.new(_0xEFD28748[80])
+    _0x163FA08D.Size             = UDim2.new(0, 460, 0, 500)
+    _0x163FA08D.Position         = UDim2.new(0.5, -230, 0.5, -250)
+local _0x86830B9A=select(1,20,3)
+    _0x163FA08D.BackgroundColor3 = _0x9CE68A17._0x163FA08D
+    _0x163FA08D.BorderSizePixel  = 0
+    _0x163FA08D.ZIndex           = 4
+    _0xD83F4FE9(18, _0x163FA08D)
+    _0xE551EAEB(_0x9CE68A17.border, 1.5, _0x163FA08D)
+    _0x163FA08D.Parent = _0xC4C464BC
+local _0x01F9C97C={} for _=1,2 do _0x01F9C97C[_]=_ end
+
+    -- Top glow accent bar
+    local _0x9FDB6CF7 = Instance.new(_0xEFD28748[81])
+    _0x9FDB6CF7.Size             = UDim2.new(1, 0, 0, 3)
+    _0x9FDB6CF7.Position         = UDim2.new(0, 0, 0, 0)
+    _0x9FDB6CF7.BackgroundColor3 = _0x9CE68A17.cyan
+local _0xA5CEF8FA=table.concat({"_0xA","_0x6"},"")
+    _0x9FDB6CF7.BorderSizePixel  = 0
+    _0x9FDB6CF7.ZIndex           = 5
+    _0xD83F4FE9(18, _0x9FDB6CF7)
+    _0x46FD58FF(_0x9CE68A17.cyan, _0x9CE68A17.purple, 0, _0x9FDB6CF7)
+    _0x9FDB6CF7.Parent = _0x163FA08D
+
+local _0x90213A2D=string.len("_0x5A326298")
+    -- ScrollingFrame  (fills card below topBar)
+    local _0x15806F07 = Instance.new(_0xEFD28748[82])
+    _0x15806F07.Size                  = UDim2.new(1, 0, 1, -3)
+    _0x15806F07.Position              = UDim2.new(0, 0, 0, 3)
+    _0x15806F07.BackgroundTransparency = 1
+    _0x15806F07.BorderSizePixel       = 0
+local _0x7EE90B44=math.floor(math.random()*6770)
+    _0x15806F07.ScrollBarThickness    = 4
+    _0x15806F07.ScrollBarImageColor3  = _0x9CE68A17.cyan
+    _0x15806F07.CanvasSize            = UDim2.new(0, 0, 0, 0)
+    _0x15806F07.AutomaticCanvasSize   = Enum.AutomaticSize._0x752E41A5
+    _0x15806F07.ScrollingDirection    = Enum.ScrollingDirection._0x752E41A5
+    _0x15806F07.ElasticBehavior       = Enum.ElasticBehavior.Never
+local _0x1BF9DA95=string.len("_0xF3689EB6")
+    _0x15806F07.ZIndex                = 5
+    _0x15806F07.Parent                = _0x163FA08D
+
+    -- Content area (inside the scroll frame)
+    local _0x99ECEF51 = Instance.new(_0xEFD28748[83])
+    _0x99ECEF51.Size              = UDim2.new(1, 0, 0, 0)
+local _0xBF90D863=math.floor(math.random()*4620)
+    _0x99ECEF51.AutomaticSize     = Enum.AutomaticSize._0x752E41A5
+    _0x99ECEF51.BackgroundTransparency = 1
+    _0x99ECEF51.ZIndex            = 5
+    _0x5D7DCD3C(26, 30, 22, 26, _0x99ECEF51)   -- extra right padding for scrollbar gap
+    _0x99ECEF51.Parent = _0x15806F07
+
+local _0xAE6B0CAD=table.concat({"_0x2","_0x2"},"")
+    local _0x936A8FE3 = Instance.new(_0xEFD28748[84])
+    _0x936A8FE3.SortOrder      = Enum.SortOrder.LayoutOrder
+    _0x936A8FE3.Padding        = UDim.new(0, 14)
+    _0x936A8FE3.FillDirection  = Enum.FillDirection.Vertical
+    _0x936A8FE3.Parent         = _0x99ECEF51
+
+local _0x7839A1C8=tostring(535530)
+    -- ── Logo row ─────────────────────────────────────────────────────────
+    local _0xA7195FA8 = Instance.new(_0xEFD28748[85])
+    _0xA7195FA8.Size                   = UDim2.new(1, 0, 0, 36)
+    _0xA7195FA8.BackgroundTransparency = 1
+    _0xA7195FA8.LayoutOrder            = 1
+    _0xA7195FA8.ZIndex                 = 5
+local _0x9FD97EB2=table.concat({"_0x0","_0x2"},"")
+    _0xA7195FA8.Parent                 = _0x99ECEF51
+
+    -- Drag handle (invisible, sits on top of logoRow — cursor hint)
+    local _0x7B9F6B98 = Instance.new(_0xEFD28748[86])
+    _0x7B9F6B98.Size                   = UDim2.new(1, 0, 1, 0)
+    _0x7B9F6B98.BackgroundTransparency = 1
+local _0xDE53A7AD=select(1,72,43)
+    _0x7B9F6B98.Text                   = _0xEFD28748[87]
+    _0x7B9F6B98.ZIndex                 = 20
+    _0x7B9F6B98.AutoButtonColor        = false
+    _0x7B9F6B98.Parent                 = _0xA7195FA8
+
+    local _0x9E02EC28 = _0xE715EAEA({
+local _0xE82BE9F1=select(1,94,32)
+        text   = _0xEFD28748[88],
+        size   = 20,
+        color  = _0x9CE68A17.cyan,
+        font   = Enum.Font.GothamBold,
+        sz     = UDim2.new(0.6, 0, 1, 0),
+        pos    = UDim2.new(0, 0, 0, 0),
+local _0x98530DE2=tostring(368674)
+        z      = 5,
+        xalign = Enum.TextXAlignment.Left,
+    }, _0xA7195FA8)
+
+    local _0xE5AB2349 = _0xE715EAEA({
+        text   = _0xEFD28748[89],
+local _0xC5FE8F48={} for _=1,6 do _0xC5FE8F48[_]=_ end
+        size   = 11,
+        color  = _0x9CE68A17.muted,
+        font   = Enum.Font.Code,
+        sz     = UDim2.new(0.4, 0, 1, 0),
+        pos    = UDim2.new(0.6, 0, 0, 0),
+        z      = 5,
+local _0x59947675=table.concat({"_0xD","_0x6"},"")
+        xalign = Enum.TextXAlignment.Right,
+    }, _0xA7195FA8)
+
+    -- ── HWID chip ─────────────────────────────────────────────────────────
+    local _0x8C7262DF = Instance.new(_0xEFD28748[90])
+    _0x8C7262DF.Size             = UDim2.new(1, 0, 0, 40)
+local _0xF5160AE8=select(1,92,87)
+    _0x8C7262DF.BackgroundColor3 = Color3.fromRGB(0, 8, 6)
+    _0x8C7262DF.BorderSizePixel  = 0
+    _0x8C7262DF.LayoutOrder      = 2
+    _0x8C7262DF.ZIndex           = 5
+    _0xD83F4FE9(8, _0x8C7262DF)
+    _0xE551EAEB(_0x9CE68A17.border, 1, _0x8C7262DF)
+local _0x44FC7F1A=select(1,0,86)
+    _0x8C7262DF.Parent = _0x99ECEF51
+
+    local _0x116CF72C = Instance.new(_0xEFD28748[91])
+    _0x116CF72C.PaddingLeft  = UDim.new(0, 12)
+    _0x116CF72C.PaddingRight = UDim.new(0, 12)
+    _0x116CF72C.Parent       = _0x8C7262DF
+local _0x4FF8AD67=string.len("_0xC532693F")
+
+    local _0x37E0FD97 = _0xE715EAEA({
+        text   = _0xEFD28748[92],
+        size   = 9,
+        color  = _0x9CE68A17.muted,
+        font   = Enum.Font.Code,
+local _0x05C4B158=table.concat({"_0xF","_0x4"},"")
+        sz     = UDim2.new(1, 0, 0, 14),
+        pos    = UDim2.new(0, 0, 0, 5),
+        z      = 6,
+        xalign = Enum.TextXAlignment.Left,
+    }, _0x8C7262DF)
+
+local _0xA81EFDC9=string.len("_0x8D2834DB")
+    local _0x3A7A50F1 = _0xE715EAEA({
+        text   = _0xEFD28748[93],
+        size   = 12,
+        color  = _0x9CE68A17.cyan,
+        font   = Enum.Font.Code,
+        sz     = UDim2.new(1, 0, 0, 16),
+local _0x38CF6475=math.floor(math.random()*2246)
+        pos    = UDim2.new(0, 0, 0, 20),
+        z      = 6,
+        xalign = Enum.TextXAlignment.Left,
+    }, _0x8C7262DF)
+
+    -- ── Divider ───────────────────────────────────────────────────────────
+local _0x7CB0DE6A=math.floor(math.random()*3820)
+    local _0xBFF07678 = Instance.new(_0xEFD28748[94])
+    _0xBFF07678.Size             = UDim2.new(1, 0, 0, 1)
+    _0xBFF07678.BackgroundColor3 = _0x9CE68A17.border
+    _0xBFF07678.BorderSizePixel  = 0
+    _0xBFF07678.LayoutOrder      = 3
+    _0xBFF07678.ZIndex           = 5
+do local _0x2145B8C5=pcall(function()return true end) end
+    _0x46FD58FF(
+        Color3.fromRGB(0,255,234),
+        Color3.fromRGB(157,0,255),
+        0, _0xBFF07678
+    )
+    _0xBFF07678.Parent = _0x99ECEF51
+local _0x4E7C83AB={} for _=1,3 do _0x4E7C83AB[_]=_ end
+
+    -- ── Status area ────────────────────────────────────��──────────────────
+    local _0x06F1B16D = Instance.new(_0xEFD28748[95])
+    _0x06F1B16D.Size             = UDim2.new(1, 0, 0, 54)
+    _0x06F1B16D.BackgroundColor3 = Color3.fromRGB(0, 5, 4)
+    _0x06F1B16D.BorderSizePixel  = 0
+local _0x34200F8C=tostring(353884)
+    _0x06F1B16D.LayoutOrder      = 4
+    _0x06F1B16D.ZIndex           = 5
+    _0xD83F4FE9(10, _0x06F1B16D)
+    _0xE551EAEB(_0x9CE68A17.border, 1, _0x06F1B16D)
+    _0x06F1B16D.Parent = _0x99ECEF51
+
+local _0x080A6FF2=math.floor(math.random()*9624)
+    local _0x1D5092A2 = Instance.new(_0xEFD28748[96])
+    _0x1D5092A2.PaddingLeft  = UDim.new(0, 14)
+    _0x1D5092A2.PaddingRight = UDim.new(0, 14)
+    _0x1D5092A2.Parent       = _0x06F1B16D
+
+    local _0x50FCC299 = _0xE715EAEA({
+local _0xB799DCA1={} for _=1,2 do _0xB799DCA1[_]=_ end
+        text  = _0xEFD28748[97],
+        size  = 20,
+        sz    = UDim2.new(0, 26, 1, 0),
+        pos   = UDim2.new(0, 0, 0, 0),
+        z     = 6,
+    }, _0x06F1B16D)
+local _0x200DFEA1=table.concat({"_0x9","_0xD"},"")
+
+    local _0x3BB310B3 = _0xE715EAEA({
+        text   = _0xEFD28748[98],
+        size   = 14,
+        color  = _0x9CE68A17.text,
+        sz     = UDim2.new(1, -34, 0, 22),
+local _0x1B5F3477=string.len("_0x36BBC97E")
+        pos    = UDim2.new(0, 34, 0, 7),
+        z      = 6,
+        xalign = Enum.TextXAlignment.Left,
+    }, _0x06F1B16D)
+
+    local _0xD8AF7EE0 = _0xE715EAEA({
+local _0xF1B9EC47=select(1,87,30)
+        text   = _0xEFD28748[99],
+        size   = 11,
+        color  = _0x9CE68A17.muted,
+        font   = Enum.Font.Gotham,
+        sz     = UDim2.new(1, -34, 0, 16),
+        pos    = UDim2.new(0, 34, 0, 31),
+local _0x315EFBC6=type(nil)=="nil" and true or false
+        z      = 6,
+        xalign = Enum.TextXAlignment.Left,
+    }, _0x06F1B16D)
+
+    -- ── Progress bar ──────────────────────────────────────────────────────
+    local _0xCBB12EAC = Instance.new(_0xEFD28748[100])
+local _0xF6BD2AD9=table.concat({"_0xC","_0x2"},"")
+    _0xCBB12EAC.Size             = UDim2.new(1, 0, 0, 4)
+    _0xCBB12EAC.BackgroundColor3 = _0x9CE68A17.border
+    _0xCBB12EAC.BorderSizePixel  = 0
+    _0xCBB12EAC.LayoutOrder      = 5
+    _0xCBB12EAC.ZIndex           = 5
+    _0xD83F4FE9(3, _0xCBB12EAC)
+local _0x034C365C=table.concat({"_0x5","_0x7"},"")
+    _0xCBB12EAC.Parent = _0x99ECEF51
+
+    local _0x4B969AD9 = Instance.new(_0xEFD28748[101])
+    _0x4B969AD9.Size             = UDim2.new(0, 0, 1, 0)
+    _0x4B969AD9.BackgroundColor3 = _0x9CE68A17.cyan
+    _0x4B969AD9.BorderSizePixel  = 0
+local _0xDB8E7550=tostring(49540)
+    _0x4B969AD9.ZIndex           = 6
+    _0xD83F4FE9(3, _0x4B969AD9)
+    _0x46FD58FF(_0x9CE68A17.cyan, _0x9CE68A17.purple, 0, _0x4B969AD9)
+    _0x4B969AD9.Parent = _0xCBB12EAC
+
+    -- ── Key/URL display box (shown when user needs to get key) ─────────────
+do local _0xD13CF437=pcall(function()return true end) end
+    local _0x0157B377 = Instance.new(_0xEFD28748[102])
+    _0x0157B377.Size             = UDim2.new(1, 0, 0, 0)
+    _0x0157B377.AutomaticSize    = Enum.AutomaticSize._0x752E41A5
+    _0x0157B377.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
+    _0x0157B377.BorderSizePixel  = 0
+    _0x0157B377.LayoutOrder      = 6
+local _0xC0D9BE66=select(1,92,81)
+    _0x0157B377.Visible          = false
+    _0x0157B377.ZIndex           = 5
+    _0xD83F4FE9(10, _0x0157B377)
+    _0xE551EAEB(Color3.fromRGB(60, 0, 100), 1, _0x0157B377)
+    _0x0157B377.Parent = _0x99ECEF51
+
+local _0x8208B484=select(1,76,16)
+    local _0x767745D0 = Instance.new(_0xEFD28748[103])
+    _0x767745D0.PaddingLeft   = UDim.new(0, 14); _0x767745D0.PaddingRight  = UDim.new(0, 14)
+    _0x767745D0.PaddingTop    = UDim.new(0, 14); _0x767745D0.PaddingBottom = UDim.new(0, 14)
+    _0x767745D0.Parent        = _0x0157B377
+
+    local _0x103B7284 = Instance.new(_0xEFD28748[104])
+local _0x7F39AF27=select(1,67,57)
+    _0x103B7284.SortOrder  = Enum.SortOrder.LayoutOrder
+    _0x103B7284.Padding    = UDim.new(0, 8)
+    _0x103B7284.Parent     = _0x0157B377
+
+    -- Row 1: info label
+    local _0xA5C2C9AB = _0xE715EAEA({
+local _0x8F0BA82E=string.len("_0x0F0965FA")
+        text  = _0xEFD28748[105],
+        size  = 12,
+        color = _0x9CE68A17.muted,
+        font  = Enum.Font.Gotham,
+        sz    = UDim2.new(1, 0, 0, 18),
+        z     = 6,
+local _0xABD2F987=string.len("_0x81779D75")
+    }, _0x0157B377)
+    _0xA5C2C9AB.LayoutOrder = 1
+
+    -- Row 2: Get Key button
+    local _0x239D2438 = Instance.new(_0xEFD28748[106])
+    _0x239D2438.Size             = UDim2.new(1, 0, 0, 32)
+local _0x4EEC07DE={} for _=1,2 do _0x4EEC07DE[_]=_ end
+    _0x239D2438.BackgroundColor3 = _0x9CE68A17.purple
+    _0x239D2438.BorderSizePixel  = 0
+    _0x239D2438.Text             = _0xEFD28748[107]
+    _0x239D2438.TextColor3       = _0x9CE68A17.white
+    _0x239D2438.TextSize         = 13
+    _0x239D2438.Font             = Enum.Font.GothamBold
+local _0x2F6932B6={} for _=1,2 do _0x2F6932B6[_]=_ end
+    _0x239D2438.ZIndex           = 7
+    _0x239D2438.LayoutOrder      = 2
+    _0xD83F4FE9(8, _0x239D2438)
+    _0x239D2438.Parent = _0x0157B377
+
+    local _0x5C1831D4 = _0xE715EAEA({
+local _0x216CBE3A=math.floor(math.random()*3149)
+        text  = _0xEFD28748[108],
+        size  = 11,
+        color = _0x9CE68A17.muted,
+        font  = Enum.Font.Gotham,
+        sz    = UDim2.new(1, 0, 0, 14),
+        z     = 6,
+local _0xAFCC23DE=tostring(692194)
+    }, _0x0157B377)
+    _0x5C1831D4.LayoutOrder = 3
+
+    -- Row 3: Divider label "— OR PASTE YOUR KEY BELOW —"
+    local _0x8210C02D = _0xE715EAEA({
+        text   = _0xEFD28748[109],
+local _0x88313442={} for _=1,4 do _0x88313442[_]=_ end
+        size   = 10,
+        color  = _0x9CE68A17.muted,
+        font   = Enum.Font.Gotham,
+        sz     = UDim2.new(1, 0, 0, 14),
+        z      = 6,
+        xalign = Enum.TextXAlignment.Center,
+local _0x9D26E7CE=string.len("_0xC2872329")
+    }, _0x0157B377)
+    _0x8210C02D.LayoutOrder = 4
+
+    -- Row 4: Key TextBox
+    local _0x54127A26 = Instance.new(_0xEFD28748[110])
+    _0x54127A26.Size                  = UDim2.new(1, 0, 0, 30)
+local _0x17F75B40=table.concat({"_0x6","_0xD"},"")
+    _0x54127A26.BackgroundColor3      = Color3.fromRGB(5, 0, 12)
+    _0x54127A26.BorderSizePixel       = 0
+    _0x54127A26.Text                  = _0xEFD28748[111]
+    _0x54127A26.PlaceholderText       = _0xEFD28748[112]
+    _0x54127A26.PlaceholderColor3     = _0x9CE68A17.muted
+    _0x54127A26.TextColor3            = _0x9CE68A17.cyan
+local _0xE03D9A82={} for _=1,5 do _0xE03D9A82[_]=_ end
+    _0x54127A26.TextSize              = 12
+    _0x54127A26.Font                  = Enum.Font.Code
+    _0x54127A26.ClearTextOnFocus      = false
+    _0x54127A26.TextXAlignment        = Enum.TextXAlignment.Left
+    _0x54127A26.ZIndex                = 7
+    _0x54127A26.LayoutOrder           = 5
+local _0xF0583313=table.concat({"_0x8","_0x4"},"")
+    _0xD83F4FE9(6, _0x54127A26)
+    _0xE551EAEB(Color3.fromRGB(80, 0, 140), 1, _0x54127A26)
+    local _0x60F921F9 = Instance.new(_0xEFD28748[113])
+    _0x60F921F9.PaddingLeft  = UDim.new(0, 8)
+    _0x60F921F9.PaddingRight = UDim.new(0, 8)
+    _0x60F921F9.Parent       = _0x54127A26
+local _0xF62B92AB=string.len("_0x119E1A47")
+    _0x54127A26.Parent = _0x0157B377
+
+    -- Row 5: Submit Key button + feedback label (side by side)
+    local _0xCB75F1DC = Instance.new(_0xEFD28748[114])
+    _0xCB75F1DC.Size                   = UDim2.new(1, 0, 0, 30)
+    _0xCB75F1DC.BackgroundTransparency = 1
+local _0xE5D993EC=type(nil)=="nil" and true or false
+    _0xCB75F1DC.ZIndex                 = 6
+    _0xCB75F1DC.LayoutOrder            = 6
+    _0xCB75F1DC.Parent                 = _0x0157B377
+    local _0xB1F479D6 = Instance.new(_0xEFD28748[115])
+    _0xB1F479D6.FillDirection  = Enum.FillDirection.Horizontal
+    _0xB1F479D6.Padding        = UDim.new(0, 8)
+local _0xDD74E2E7=type(nil)=="nil" and true or false
+    _0xB1F479D6.SortOrder      = Enum.SortOrder.LayoutOrder
+    _0xB1F479D6.Parent         = _0xCB75F1DC
+
+    local _0xA13F33CC = Instance.new(_0xEFD28748[116])
+    _0xA13F33CC.Size             = UDim2.new(0.42, 0, 1, 0)
+    _0xA13F33CC.BackgroundColor3 = _0x9CE68A17.success
+do local _0x37D20669=pcall(function()return true end) end
+    _0xA13F33CC.BorderSizePixel  = 0
+    _0xA13F33CC.Text             = _0xEFD28748[117]
+    _0xA13F33CC.TextColor3       = Color3.fromRGB(0, 20, 10)
+    _0xA13F33CC.TextSize         = 12
+    _0xA13F33CC.Font             = Enum.Font.GothamBold
+    _0xA13F33CC.ZIndex           = 7
+local _0x67F9E605=math.floor(math.random()*2551)
+    _0xA13F33CC.LayoutOrder      = 1
+    _0xD83F4FE9(6, _0xA13F33CC)
+    _0xA13F33CC.Parent = _0xCB75F1DC
+
+    local _0x968CE800 = _0xE715EAEA({
+        text   = _0xEFD28748[118],
+local _0x576A941A=math.floor(math.random()*6631)
+        size   = 11,
+        color  = _0x9CE68A17.muted,
+        font   = Enum.Font.Gotham,
+        sz     = UDim2.new(0.56, -8, 1, 0),
+        z      = 6,
+        xalign = Enum.TextXAlignment.Left,
+local _0x336C9278=select(1,69,97)
+    }, _0xCB75F1DC)
+    _0x968CE800.LayoutOrder = 2
+
+    -- Poll indicator
+    local _0x8F3713AD = Instance.new(_0xEFD28748[119])
+    _0x8F3713AD.Size             = UDim2.new(1, 0, 0, 3)
+local _0xCCF447FD=select(1,21,95)
+    _0x8F3713AD.BackgroundColor3 = Color3.fromRGB(30, 0, 60)
+    _0x8F3713AD.BorderSizePixel  = 0
+    _0x8F3713AD.ZIndex           = 6
+    _0x8F3713AD.LayoutOrder      = 7
+    _0xD83F4FE9(2, _0x8F3713AD)
+    _0x8F3713AD.Parent = _0x0157B377
+do local _0x98755020=pcall(function()return true end) end
+
+    local _0xDAB9AE05 = Instance.new(_0xEFD28748[120])
+    _0xDAB9AE05.Size             = UDim2.new(0, 0, 1, 0)
+    _0xDAB9AE05.BackgroundColor3 = _0x9CE68A17.purple
+    _0xDAB9AE05.BorderSizePixel  = 0
+    _0xDAB9AE05.ZIndex           = 7
+do local _0x9D693F9C=pcall(function()return true end) end
+    _0xD83F4FE9(2, _0xDAB9AE05)
+    _0xDAB9AE05.Parent = _0x8F3713AD
+
+    local _0x481CA407 = _0xE715EAEA({
+        text  = _0xEFD28748[121],
+        size  = 10,
+local _0x8FAE54BD=table.concat({"_0x2","_0x4"},"")
+        color = _0x9CE68A17.muted,
+        font  = Enum.Font.Code,
+        sz    = UDim2.new(1, 0, 0, 14),
+        z     = 6,
+    }, _0x0157B377)
+    _0x481CA407.LayoutOrder = 8
+local _0x9CDE7A37=string.len("_0xD4A21332")
+
+    -- ── Footer ─────────────────────────────────────────────��──────────────
+    local _0x98188B3D = _0xE715EAEA({
+        text   = _0xEFD28748[122],
+        size   = 10,
+        color  = Color3.fromRGB(45, 45, 70),
+local _0xB9A97E71=table.concat({"_0x0","_0xE"},"")
+        font   = Enum.Font.Gotham,
+        sz     = UDim2.new(1, 0, 0, 14),
+        z      = 5,
+        xalign = Enum.TextXAlignment.Center,
+    }, _0x99ECEF51)
+    _0x98188B3D.LayoutOrder = 7
+local _0x4D217734=select(1,59,88)
+
+    -- ── Public refs ───────────────────────────────────────────────────────
+    local _0x2AB71169 = {
+        _0x257382E0          = _0x410B122F,
+        _0x163FA08D         = _0x163FA08D,
+        hwidVal      = _0x3A7A50F1,
+do local _0x0350D282=pcall(function()return true end) end
+        statusIcon   = _0x50FCC299,
+        statusMain   = _0x3BB310B3,
+        statusSub    = _0xD8AF7EE0,
+        fill         = _0x4B969AD9,
+        _0x0157B377      = _0x0157B377,
+        linkHint     = _0x5C1831D4,
+local _0x9B1302F5={} for _=1,2 do _0x9B1302F5[_]=_ end
+        _0x239D2438    = _0x239D2438,
+        _0x54127A26     = _0x54127A26,
+        _0xA13F33CC    = _0xA13F33CC,
+        keyFeedback  = _0x968CE800,
+        _0xDAB9AE05     = _0xDAB9AE05,
+        pollCount    = _0x481CA407,
+local _0x74C20B87=math.floor(math.random()*8078)
+    }
+
+    -- ── Draggable card ────────────────────────────────────────────────────
+    -- Drag the entire card by pressing on the logo/title row.
+    do
+        local _0x39CB5475   = false
+do local _0xFB8474FC=pcall(function()return true end) end
+        local _0xF873AB6E  = Vector3.new()
+        local _0x6AA31F24 = 0
+        local _0x13A1827E = 0
+
+        _0x7B9F6B98.InputBegan:Connect(function(_0xC57744BB)
+            if _0xC57744BB.UserInputType == Enum.UserInputType.MouseButton1
+local _0x96B10FA8=tostring(851256)
+            or _0xC57744BB.UserInputType == Enum.UserInputType.Touch then
+                _0x39CB5475   = true
+                _0xF873AB6E  = _0xC57744BB.Position
+                _0x6AA31F24 = _0x163FA08D.Position.X.Offset
+                _0x13A1827E = _0x163FA08D.Position._0x752E41A5.Offset
+            end
+local _0x44981120=tostring(671531)
+        end)
+
+        _0x7B9F6B98.InputEnded:Connect(function(_0xC57744BB)
+            if _0xC57744BB.UserInputType == Enum.UserInputType.MouseButton1
+            or _0xC57744BB.UserInputType == Enum.UserInputType.Touch then
+                _0x39CB5475 = false
+local _0xF684B4E2=select(1,75,18)
+            end
+        end)
+
+        _0xDD87D442.InputChanged:Connect(function(_0xC57744BB)
+            if not _0x39CB5475 then return end
+            if _0xC57744BB.UserInputType == Enum.UserInputType.MouseMovement
+local _0x85F3C255=type(nil)=="nil" and true or false
+            or _0xC57744BB.UserInputType == Enum.UserInputType.Touch then
+                local _0x120856EE = _0xC57744BB.Position - _0xF873AB6E
+                -- Clamp inside screen so card can't be dragged off-screen
+                local _0x1C26BE5F    = workspace.CurrentCamera.ViewportSize
+                local _0xC7AFCF9C  = math.clamp(_0x6AA31F24 + _0x120856EE.X, 0, _0x1C26BE5F.X - 460)
+                local _0x0320A622  = math.clamp(_0x13A1827E + _0x120856EE._0x752E41A5, 0, _0x1C26BE5F._0x752E41A5 - 100)
+local _0xADA27DDF=table.concat({"_0x0","_0xF"},"")
+                _0x163FA08D.Position = UDim2.new(0, _0xC7AFCF9C, 0, _0x0320A622)
+            end
+        end)
+    end
+
+    return _0x2AB71169
+local _0x04E898AA=math.floor(math.random()*6415)
+end
+
+-- ── UI helpers ────────────────────────────────────────────────────────────
+local function _0x23378BA2(_0x2760BDD8, pct, color)
+    if not _0x2760BDD8 then return end
+    pct = math.clamp(pct, 0, 1)
+local _0xF8B6A5AF={} for _=1,4 do _0xF8B6A5AF[_]=_ end
+    _0x2760BDD8.fill.Size             = UDim2.new(pct, 0, 1, 0)
+    _0x2760BDD8.fill.BackgroundColor3 = color or _0x9CE68A17.cyan
+end
+
+local function _0xFDE768AD(_0x2760BDD8, icon, main, sub, color)
+    if not _0x2760BDD8 then return end
+local _0x8398F415=select(1,98,76)
+    _0x2760BDD8.statusIcon.Text      = icon or _0xEFD28748[123]
+    _0x2760BDD8.statusMain.Text      = main or _0xEFD28748[124]
+    _0x2760BDD8.statusMain.TextColor3 = color or _0x9CE68A17.text
+    if sub then _0x2760BDD8.statusSub.Text = sub end
+end
+
+local _0xF91663B8=select(1,52,99)
+local function _0x5D685CF4()
+    if _0x97823BC8 then pcall(function() _0x97823BC8:Destroy() end); _0x97823BC8 = nil end
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 8 ── CHECK HWID  (server-side)
+local _0xA18EE7B1=tostring(985407)
+-- ═══════════════════════════════════════════════��════════════════════════════
+-- Returns: { status="valid"|"expired"|"none"|"blacklisted"|"error",
+--            key, expires_in, key_url }
+
+local function _0xA65B00D4(_0x52971E7A)
+    local _0x4A5D4B8D, data = _0xC6FCD13B(_0xEFD28748[125] .. _0x3BD449D0:UrlEncode(_0x52971E7A))
+local _0x144728AC=string.len("_0xFD2789BD")
+    if not _0x4A5D4B8D or not data then
+        return { status = _0xEFD28748[126], _0x3ED4A95E = _0xEFD28748[127] }
+    end
+    return data
+end
+
+local _0x37C9270B=string.len("_0xCFE8E252")
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 9 ── VALIDATE KEY  (server-side, after cache hit)
+-- ════════════════════════════════════════════════════════════════════════════
+-- Validates a specific {hwid, key} pair. Rejects key sharing.
+
+local function _0x5616F66A(_0x52971E7A, _0x16749793)
+local _0x68B29357=math.floor(math.random()*4038)
+    local _0x4A5D4B8D, data = _0x1E8F1FE8(_0xEFD28748[128], { _0x52971E7A = _0x52971E7A, _0x16749793 = _0x16749793 })
+    if not _0x4A5D4B8D or not data then
+        return { valid = false, _0x3ED4A95E = _0xEFD28748[129] }
+    end
+    return data
+end
+local _0x1F8F3A1A=math.floor(math.random()*5079)
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 10 ── KEY REQUEST  (opens browser with HWID in URL directly)
+-- ════════════════════════════════════════════════════════════════════════════
+-- Embeds the HWID directly in the URL as ?hwid=XXXX so the website reads it
+-- instantly without needing to call any API. Simple and reliable.
+local _0x823959B5=tostring(699306)
+
+local function _0x3125C3EE(_0x52971E7A, _0x2760BDD8)
+
+    -- Build URL with HWID directly embedded — website reads it instantly
+    local _0x0E1E47A7 = _0x3728E495.KEY_SITE .. _0xEFD28748[130] .. _0x3BD449D0:UrlEncode(_0x52971E7A)
+
+local _0x632C9A13=type(nil)=="nil" and true or false
+    if _0x2760BDD8 then
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[131], _0xEFD28748[132], _0xEFD28748[133], _0x9CE68A17.purple)
+        _0x23378BA2(_0x2760BDD8, 0.2, _0x9CE68A17.purple)
+    end
+
+    -- ── Step B: Show the linkBox UI ───────────────────────────────────────
+do local _0x2892D02E=pcall(function()return true end) end
+    if _0x2760BDD8 then
+        _0x2760BDD8._0x0157B377.Visible = true
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[134], _0xEFD28748[135], _0xEFD28748[136], _0x9CE68A17.purple)
+        _0x23378BA2(_0x2760BDD8, 0.2, _0x9CE68A17.purple)
+
+        -- Wire up Get Key button
+do local _0xEDB2220E=pcall(function()return true end) end
+        _0x2760BDD8._0x239D2438.MouseButton1Click:Connect(function()
+            pcall(function() setclipboard(_0x0E1E47A7) end)
+            local _0x0C53BF5B = false
+            if type(syn) == _0xEFD28748[137] and type(syn.open_url_in_browser) == _0xEFD28748[138] then
+                _0x0C53BF5B = pcall(syn.open_url_in_browser, _0x0E1E47A7)
+            end
+do local _0xC75F8FEA=pcall(function()return true end) end
+            if not _0x0C53BF5B and type(open_url_in_browser) == _0xEFD28748[139] then
+                _0x0C53BF5B = pcall(open_url_in_browser, _0x0E1E47A7)
+            end
+            _0x2760BDD8.linkHint.Text = _0x0C53BF5B
+                and _0xEFD28748[140]
+                or  _0xEFD28748[141]
+local _0xC925A064=tostring(69905)
+        end)
+
+        -- Copy to clipboard and optionally open browser immediately
+        pcall(function() setclipboard(_0x0E1E47A7) end)
+        local _0x800D734A = false
+        if type(syn) == _0xEFD28748[142] and type(syn.open_url_in_browser) == _0xEFD28748[143] then
+local _0x0BBDCF70=tostring(676584)
+            _0x800D734A = pcall(syn.open_url_in_browser, _0x0E1E47A7)
+        end
+        if not _0x800D734A and type(open_url_in_browser) == _0xEFD28748[144] then
+            _0x800D734A = pcall(open_url_in_browser, _0x0E1E47A7)
+        end
+        _0x2760BDD8.linkHint.Text = _0x800D734A
+local _0x84E7221D=tostring(55298)
+            and _0xEFD28748[145]
+            or  _0xEFD28748[146]
+    end
+
+    -- ── Step C: Manual key submission via TextBox ─────��───────────────────
+    -- If user submits a key via the textbox, validate it immediately.
+local _0xED21D85A=math.floor(math.random()*8274)
+    local _0xF43FFD37 = nil  -- will be set if user submits manually
+
+    if _0x2760BDD8 and _0x2760BDD8._0xA13F33CC then
+        _0x2760BDD8._0xA13F33CC.MouseButton1Click:Connect(function()
+            local _0x07044968 = _0x2760BDD8._0x54127A26.Text:upper():gsub(_0xEFD28748[147], _0xEFD28748[148])
+            if #_0x07044968 < 8 then
+local _0xB08892AE=select(1,88,92)
+                _0x2760BDD8.keyFeedback.Text    = _0xEFD28748[149]
+                _0x2760BDD8.keyFeedback.TextColor3 = _0x9CE68A17.error
+                return
+            end
+            _0x2760BDD8._0xA13F33CC.Text       = _0xEFD28748[150]
+            _0x2760BDD8.keyFeedback.Text     = _0xEFD28748[151]
+local _0x53608BAB=select(1,73,88)
+            _0x2760BDD8.keyFeedback.TextColor3 = _0x9CE68A17.muted
+
+            local _0x78B35F5A, vData = _0x1E8F1FE8(_0xEFD28748[152], { _0x52971E7A = _0x52971E7A, _0x16749793 = _0x07044968 })
+            if _0x78B35F5A and vData and vData.valid then
+                _0x2760BDD8.keyFeedback.Text     = _0xEFD28748[153]
+                _0x2760BDD8.keyFeedback.TextColor3 = _0x9CE68A17.success
+local _0x2AA37748=tostring(18778)
+                _0x2760BDD8._0xA13F33CC.Text       = _0xEFD28748[154]
+                _0xF43FFD37 = { _0x4A5D4B8D = true, _0x16749793 = _0x07044968, expires_at = vData.expires_at }
+            else
+                local _0x3ED4A95E = (_0x78B35F5A and vData and vData._0x3ED4A95E) or _0xEFD28748[155]
+                _0x2760BDD8.keyFeedback.Text     = _0xEFD28748[156] .. _0x3ED4A95E
+                _0x2760BDD8.keyFeedback.TextColor3 = _0x9CE68A17.error
+do local _0xDF09C0E4=pcall(function()return true end) end
+                _0x2760BDD8._0xA13F33CC.Text       = _0xEFD28748[157]
+            end
+        end)
+    end
+
+    -- ── Step D: Poll loop (auto-detect key on server side) ────────────────
+local _0x27304822=select(1,39,20)
+    local _0x892D926E = 0
+    while _0x892D926E < _0x3728E495.POLL_TIMEOUT do
+        task.wait(_0x3728E495.POLL_INTERVAL)
+        _0x892D926E = _0x892D926E + _0x3728E495.POLL_INTERVAL
+
+        -- If user submitted a valid key manually, return immediately
+local _0xEB4E0C8B=select(1,1,73)
+        if _0xF43FFD37 then
+            _0x9D2694F2(_0x52971E7A, _0xF43FFD37._0x16749793, _0xF43FFD37.expires_at)
+            if _0x2760BDD8 then
+                _0x2760BDD8._0x0157B377.Visible = false
+                _0xFDE768AD(_0x2760BDD8, _0xEFD28748[158], _0xEFD28748[159], _0xEFD28748[160], _0x9CE68A17.success)
+                _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.success)
+do local _0x6C8BF38C=pcall(function()return true end) end
+                task.wait(0.8)
+            end
+            return { _0x4A5D4B8D = true, _0x16749793 = _0xF43FFD37._0x16749793, expires_at = _0xF43FFD37.expires_at }
+        end
+
+        -- Update poll indicator
+local _0x95CE77E2=select(1,21,98)
+        if _0x2760BDD8 then
+            _0x2760BDD8.pollCount.Text = string.format(_0xEFD28748[161], _0x3728E495.POLL_INTERVAL, _0x892D926E)
+            local _0x8BD8DAE2 = 0.1 + 0.25 * math.abs(math.sin(_0x892D926E / 6))
+            _0x2760BDD8._0xDAB9AE05.Size = UDim2.new(_0x8BD8DAE2, 0, 1, 0)
+        end
+
+local _0xCD27AD1F={} for _=1,2 do _0xCD27AD1F[_]=_ end
+        local _0xAA837477 = _0xA65B00D4(_0x52971E7A)
+
+        if _0xAA837477.status == _0xEFD28748[162] then
+            _0x9D2694F2(_0x52971E7A, _0xAA837477._0x16749793, _0xAA837477.expires_at)
+            if _0x2760BDD8 then
+                _0x2760BDD8._0x0157B377.Visible = false
+do local _0x42F01039=pcall(function()return true end) end
+                _0xFDE768AD(_0x2760BDD8, _0xEFD28748[163], _0xEFD28748[164], _0xAA837477.expires_in and (_0xEFD28748[165] .. _0xAA837477.expires_in) or _0xEFD28748[166], _0x9CE68A17.success)
+                _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.success)
+                task.wait(0.8)
+            end
+            return { _0x4A5D4B8D = true, _0x16749793 = _0xAA837477._0x16749793, expires_at = _0xAA837477.expires_at }
+
+local _0xC27BDBB6=table.concat({"_0x6","_0x9"},"")
+        elseif _0xAA837477.status == _0xEFD28748[167] then
+            return { _0x4A5D4B8D = false, _0x3ED4A95E = _0xEFD28748[168] .. (_0xAA837477._0x3ED4A95E or _0xEFD28748[169]) }
+
+        elseif _0xAA837477.status == _0xEFD28748[170] then
+            -- Network hiccup — keep trying silently
+        end
+local _0xC969DA31=math.floor(math.random()*9896)
+        -- status "none" / "expired" → user hasn't completed flow yet, keep waiting
+    end
+
+    return { _0x4A5D4B8D = false, _0x3ED4A95E = _0xEFD28748[171] }
+end
+
+local _0xE7EF3C36=math.floor(math.random()*6846)
+-- ════════════════════════════════════════════════════════════════════════════
+-- SECTION 11 ── UNLOCK FEATURES
+-- ════════════════════════════════════════════════════════════════════════════
+
+local function _0xB2F2AA3E()
+    _0x5D685CF4()
+local _0x3CEBE18A=select(1,57,52)
+
+    if _0x3728E495.PROTECTED_URL and _0x3728E495.PROTECTED_URL ~= _0xEFD28748[172] then
+        local _0xC65E19BC, _0x2FE98260 = _0xC71708CB(_0xEFD28748[173], _0x3728E495.PROTECTED_URL)
+        if _0x2FE98260 and #_0x2FE98260 > 20 then
+            local _0x2EECA00A, err = loadstring(_0x2FE98260)
+            if _0x2EECA00A then
+local _0x51391CCE=string.len("_0xD6595BB3")
+                local _0x4A5D4B8D, runErr = pcall(_0x2EECA00A)
+                if not _0x4A5D4B8D then warn(_0xEFD28748[174], runErr) end
+            else
+                warn(_0xEFD28748[175], err)
+            end
+        else
+local _0x73111B7F=table.concat({"_0x9","_0x6"},"")
+            warn(_0xEFD28748[176])
+        end
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+local _0x4A66E466=type(nil)=="nil" and true or false
+-- SECTION 12 ── MAIN BOOT SEQUENCE
+-- ════════════════════════════════════════════════════════════════════════════
+
+task.spawn(function()
+
+    -- ── Step 1: Generate HWID ─────────────────────────────────────────────
+local _0x6939D7DF=type(nil)=="nil" and true or false
+    local _0x52971E7A = _0x13939AD8()
+
+    -- ── Step 2: Build UI ───────────────────���──────────────────────────────
+    local _0x2760BDD8 = _0x6A6A4C02()
+    _0x2760BDD8.hwidVal.Text = _0x52971E7A
+    _0xFDE768AD(_0x2760BDD8, _0xEFD28748[177], _0xEFD28748[178], _0xEFD28748[179], _0x9CE68A17.muted)
+do local _0xBB43CEF0=pcall(function()return true end) end
+    _0x23378BA2(_0x2760BDD8, 0.05)
+    task.wait(0.25)
+
+    -- ── Step 3: Check local cache ─────────────────────────────────────────
+    _0xFDE768AD(_0x2760BDD8, _0xEFD28748[180], _0xEFD28748[181], _0xEFD28748[182], _0x9CE68A17.muted)
+    _0x23378BA2(_0x2760BDD8, 0.12)
+local _0x8C07BA6F=string.len("_0x9C55315F")
+    task.wait(0.15)
+
+    local _0x083083EA = _0x77826305()
+    local _0xF49EA1FE = nil
+
+    if _0x083083EA and _0x083083EA._0x52971E7A == _0x52971E7A then
+local _0xBBEEE4DD=select(1,77,40)
+        if _0x083083EA.expires_at and not _0x29DB572E(_0x083083EA.expires_at) then
+            _0xF49EA1FE = _0x083083EA._0x16749793
+            _0xFDE768AD(_0x2760BDD8, _0xEFD28748[183], _0xEFD28748[184], _0xEFD28748[185], _0x9CE68A17.muted)
+        else
+            _0xC6FF5476()
+            _0xFDE768AD(_0x2760BDD8, _0xEFD28748[186], _0xEFD28748[187], _0xEFD28748[188], _0x9CE68A17.warning)
+local _0x13DBB1CB=string.len("_0xC62A7394")
+        end
+    elseif _0x083083EA and _0x083083EA._0x52971E7A ~= _0x52971E7A then
+        _0xC6FF5476()   -- different device — wipe foreign cache
+    end
+
+    _0x23378BA2(_0x2760BDD8, 0.25)
+local _0xD11AFDA3=select(1,46,68)
+    task.wait(0.15)
+
+    -- ── Step 4: Server-side check ─────────────────────────────────────────
+    _0xFDE768AD(_0x2760BDD8, _0xEFD28748[189], _0xEFD28748[190], _0xEFD28748[191], _0x9CE68A17.muted)
+    _0x23378BA2(_0x2760BDD8, 0.40)
+
+local _0xE0205E16=tostring(761532)
+    local _0x755888A0 = _0xA65B00D4(_0x52971E7A)
+
+    -- ── Handle server response ────────────────────────────────────────────
+
+    if _0x755888A0.status == _0xEFD28748[192] then
+        _0xC6FF5476()
+local _0x83BBDA33=table.concat({"_0x4","_0x7"},"")
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[193], _0xEFD28748[194], _0x755888A0._0x3ED4A95E or _0xEFD28748[195], _0x9CE68A17.error)
+        _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.error)
+        return
+
+    elseif _0x755888A0.status == _0xEFD28748[196] then
+        -- If we have a locally non-expired cache, we still require backend confirmation.
+local _0x4B3F9AA3=tostring(470214)
+        -- We do NOT silently load — we abort.
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[197], _0xEFD28748[198], _0xEFD28748[199], _0x9CE68A17.error)
+        _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.error)
+        return
+
+    elseif _0x755888A0.status == _0xEFD28748[200] then
+local _0x11688ED2={} for _=1,6 do _0x11688ED2[_]=_ end
+        -- Server confirms key is valid
+        local _0x16749793 = _0x755888A0._0x16749793
+        _0x9D2694F2(_0x52971E7A, _0x16749793, _0x755888A0.expires_at)
+
+        -- If we also have a cached key, do a secondary HWID+key validation
+        -- to catch any key-sharing attempts
+local _0x297CC395=table.concat({"_0x3","_0xA"},"")
+        if _0xF49EA1FE and _0xF49EA1FE ~= _0x16749793 then
+            -- Cache had a different key than server — clear it
+            _0xC6FF5476()
+        end
+
+        local _0x66FDE15A = _0x755888A0.expires_in or _0xEFD28748[201]
+local _0xE46E90E6=tostring(834978)
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[202], _0xEFD28748[203], _0xEFD28748[204] .. _0x66FDE15A, _0x9CE68A17.success)
+        _0x23378BA2(_0x2760BDD8, 0.90, _0x9CE68A17.success)
+        task.wait(0.5)
+
+    elseif _0x755888A0.status == _0xEFD28748[205] or _0x755888A0.status == _0xEFD28748[206] or _0x755888A0.status == _0xEFD28748[207] then
+        -- No valid key on server → send to Linkvertise flow
+local _0x29007195={} for _=1,6 do _0x29007195[_]=_ end
+        _0xC6FF5476()
+        _0x23378BA2(_0x2760BDD8, 0.30, _0x9CE68A17.warning)
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[208], _0xEFD28748[209], _0xEFD28748[210], _0x9CE68A17.warning)
+        task.wait(0.3)
+
+        local _0x81840681 = _0x3125C3EE(_0x52971E7A, _0x2760BDD8)
+local _0x4940C55E=math.floor(math.random()*6487)
+
+        if not _0x81840681._0x4A5D4B8D then
+            _0xFDE768AD(_0x2760BDD8, _0xEFD28748[211], _0xEFD28748[212], _0x81840681._0x3ED4A95E or _0xEFD28748[213], _0x9CE68A17.error)
+            _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.error)
+            return
+        end
+local _0x3201C29B=math.floor(math.random()*5319)
+
+        -- Key obtained — do one final server validation
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[214], _0xEFD28748[215], _0xEFD28748[216], _0x9CE68A17.muted)
+        _0x23378BA2(_0x2760BDD8, 0.85)
+        task.wait(0.3)
+
+local _0x7C15F49E=tostring(459181)
+        local _0x06C69619 = _0x5616F66A(_0x52971E7A, _0x81840681._0x16749793)
+        if not _0x06C69619.valid then
+            _0xC6FF5476()
+            _0xFDE768AD(_0x2760BDD8, _0xEFD28748[217], _0xEFD28748[218], _0x06C69619._0x3ED4A95E or _0xEFD28748[219], _0x9CE68A17.error)
+            _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.error)
+            return
+local _0xCDAC377C=string.len("_0x9C3836D3")
+        end
+
+    else
+        _0xFDE768AD(_0x2760BDD8, _0xEFD28748[220], _0xEFD28748[221], _0xEFD28748[222] .. tostring(_0x755888A0.status), _0x9CE68A17.error)
+        _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.error)
+        return
+local _0x12CDD08A=type(nil)=="nil" and true or false
+    end
+
+    -- ── Step 5: All clear — unlock ────────────────────────────────────────
+    _0xFDE768AD(_0x2760BDD8, _0xEFD28748[223], _0xEFD28748[224], _0xEFD28748[225], _0x9CE68A17.success)
+    _0x23378BA2(_0x2760BDD8, 1, _0x9CE68A17.success)
+    task.wait(0.9)
+local _0xA5088035=select(1,11,22)
+
+    _0xB2F2AA3E()
+
+end)
+
+-- ════════════════════════════════════════════════════════════════════════════
+local _0x03E138FD=tostring(676937)
+-- END OF LOADER
+-- Protected script loads inside unlockFeatures() after all server gates pass.
+-- ════════════════════════════════════════════════════════════════════════════
+
+  _0x2CC55931=-1
+end
+}
+while _0x2CC55931 >= 0 do
+  local _0xE06D0397 = _0x524E4240[_0x2CC55931]
+  if _0xE06D0397 then _0xE06D0397() else _0x2CC55931 = -1 end
+end
+
+end -- ╚ END PROTECTED SCOPE ════════════════════════════════════════════╝
